@@ -225,6 +225,21 @@ def test_founding_route_returns_409_when_email_already_has_profile(
     fake_sb.eq.return_value = fake_sb
     fake_sb.limit.return_value = fake_sb
     fake_sb.execute.return_value = MagicMock(data=[{"id": "existing-user"}])
+
+    # BIZ-FOUND-002: route now gates on check_founding_availability() RPC
+    # before the profile lookup. Wire RPC -> available=true so this test
+    # still hits the 409 path it cares about.
+    fake_sb.rpc.return_value = MagicMock(execute=MagicMock(return_value=MagicMock(data=[
+        {
+            "available": True,
+            "seats_remaining": 49,
+            "seats_total": 50,
+            "deadline_at": "2026-05-30T23:59:59-03:00",
+            "paused": False,
+            "reason": "available",
+        }
+    ])))
+
     mock_get_supabase.return_value = fake_sb
 
     client = TestClient(app_with_founding)

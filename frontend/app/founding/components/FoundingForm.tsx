@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { FoundingAvailabilitySnapshot } from './FoundingCountdown';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -9,9 +10,32 @@ interface FoundingCheckoutResponse {
   lead_id: string;
 }
 
+interface Props {
+  /**
+   * BIZ-FOUND-002: live availability snapshot. When `available=false` the
+   * CTA is disabled and a contextual message replaces the form footer.
+   * Optional so legacy mounts (and existing unit tests) keep working without
+   * the parent wiring.
+   */
+  availability?: FoundingAvailabilitySnapshot | null;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOTIVO_MIN = 140;
 const MOTIVO_MAX = 1000;
+
+const REASON_MESSAGES: Record<string, string> = {
+  founding_cap_reached:
+    'As 50 vagas founding já foram preenchidas. Obrigado pelo interesse — escreva para tiago@smartlic.tech para entrar na lista de espera.',
+  founding_deadline_passed:
+    'O período de inscrição founding (até 30/05/2026) terminou. O plano regular SmartLic Pro continua disponível em /pricing.',
+  founding_paused:
+    'Inscrições founding temporariamente pausadas. Tente novamente em algumas horas.',
+  founding_disabled: 'O programa founding não está aceitando novas inscrições no momento.',
+  founding_policy_missing:
+    'Configuração founding indisponível. Tente novamente em instantes.',
+  unavailable: 'Não foi possível validar disponibilidade founding agora. Tente novamente em instantes.',
+};
 
 function cleanCnpj(raw: string): string {
   return raw.replace(/\D/g, '');
@@ -38,7 +62,7 @@ function trackEvent(name: string, props?: Record<string, unknown>) {
   }
 }
 
-export default function FoundingForm() {
+export default function FoundingForm({ availability }: Props = {}) {
   const [email, setEmail] = useState('');
   const [nome, setNome] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -108,6 +132,14 @@ export default function FoundingForm() {
 
   const loading = status === 'loading';
   const motivoLen = motivo.trim().length;
+  // BIZ-FOUND-002: respect server-side gate. When the parent passed an
+  // availability snapshot AND it says unavailable, lock the CTA and surface
+  // the contextual message instead of the generic prompt.
+  const unavailable = availability !== undefined && availability !== null && !availability.available;
+  const unavailableMessage = unavailable
+    ? REASON_MESSAGES[availability!.reason] ?? REASON_MESSAGES.unavailable
+    : null;
+  const submitDisabled = loading || unavailable;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -201,12 +233,28 @@ export default function FoundingForm() {
         </div>
       )}
 
+      {unavailable && unavailableMessage && (
+        <div
+          role="status"
+          data-testid="founding-form-unavailable"
+          className="rounded bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900"
+        >
+          {unavailableMessage}
+        </div>
+      )}
+
       <button
         type="submit"
-        disabled={loading}
+        disabled={submitDisabled}
+        data-testid="founding-form-submit"
+        aria-disabled={submitDisabled}
         className="w-full rounded bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
       >
-        {loading ? 'Processando...' : 'Quero ser um founding partner'}
+        {loading
+          ? 'Processando...'
+          : unavailable
+            ? 'Programa fechado'
+            : 'Quero ser um founding partner'}
       </button>
     </form>
   );
