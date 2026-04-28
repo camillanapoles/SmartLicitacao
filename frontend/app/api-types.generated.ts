@@ -604,6 +604,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/founding/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Founding Leads
+         * @description List founding leads ordered by creation desc.
+         *
+         *     Optional ``status`` filter restricts to one of the checkout_status enum
+         *     values (pending|completed|abandoned|failed|cap_violated).
+         */
+        get: operations["list_founding_leads_v1_admin_founding_leads_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/founding/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause Founding
+         * @description Soft-pause founding checkouts. Idempotent.
+         */
+        post: operations["pause_founding_v1_admin_founding_pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/founding/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Founding Policy
+         * @description Snapshot of the canonical policy + live seat usage.
+         */
+        get: operations["get_founding_policy_v1_admin_founding_policy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/founding/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Founding
+         * @description Resume founding checkouts (clear paused_at + paused_by + paused_reason).
+         */
+        post: operations["resume_founding_v1_admin_founding_resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/llm-cost": {
         parameters: {
             query?: never;
@@ -2968,6 +3051,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/founding/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Founding Availability
+         * @description Public seat counter + countdown feed.
+         *
+         *     No auth — the landing page calls this anonymously to render the
+         *     countdown and the X/50 seat counter. Falls open with ``available=False``
+         *     on transient DB error so the CTA is disabled rather than over-selling.
+         */
+        get: operations["founding_availability_v1_founding_availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/founding/checkout": {
         parameters: {
             query?: never;
@@ -2979,11 +3086,18 @@ export interface paths {
         put?: never;
         /**
          * Founding Checkout
-         * @description Create a founding-customer Stripe Checkout Session with FOUNDING30 applied.
+         * @description Create a founding-customer Stripe Checkout Session with the canonical coupon applied.
          *
-         *     Side effects:
-         *     - Inserts a `founding_leads` row with `checkout_status='pending'`.
-         *     - Later webhook events (`checkout.session.completed` / `expired`) update it.
+         *     BIZ-FOUND-002 gate:
+         *     - Calls ``check_founding_availability()`` BEFORE creating the lead row.
+         *     - On ``available=false`` returns 410 Gone with structured ``error_code`` +
+         *       ``error_reason`` so the frontend can render the right copy.
+         *
+         *     Side effects (when available):
+         *     - Inserts a ``founding_leads`` row with ``checkout_status='pending'``.
+         *     - Subsequent webhook events (``checkout.session.completed`` / ``expired``)
+         *       update it. The webhook also re-checks availability for race guard
+         *       (handled in webhooks.handlers.founding).
          */
         post: operations["founding_checkout_v1_founding_checkout_post"];
         delete?: never;
@@ -7581,6 +7695,30 @@ export interface components {
             /** Uf */
             uf: string;
         };
+        /**
+         * FoundingAvailabilityResponse
+         * @description Public availability snapshot for landing-page seat counter + countdown.
+         */
+        FoundingAvailabilityResponse: {
+            /** Available */
+            available: boolean;
+            /** Coupon Code */
+            coupon_code: string;
+            /** Deadline At */
+            deadline_at: string | null;
+            /** Discount Pct */
+            discount_pct: number;
+            /** Paused */
+            paused: boolean;
+            /** Reason */
+            reason: string;
+            /** Seats Remaining */
+            seats_remaining: number;
+            /** Seats Taken */
+            seats_taken: number;
+            /** Seats Total */
+            seats_total: number;
+        };
         /** FoundingCheckoutRequest */
         FoundingCheckoutRequest: {
             /** Cnpj */
@@ -7600,6 +7738,81 @@ export interface components {
             checkout_url: string;
             /** Lead Id */
             lead_id: string;
+        };
+        /** FoundingLeadEntry */
+        FoundingLeadEntry: {
+            /** Checkout Status */
+            checkout_status: string;
+            /** Cnpj */
+            cnpj: string;
+            /** Completed At */
+            completed_at?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Email */
+            email: string;
+            /** Id */
+            id: string;
+            /** Nome */
+            nome: string;
+            /** Razao Social */
+            razao_social?: string | null;
+            /** Stripe Customer Id */
+            stripe_customer_id?: string | null;
+        };
+        /** FoundingLeadsListResponse */
+        FoundingLeadsListResponse: {
+            /** Completed Count */
+            completed_count: number;
+            /** Count */
+            count: number;
+            /** Leads */
+            leads: components["schemas"]["FoundingLeadEntry"][];
+            /** Pending Count */
+            pending_count: number;
+        };
+        /** FoundingPauseRequest */
+        FoundingPauseRequest: {
+            /** Reason */
+            reason?: string | null;
+        };
+        /** FoundingPolicyMutationResponse */
+        FoundingPolicyMutationResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Paused */
+            paused: boolean;
+            /** Paused At */
+            paused_at: string | null;
+            /** Paused Reason */
+            paused_reason: string | null;
+        };
+        /** FoundingPolicySnapshot */
+        FoundingPolicySnapshot: {
+            /** Active */
+            active: boolean;
+            /** Completion Pct */
+            completion_pct: number;
+            /** Coupon Code */
+            coupon_code: string;
+            /** Deadline At */
+            deadline_at: string;
+            /** Discount Pct */
+            discount_pct: number;
+            /** Paused */
+            paused: boolean;
+            /** Paused At */
+            paused_at: string | null;
+            /** Paused By */
+            paused_by: string | null;
+            /** Paused Reason */
+            paused_reason: string | null;
+            /** Seat Limit */
+            seat_limit: number;
+            /** Seats Remaining */
+            seats_remaining: number;
+            /** Seats Taken */
+            seats_taken: number;
         };
         /**
          * GoogleSheetsExportHistory
@@ -11265,6 +11478,111 @@ export interface operations {
             };
         };
     };
+    list_founding_leads_v1_admin_founding_leads_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingLeadsListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_founding_v1_admin_founding_pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["FoundingPauseRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingPolicyMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_founding_policy_v1_admin_founding_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingPolicySnapshot"];
+                };
+            };
+        };
+    };
+    resume_founding_v1_admin_founding_resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingPolicyMutationResponse"];
+                };
+            };
+        };
+    };
     admin_llm_cost_v1_admin_llm_cost_get: {
         parameters: {
             query?: never;
@@ -14428,6 +14746,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    founding_availability_v1_founding_availability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingAvailabilityResponse"];
                 };
             };
         };

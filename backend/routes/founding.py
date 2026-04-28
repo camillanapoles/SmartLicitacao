@@ -1,14 +1,24 @@
-"""STORY-BIZ-001: Founding customer Stripe coupon landing.
+"""STORY-BIZ-001 + BIZ-FOUND-002: Founding customer checkout + canonical policy.
 
-Endpoint: POST /v1/founding/checkout
+Endpoints:
+- ``POST /v1/founding/checkout`` — qualifying form -> Stripe Checkout Session.
+- ``GET  /v1/founding/availability`` — public seat counter / countdown feed.
 
-Takes a qualifying form submission from /founding landing, creates a Stripe
-Checkout Session with the FOUNDING30 coupon pre-applied, persists the lead
-in `founding_leads` for follow-up, and returns the checkout URL.
+BIZ-FOUND-002 changes:
+- Pre-checkout, the route invokes ``public.check_founding_availability()`` RPC.
+  The RPC takes ``SELECT FOR UPDATE`` on the founding_policy row + counts
+  completed leads in one atomic step (race guard #1).
+- When the RPC returns ``available=false`` we respond with 410 Gone and a
+  structured ``error_code`` so the frontend can render the right message
+  without parsing free-form text.
+- The new ``GET /v1/founding/availability`` endpoint is anonymous (no auth)
+  and used by the landing-page seat counter + countdown timer.
 
-The FOUNDING30 coupon itself is provisioned out-of-band in the Stripe
-Dashboard (30% off for 12 months, 10 uses, first_time_transaction only) —
-see `docs/runbooks/stripe-coupons.md`.
+Pricing model is now canonical:
+- Cap = 50 seats, deadline = 2026-05-30, lifetime 50% off forever via
+  Stripe coupon ``FOUNDING_LIFETIME``.
+- Source of truth lives in ``public.founding_policy`` (migration
+  20260428100000) and Stripe (coupon configuration).
 """
 
 from __future__ import annotations
@@ -32,7 +42,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/founding", tags=["founding"])
 
 
-FOUNDING_COUPON_ID = os.getenv("FOUNDING_COUPON_ID", "FOUNDING30")
+# BIZ-FOUND-002: lifetime coupon replaces the old 12-month FOUNDING30 default.
+# The old id is still respected if the operator wants to keep STORY-BIZ-001
+# semantics in non-prod, but new deploys go through FOUNDING_LIFETIME.
+FOUNDING_COUPON_ID = os.getenv("FOUNDING_COUPON_ID", "FOUNDING_LIFETIME")
 FOUNDING_PLAN_ID = os.getenv("FOUNDING_PLAN_ID", "smartlic_pro")
 FOUNDING_BILLING_PERIOD = os.getenv("FOUNDING_BILLING_PERIOD", "annual")
 
@@ -68,11 +81,24 @@ class FoundingCheckoutResponse(BaseModel):
     lead_id: str
 
 
+class FoundingAvailabilityResponse(BaseModel):
+    """Public availability snapshot for landing-page seat counter + countdown."""
+
+    available: bool
+    seats_total: int
+    seats_remaining: int
+    seats_taken: int
+    deadline_at: str | None
+    paused: bool
+    reason: str
+    coupon_code: str
+    discount_pct: int
+
+
 def _is_valid_cnpj_check_digits(cnpj: str) -> bool:
     """Validate Brazilian CNPJ check digits. `cnpj` must be 14 digits already."""
     if len(cnpj) != 14 or not cnpj.isdigit():
         return False
-    # Trivial rejection: all identical digits ("00000000000000" etc.)
     if cnpj == cnpj[0] * 14:
         return False
 
@@ -108,10 +134,13 @@ def _already_registered(sb, email: str) -> bool:
 
 
 def _lookup_promotion_code(stripe_lib, api_key: str) -> dict | None:
-    """Resolve the FOUNDING30 coupon into a promotion_code for use in discounts.
+    """Resolve the founding coupon into a promotion_code for use in discounts.
 
-    Prefer PromotionCode (user-facing) over raw Coupon so Stripe enforces
-    `restrictions.first_time_transaction=true` configured at promo-code level.
+    Prefer PromotionCode (user-facing) over raw Coupon when available so
+    Stripe enforces any restrictions configured at the promo-code level.
+    Falls back to the raw coupon id if no promotion_code exists (the
+    FOUNDING_LIFETIME coupon is created without a promotion_code by default
+    via scripts/create_founding_lifetime_coupon.py).
     """
     try:
         promos = stripe_lib.PromotionCode.list(
@@ -125,8 +154,109 @@ def _lookup_promotion_code(stripe_lib, api_key: str) -> dict | None:
     except Exception as e:
         logger.warning(f"founding: promotion_code lookup failed: {e}")
 
-    # Fall back to the coupon id directly (still valid for discounts=)
     return {"coupon": FOUNDING_COUPON_ID}
+
+
+def _check_availability(sb) -> dict[str, Any]:
+    """Call ``check_founding_availability()`` RPC; return normalized dict.
+
+    On any DB error returns ``available=False`` with reason ``'unavailable'``
+    so the route fails closed (never accidentally over-sell the cohort).
+    """
+    try:
+        res = sb.rpc("check_founding_availability").execute()
+        rows = getattr(res, "data", None) or []
+        if not rows:
+            logger.warning("founding: check_founding_availability returned empty")
+            return {
+                "available": False,
+                "seats_total": 0,
+                "seats_remaining": 0,
+                "deadline_at": None,
+                "paused": False,
+                "reason": "unavailable",
+            }
+        row = rows[0] if isinstance(rows, list) else rows
+        return {
+            "available": bool(row.get("available")),
+            "seats_total": int(row.get("seats_total") or 0),
+            "seats_remaining": int(row.get("seats_remaining") or 0),
+            "deadline_at": row.get("deadline_at"),
+            "paused": bool(row.get("paused")),
+            "reason": str(row.get("reason") or "unavailable"),
+        }
+    except Exception as e:
+        logger.error(f"founding: check_founding_availability RPC failed: {e}")
+        return {
+            "available": False,
+            "seats_total": 0,
+            "seats_remaining": 0,
+            "deadline_at": None,
+            "paused": False,
+            "reason": "unavailable",
+        }
+
+
+def _user_message_for_reason(reason: str) -> str:
+    """Map RPC reason enum -> user-facing Portuguese message."""
+    mapping = {
+        "founding_cap_reached": (
+            "As 50 vagas founding já foram preenchidas. Obrigado pelo interesse — "
+            "entre em contato para entrar na lista de espera."
+        ),
+        "founding_deadline_passed": (
+            "O período de inscrição founding (até 30/05/2026) terminou. O plano "
+            "regular SmartLic Pro continua disponível em /pricing."
+        ),
+        "founding_paused": (
+            "As inscrições founding estão temporariamente pausadas. Tente novamente em algumas horas."
+        ),
+        "founding_disabled": (
+            "O programa founding não está aceitando novas inscrições no momento."
+        ),
+        "founding_policy_missing": (
+            "Configuração founding indisponível. Tente novamente em instantes."
+        ),
+        "unavailable": (
+            "Não foi possível validar disponibilidade founding agora. Tente novamente em instantes."
+        ),
+    }
+    return mapping.get(reason, mapping["unavailable"])
+
+
+@router.get("/availability", response_model=FoundingAvailabilityResponse)
+async def founding_availability() -> Any:
+    """Public seat counter + countdown feed.
+
+    No auth — the landing page calls this anonymously to render the
+    countdown and the X/50 seat counter. Falls open with ``available=False``
+    on transient DB error so the CTA is disabled rather than over-selling.
+    """
+    sb = get_supabase()
+    snapshot = _check_availability(sb)
+
+    seats_total = snapshot["seats_total"]
+    seats_remaining = snapshot["seats_remaining"]
+    seats_taken = max(0, seats_total - seats_remaining)
+    deadline_iso: str | None = None
+    if snapshot["deadline_at"]:
+        deadline_iso = (
+            snapshot["deadline_at"].isoformat()
+            if hasattr(snapshot["deadline_at"], "isoformat")
+            else str(snapshot["deadline_at"])
+        )
+
+    return FoundingAvailabilityResponse(
+        available=snapshot["available"],
+        seats_total=seats_total,
+        seats_remaining=seats_remaining,
+        seats_taken=seats_taken,
+        deadline_at=deadline_iso,
+        paused=snapshot["paused"],
+        reason=snapshot["reason"],
+        coupon_code=FOUNDING_COUPON_ID,
+        discount_pct=50,
+    )
 
 
 @router.post("/checkout", response_model=FoundingCheckoutResponse)
@@ -135,11 +265,18 @@ async def founding_checkout(
     request: Request,
     _rl=Depends(require_rate_limit(3, 3600)),
 ) -> Any:
-    """Create a founding-customer Stripe Checkout Session with FOUNDING30 applied.
+    """Create a founding-customer Stripe Checkout Session with the canonical coupon applied.
 
-    Side effects:
-    - Inserts a `founding_leads` row with `checkout_status='pending'`.
-    - Later webhook events (`checkout.session.completed` / `expired`) update it.
+    BIZ-FOUND-002 gate:
+    - Calls ``check_founding_availability()`` BEFORE creating the lead row.
+    - On ``available=false`` returns 410 Gone with structured ``error_code`` +
+      ``error_reason`` so the frontend can render the right copy.
+
+    Side effects (when available):
+    - Inserts a ``founding_leads`` row with ``checkout_status='pending'``.
+    - Subsequent webhook events (``checkout.session.completed`` / ``expired``)
+      update it. The webhook also re-checks availability for race guard
+      (handled in webhooks.handlers.founding).
     """
     import stripe as stripe_lib
 
@@ -150,7 +287,26 @@ async def founding_checkout(
 
     sb = get_supabase()
 
-    if await asyncio.to_thread(_already_registered, sb, payload.email):
+    # BIZ-FOUND-002 gate — atomic cap + deadline + paused check.
+    snapshot = _check_availability(sb)
+    if not snapshot["available"]:
+        reason = snapshot["reason"]
+        logger.info(
+            f"founding: checkout rejected — reason={reason} "
+            f"seats_taken={snapshot['seats_total'] - snapshot['seats_remaining']}/"
+            f"{snapshot['seats_total']}"
+        )
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "message": _user_message_for_reason(reason),
+                "error_code": reason,
+                "seats_total": snapshot["seats_total"],
+                "seats_remaining": snapshot["seats_remaining"],
+            },
+        )
+
+    if _already_registered(sb, payload.email):
         raise HTTPException(
             status_code=409,
             detail="Este email já possui conta SmartLic. Faça login para gerenciar sua assinatura.",
