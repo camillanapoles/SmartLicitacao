@@ -359,7 +359,10 @@ def map_cnae_to_setor(cnae: str) -> str:
 
     cached = _cache.get(prefix)
     if cached is not _TTLCache._MISS:
-        return cached  # type: ignore[return-value]
+        # mypy can't know the sentinel narrowed type; return is always
+        # str at this point because we only ever ``set()`` strings.
+        assert isinstance(cached, str)
+        return cached
 
     if _db_lookup_enabled():
         _ensure_listener()
