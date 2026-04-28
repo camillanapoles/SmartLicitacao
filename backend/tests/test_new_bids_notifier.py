@@ -14,22 +14,22 @@ def mock_profiles():
         {
             "id": "user-a",
             "plan_type": "free_trial",
-            "profile_context": {"setor_id": "saude", "ufs": ["SP", "RJ"]},
+            "context_data": {"setor_id": "saude", "ufs": ["SP", "RJ"]},
         },
         {
             "id": "user-b",
             "plan_type": "smartlic_pro",
-            "profile_context": {"setor_id": "construcao", "ufs_selecionadas": ["MG"]},
+            "context_data": {"setor_id": "construcao", "ufs_selecionadas": ["MG"]},
         },
         {
             "id": "user-no-setor",
             "plan_type": "free_trial",
-            "profile_context": {"ufs": ["SP"]},  # missing setor_id
+            "context_data": {"ufs": ["SP"]},  # missing setor_id
         },
         {
             "id": "user-no-ufs",
             "plan_type": "free_trial",
-            "profile_context": {"setor_id": "saude"},  # missing ufs
+            "context_data": {"setor_id": "saude"},  # missing ufs
         },
     ]
 
