@@ -206,30 +206,30 @@ class TestRequireMfaMiddleware:
         assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
-    @patch("supabase_client.get_supabase")
+    @patch("auth._user_has_verified_mfa", new_callable=AsyncMock, return_value=False)
+    @patch("auth._get_profile_mfa_state", new_callable=AsyncMock, return_value={})
     @patch("authorization.check_user_roles", new_callable=AsyncMock, return_value=(False, False))
-    async def test_regular_user_without_mfa_passes(self, mock_roles, mock_sb, mock_user_aal1):
-        """Regular user without MFA factors should pass through."""
-        from auth import require_mfa
+    async def test_regular_user_without_mfa_passes(self, mock_roles, mock_profile, mock_factor, mock_user_aal1):
+        """Regular user without MFA factors should pass through.
 
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_sb.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_result
+        MFA-EXT-001: middleware now calls async helpers
+        (`_get_profile_mfa_state` + `_user_has_verified_mfa`) instead of
+        building a sync `.execute()` chain. Mock those directly so the
+        chain shape doesn't leak into the test.
+        """
+        from auth import require_mfa
 
         result = await require_mfa(mock_user_aal1)
         assert result == mock_user_aal1
 
     @pytest.mark.asyncio
-    @patch("supabase_client.get_supabase")
+    @patch("auth._user_has_verified_mfa", new_callable=AsyncMock, return_value=True)
+    @patch("auth._get_profile_mfa_state", new_callable=AsyncMock, return_value={})
     @patch("authorization.check_user_roles", new_callable=AsyncMock, return_value=(False, False))
-    async def test_regular_user_with_mfa_enrolled_aal1_rejected(self, mock_roles, mock_sb, mock_user_aal1):
+    async def test_regular_user_with_mfa_enrolled_aal1_rejected(self, mock_roles, mock_profile, mock_factor, mock_user_aal1):
         """Regular user with MFA enrolled but aal1 should be rejected."""
         from auth import require_mfa
         from fastapi import HTTPException
-
-        mock_result = MagicMock()
-        mock_result.data = [{"id": "factor-123", "status": "verified"}]
-        mock_sb.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_result
 
         with pytest.raises(HTTPException) as exc_info:
             await require_mfa(mock_user_aal1)

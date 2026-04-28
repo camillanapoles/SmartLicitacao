@@ -415,4 +415,124 @@ describe("MfaEnforcementBanner", () => {
     const { container } = render(<MfaEnforcementBanner />);
     expect(container.querySelector("[data-testid='mfa-enforcement-banner']")).toBeNull();
   });
+
+  // MFA-EXT-001 AC8/AC9 — banner variants driven by /v1/mfa/status
+
+  function _mockStatusResponse(body: Record<string, unknown>) {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => body,
+    });
+  }
+
+  it("renders consultoria variant with countdown when enforce_reason='consultoria'", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "consul-1", email: "x@example.com" },
+      session: { access_token: "tok-1" },
+      loading: false,
+      isAdmin: false,
+    });
+    _mockStatusResponse({
+      mfa_enabled: false,
+      enforce_reason: "consultoria",
+      force_mfa_enrollment_until: "2099-01-01T00:00:00+00:00",
+      grace_days_remaining: 10,
+    });
+
+    render(<MfaEnforcementBanner />);
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("mfa-enforcement-banner");
+      expect(banner).toHaveAttribute("data-mfa-reason", "consultoria");
+      expect(screen.getByText(/Plano Consultoria requer MFA/)).toBeInTheDocument();
+      expect(screen.getByText(/10 dias/)).toBeInTheDocument();
+    });
+  });
+
+  it("renders bruteforce variant when enforce_reason='bruteforce'", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "bf-1", email: "y@example.com" },
+      session: { access_token: "tok-2" },
+      loading: false,
+      isAdmin: false,
+    });
+    _mockStatusResponse({
+      mfa_enabled: false,
+      enforce_reason: "bruteforce",
+      force_mfa_enrollment_until: "2099-01-01T00:00:00+00:00",
+      grace_days_remaining: 7,
+    });
+
+    render(<MfaEnforcementBanner />);
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("mfa-enforcement-banner");
+      expect(banner).toHaveAttribute("data-mfa-reason", "bruteforce");
+      expect(screen.getByText(/tentativas suspeitas/)).toBeInTheDocument();
+      expect(screen.getByText(/7 dias/)).toBeInTheDocument();
+    });
+  });
+
+  it("does NOT render when enforce_reason is null (no enforcement)", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "u-1", email: "z@example.com" },
+      session: { access_token: "tok-3" },
+      loading: false,
+      isAdmin: false,
+    });
+    _mockStatusResponse({
+      mfa_enabled: false,
+      enforce_reason: null,
+      force_mfa_enrollment_until: null,
+      grace_days_remaining: null,
+    });
+
+    const { container } = render(<MfaEnforcementBanner />);
+    await waitFor(() => {
+      expect(container.querySelector("[data-testid='mfa-enforcement-banner']")).toBeNull();
+    });
+  });
+
+  it("does NOT render when mfa_enabled=true even if reason was set previously", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "enrolled", email: "w@example.com" },
+      session: { access_token: "tok-4" },
+      loading: false,
+      isAdmin: true,
+    });
+    _mockStatusResponse({
+      mfa_enabled: true,  // user enrolled — banner suppressed
+      enforce_reason: null,
+      force_mfa_enrollment_until: null,
+      grace_days_remaining: null,
+    });
+
+    const { container } = render(<MfaEnforcementBanner />);
+    await waitFor(() => {
+      expect(container.querySelector("[data-testid='mfa-enforcement-banner']")).toBeNull();
+    });
+  });
+
+  it("renders admin variant when enforce_reason='admin'", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "admin-2", email: "a@example.com" },
+      session: { access_token: "tok-5" },
+      loading: false,
+      isAdmin: true,
+    });
+    _mockStatusResponse({
+      mfa_enabled: false,
+      enforce_reason: "admin",
+      force_mfa_enrollment_until: null,
+      grace_days_remaining: null,
+    });
+
+    render(<MfaEnforcementBanner />);
+
+    await waitFor(() => {
+      const banner = screen.getByTestId("mfa-enforcement-banner");
+      expect(banner).toHaveAttribute("data-mfa-reason", "admin");
+      expect(screen.getByText(/MFA obrigatório/)).toBeInTheDocument();
+    });
+  });
 });

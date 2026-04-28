@@ -16,6 +16,7 @@ from jobs.cron.indice_municipal import start_indice_municipal_task  # noqa: F401
 from jobs.cron.new_bids_notifier import start_new_bids_notifier_task  # noqa: F401
 from jobs.cron.pncp_canary import start_pncp_canary_task  # noqa: F401
 from jobs.cron.llm_batch_poll import start_llm_batch_poll_task  # noqa: F401
+from jobs.cron.auth_cleanup import start_auth_cleanup_task  # noqa: F401
 
 
 def register_all_cron_tasks() -> list:
@@ -33,4 +34,5 @@ def register_all_cron_tasks() -> list:
         start_pncp_canary_task,
         start_llm_batch_poll_task,
         start_billing_reconciliation_task,
+        start_auth_cleanup_task,
     ]

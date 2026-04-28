@@ -264,6 +264,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    // MFA-EXT-001 AC5/AC6: report outcome to backend for brute-force tracking.
+    // Fire-and-forget — never blocks the login UX. Endpoint is rate-limited
+    // and ignores unknown emails to avoid enumeration.
+    try {
+      void fetch("/api/auth/login-attempt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, success: !error }),
+        keepalive: true,
+      }).catch(() => {
+        /* network drop is acceptable — cron sweeps stale counters */
+      });
+    } catch {
+      /* never propagate */
+    }
+
     if (error) throw error;
     // Zero-Churn P2 §1.2: Keep timezone current on every login (handles existing users)
     if (data?.user) {
