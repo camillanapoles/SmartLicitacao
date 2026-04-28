@@ -79,7 +79,11 @@ async function fetchLicitacoesIndexable(): Promise<{ setor: string; uf: string }
   // SEO-440: empty fallback — without confirmed backend data, we cannot indicate
   // which combos are indexable. Returning generateLicitacoesParams() (all 405 combos)
   // would place noindex pages in sitemap → GSC "Excluded by noindex" mass error.
-  _licitacoesIndexableCache = result ?? [];
+  // 2026-04-28 elegant-dream: distinguir fetch-failed de fetched-empty.
+  // Antes: result ?? [] colapsava null+[] em "fetched=true,cache=[]" stuck 1h ISR.
+  // Agora: null (timeout/erro) NAO marca fetched → proximo ISR retry o backend.
+  if (result === null) return [];
+  _licitacoesIndexableCache = result;
   _licitacoesIndexableFetched = true;
   return _licitacoesIndexableCache;
 }
@@ -95,7 +99,8 @@ async function fetchContratosOrgaoIndexable(): Promise<string[]> {
     (d) => ((d as { orgaos?: string[] }).orgaos ?? []),
     'contratos-orgao-indexable',
   );
-  _contratosOrgaoCache = result ?? [];
+  if (result === null) return [];
+  _contratosOrgaoCache = result;
   _contratosOrgaoFetched = true;
   return _contratosOrgaoCache;
 }
@@ -111,7 +116,8 @@ async function fetchSitemapCnpjs(): Promise<string[]> {
     (d) => ((d as { cnpjs?: string[] }).cnpjs ?? []),
     'cnpjs',
   );
-  _cnpjCache = result ?? [];
+  if (result === null) return [];
+  _cnpjCache = result;
   _cnpjFetched = true;
   return _cnpjCache;
 }
@@ -131,7 +137,8 @@ async function fetchSitemapFornecedoresCnpj(): Promise<string[]> {
     (d) => ((d as { cnpjs?: string[] }).cnpjs ?? []),
     'fornecedores-cnpj',
   );
-  _fornecedoresCnpjCache = result ?? [];
+  if (result === null) return [];
+  _fornecedoresCnpjCache = result;
   _fornecedoresCnpjFetched = true;
   return _fornecedoresCnpjCache;
 }
@@ -147,7 +154,8 @@ async function fetchSitemapMunicipios(): Promise<string[]> {
     (d) => ((d as { slugs?: string[] }).slugs ?? []),
     'municipios',
   );
-  _municipiosCache = result ?? [];
+  if (result === null) return [];
+  _municipiosCache = result;
   _municipiosFetched = true;
   return _municipiosCache;
 }
@@ -163,7 +171,8 @@ async function fetchSitemapItens(): Promise<string[]> {
     (d) => ((d as { catmats?: string[] }).catmats ?? []),
     'itens',
   );
-  _itensCache = result ?? [];
+  if (result === null) return [];
+  _itensCache = result;
   _itensFetched = true;
   return _itensCache;
 }
@@ -175,7 +184,8 @@ async function fetchSitemapOrgaos(): Promise<string[]> {
     (d) => ((d as { orgaos?: string[] }).orgaos ?? []),
     'orgaos',
   );
-  _orgaoCache = result ?? [];
+  if (result === null) return [];
+  _orgaoCache = result;
   _orgaoFetched = true;
   return _orgaoCache;
 }
