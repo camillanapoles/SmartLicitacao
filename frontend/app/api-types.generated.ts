@@ -304,6 +304,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/cnae-mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Cnae Mappings
+         * @description List CNAE mappings with pagination + filters.
+         */
+        get: operations["list_cnae_mappings_v1_admin_cnae_mapping_get"];
+        put?: never;
+        /**
+         * Create Cnae Mapping
+         * @description Create a new mapping row.  Admin-only.
+         */
+        post: operations["create_cnae_mapping_v1_admin_cnae_mapping_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/cnae-mapping/bulk-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Import
+         * @description CSV upload — preview-first then apply.
+         *
+         *     Default ``dry_run=true`` returns the diff without writing.  Pass
+         *     ``dry_run=false`` to commit the changes (each row gets its own
+         *     audit entry tagged ``action='bulk_import'``).
+         */
+        post: operations["bulk_import_v1_admin_cnae_mapping_bulk_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/cnae-mapping/{cnae_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cnae Mapping
+         * @description Detail view: row + last 50 audit entries.
+         */
+        get: operations["get_cnae_mapping_v1_admin_cnae_mapping__cnae_code__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Soft Delete Cnae Mapping
+         * @description Soft-delete: flips is_active to false but keeps the row.
+         */
+        delete: operations["soft_delete_cnae_mapping_v1_admin_cnae_mapping__cnae_code__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Cnae Mapping
+         * @description Update a mapping (partial).
+         */
+        patch: operations["update_cnae_mapping_v1_admin_cnae_mapping__cnae_code__patch"];
+        trace?: never;
+    };
+    "/v1/admin/cnae-mapping/{cnae_code}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Cnae Mapping
+         * @description Undo a soft-delete by flipping is_active back to true.
+         */
+        post: operations["restore_cnae_mapping_v1_admin_cnae_mapping__cnae_code__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/cron-status": {
         parameters: {
             query?: never;
@@ -4922,6 +5018,39 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** Body_bulk_import_v1_admin_cnae_mapping_bulk_import_post */
+        Body_bulk_import_v1_admin_cnae_mapping_bulk_import_post: {
+            /** File */
+            file: string;
+        };
+        /** BulkImportPreviewItem */
+        BulkImportPreviewItem: {
+            /** Action */
+            action: string;
+            /** Cnae Code */
+            cnae_code: string;
+            /** Error */
+            error?: string | null;
+            new?: components["schemas"]["CnaeMappingRow"] | null;
+            old?: components["schemas"]["CnaeMappingRow"] | null;
+        };
+        /** BulkImportResponse */
+        BulkImportResponse: {
+            /** Creates */
+            creates: number;
+            /** Deactivations */
+            deactivations: number;
+            /** Dry Run */
+            dry_run: boolean;
+            /** Errors */
+            errors: number;
+            /** Noops */
+            noops: number;
+            /** Preview */
+            preview: components["schemas"]["BulkImportPreviewItem"][];
+            /** Updates */
+            updates: number;
+        };
         /**
          * BuscaRequest
          * @description Request schema for /buscar endpoint.
@@ -5629,6 +5758,113 @@ export interface components {
             total_editais: number;
             /** Uf */
             uf: string;
+        };
+        /** CnaeAuditLogEntry */
+        CnaeAuditLogEntry: {
+            /** Action */
+            action: string;
+            /** Actor Email */
+            actor_email?: string | null;
+            /** Actor User Id */
+            actor_user_id?: string | null;
+            /** Cnae Code */
+            cnae_code: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** New Value */
+            new_value?: {
+                [key: string]: unknown;
+            } | null;
+            /** Note */
+            note?: string | null;
+            /** Old Value */
+            old_value?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** CnaeMappingCreateRequest */
+        CnaeMappingCreateRequest: {
+            /** Cnae Code */
+            cnae_code: string;
+            /**
+             * Confidence
+             * @default 1
+             */
+            confidence: number;
+            /** Notes */
+            notes?: string | null;
+            /** Setor Id */
+            setor_id: string;
+        };
+        /** CnaeMappingDetailResponse */
+        CnaeMappingDetailResponse: {
+            /** Audit */
+            audit: components["schemas"]["CnaeAuditLogEntry"][];
+            mapping: components["schemas"]["CnaeMappingRow"];
+        };
+        /** CnaeMappingListResponse */
+        CnaeMappingListResponse: {
+            /** Items */
+            items: components["schemas"]["CnaeMappingRow"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** CnaeMappingMutationResponse */
+        CnaeMappingMutationResponse: {
+            /** Audit Id */
+            audit_id: string;
+            mapping: components["schemas"]["CnaeMappingRow"];
+        };
+        /** CnaeMappingRow */
+        CnaeMappingRow: {
+            /**
+             * Cnae Code
+             * @description 4-digit IBGE prefix
+             */
+            cnae_code: string;
+            /**
+             * Confidence
+             * @default 1
+             */
+            confidence: number;
+            /** Created At */
+            created_at?: string | null;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Setor Id
+             * @description SmartLic sector identifier
+             */
+            setor_id: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+        };
+        /** CnaeMappingUpdateRequest */
+        CnaeMappingUpdateRequest: {
+            /** Confidence */
+            confidence?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Notes */
+            notes?: string | null;
+            /** Setor Id */
+            setor_id?: string | null;
         };
         /** ComparadorBid */
         ComparadorBid: {
@@ -9947,6 +10183,238 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    list_cnae_mappings_v1_admin_cnae_mapping_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                search?: string | null;
+                setor_id?: string | null;
+                is_active?: boolean | null;
+                min_confidence?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cnae_mapping_v1_admin_cnae_mapping_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CnaeMappingCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_import_v1_admin_cnae_mapping_bulk_import_post: {
+        parameters: {
+            query?: {
+                dry_run?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_bulk_import_v1_admin_cnae_mapping_bulk_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkImportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cnae_mapping_v1_admin_cnae_mapping__cnae_code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cnae_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    soft_delete_cnae_mapping_v1_admin_cnae_mapping__cnae_code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cnae_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_cnae_mapping_v1_admin_cnae_mapping__cnae_code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cnae_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CnaeMappingUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_cnae_mapping_v1_admin_cnae_mapping__cnae_code__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cnae_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

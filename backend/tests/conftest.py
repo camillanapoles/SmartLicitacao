@@ -20,6 +20,24 @@ def pytest_addoption(parser):
     )
 
 
+@pytest.fixture(autouse=True)
+def _disable_cnae_db_lookup_by_default(monkeypatch: pytest.MonkeyPatch):
+    """DATA-CNAE-001: keep ``map_cnae_to_setor()`` on the legacy path.
+
+    The post-refactor module (utils/cnae_mapping.py) goes DB-first and
+    starts a Redis pubsub listener thread.  In a unit-test environment
+    neither is desirable: a missing/wrong Supabase URL would block
+    indefinitely on TLS reads and the listener thread would leak across
+    tests.  Default both to the safe configuration; tests that need
+    the DB path explicitly opt in via ``monkeypatch.setenv`` (see
+    backend/tests/test_cnae_mapping_db.py and
+    test_admin_cnae.py).
+    """
+    monkeypatch.setenv("CNAE_DB_LOOKUP_ENABLED", "false")
+    monkeypatch.setenv("CNAE_LISTENER_DISABLED", "true")
+    yield
+
+
 @pytest.fixture
 def mock_user():
     """Mock authenticated user."""
