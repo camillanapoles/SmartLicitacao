@@ -23,6 +23,10 @@ interface UseSearchExportParams {
   // Shared refs from orchestrator (also used by execution hook for reset)
   excelFailCountRef: React.MutableRefObject<number>;
   excelToastFiredRef: React.MutableRefObject<boolean>;
+  // BIZ-METRIC-001: optional callback fired after a successful Excel
+  // download. The orchestrator wires this to
+  // ``useExportTimeSavedSurvey`` so the post-export modal can be shown.
+  onExportSucceeded?: (input: { exportType: "excel" | "pdf" | "sheets"; bidCount: number | null }) => void;
 }
 
 export interface UseSearchExportReturn {
@@ -44,6 +48,7 @@ export function useSearchExport(params: UseSearchExportParams): UseSearchExportR
     sseDisconnected, sseAvailable, loading, session,
     sectorName, dataInicial, dataFinal,
     excelFailCountRef, excelToastFiredRef,
+    onExportSucceeded,
   } = params;
 
   const { trackEvent } = useAnalytics();
@@ -224,6 +229,18 @@ export function useSearchExport(params: UseSearchExportParams): UseSearchExportR
       });
       // Zero-churn P1 §7.1: Feature usage tracking
       trackEvent('feature_used', { feature_name: 'excel_export' });
+
+      // BIZ-METRIC-001: notify the orchestrator so the post-export
+      // survey modal can fire (subject to frequency throttling and
+      // eligibility checks owned by useExportTimeSavedSurvey).
+      try {
+        onExportSucceeded?.({
+          exportType: "excel",
+          bidCount: result?.resumo?.total_oportunidades ?? null,
+        });
+      } catch {
+        // never let survey-trigger errors fail the download flow
+      }
     } catch (e) {
       setDownloadError(getUserFriendlyError(e instanceof Error ? e : 'Não foi possível baixar o arquivo.'));
     } finally {
