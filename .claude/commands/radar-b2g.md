@@ -48,47 +48,95 @@ Se `--carteira` fornecido, usar JSON com perfil de cada cliente:
 
 Se carteira não fornecida, buscar CNPJs de reports anteriores em `docs/reports/` e `docs/propostas/` para inferir a carteira.
 
+## Capacidades — DataLake-first (v2)
+
+Phase 1 + 2a são executadas pelo coletor `scripts/radar-b2g-collect.py`:
+
+| Aspecto | DataLake (default) | Live (fallback) |
+|---------|-------------------|-----------------|
+| Fonte | Tabela `pncp_raw_bids` via RPC `search_datalake` | API `pncp.gov.br/api/consulta/v1/contratacoes/publicacao` |
+| Latência (carteira inteira) | ~30-90s | 5-10min |
+| Hybrid mode | Se ETL atrasou >30min, complementa com 1 curl janela `[last_etl_at, NOW()]` | n/a |
+| Frescor | ETL incremental 3×/dia (8h/14h/20h BRT) + complemento live | Real-time |
+| Rate limit | Nenhum | ~100 req/min PNCP |
+
+**NÃO migrado (continuam live, executados por Claude downstream após o coletor):**
+- **Phase 2b (PCP v2):** API externa, não ingerida no DataLake. Claude executa direto se `--no-pcp` ausente.
+- **Phase 3 (PDFs):** lista + download de arquivos. DataLake não armazena binários.
+
+**Flags:**
+- `DATALAKE_QUERY_ENABLED=true` no `.env` ativa DataLake (default)
+- `--no-datalake` força fallback live full
+- `--no-pcp` pula Phase 2b (default off — Claude executa)
+- `--no-pdfs` pula Phase 3 (modo light)
+
+---
+
 ## What It Does
 
-### Phase 1: Preparação da Varredura (@data-engineer)
-
-1. **Carregar carteira** — De arquivo JSON, ou inferir de outputs anteriores
-2. **Para cada cliente**, resolver:
-   - Setor (do perfil ou via CNAE do OpenCNPJ)
-   - Keywords (de `backend/sectors_data.yaml` + `keywords_extras`)
-   - UFs de interesse (do perfil ou todas)
-   - Faixa de valor (do perfil ou default do setor)
-3. **Consolidar keywords** — Se múltiplos clientes no mesmo setor, deduplicar varreduras para economizar requests
-
-### Phase 2: Varredura de Novos Editais (@data-engineer)
-
-**2a. PNCP — editais publicados nas últimas 24h (ou --dias)**
+### Phase 1+2a: Varredura DataLake-first (1 invocação)
 
 ```bash
-# Para cada modalidade relevante (4, 5, 6, 8)
-curl -s "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao\
-  ?dataInicial={ontem_YYYYMMDD}\
-  &dataFinal={hoje_YYYYMMDD}\
-  &codigoModalidadeContratacao={modalidade}\
-  &pagina=1&tamanhoPagina=50"
+cd /mnt/d/pncp-poc
+python scripts/radar-b2g-collect.py \
+    --carteira docs/carteira-clientes.json \
+    --dias {DIAS} \
+    [--urgente] [--no-datalake] [--no-pcp] [--no-pdfs] \
+    --output docs/radar/radar-data-{YYYY-MM-DD}.json
 ```
 
-- Paginar até esgotar (max 5 páginas por modalidade — editais de 1 dia raramente excedem isso)
-- Filtrar por keywords do setor de cada cliente
-- Filtrar por UF se cliente tem UFs de interesse definidas
-- Filtrar por faixa de valor se definida
-- Extrair: objeto, órgão, UF, município, valor, modalidade, datas, cnpjOrgao, anoCompra, sequencialCompra
+Modos alternativos:
+```bash
+# 1 CNPJ específico (sem carteira)
+python scripts/radar-b2g-collect.py --cnpj 12345678000190 --setor medicamentos --uf SP,RJ --dias 1 \
+  --output docs/radar/radar-data-{CNPJ}-{YYYY-MM-DD}.json
 
-**2b. PCP v2 — editais novos**
+# 1 setor (varredura genérica)
+python scripts/radar-b2g-collect.py --setor uniformes --uf SP,MG --dias 1 \
+  --output docs/radar/radar-data-uniformes-{YYYY-MM-DD}.json
+```
+
+O script automaticamente:
+
+1. **Carrega carteira** (`--carteira` json) ou monta carteira ad-hoc de `--cnpj`/`--setor`.
+2. **Resolve keywords** via `backend/sectors_data.yaml` + `keywords_extras` por cliente.
+3. **Consolida UFs/keywords/modalidades** da carteira em uma tsquery OR (com `&` por palavra composta).
+4. **Tenta DataLake primeiro:**
+   - `DatalakeClient.search_bids(ufs, dias, tsquery, modalidades=[4,5,6,8], modo='abertas' if urgente else 'publicacao', paginate_by_uf_modalidade=True)`
+   - Hybrid: `last_etl_at()` → se gap > 30min, 1 curl PNCP `[last_etl_at, NOW()]` (modo `publicacao`).
+5. **Fallback live** (preserva fluxo legado) se DataLake desabilitado/falha.
+6. **Calcula matching cliente×edital** (5 dimensões — keywords/valor/geo/prazo/habilitação).
+7. **Output JSON estruturado** consumido pelas Phases 3-5.
+
+**Output JSON:**
+```json
+{
+  "fonte": "datalake|datalake_hybrid|live",
+  "data_referencia": "2026-04-29",
+  "dias": 1,
+  "carteira": [{cnpj, nome_fantasia, setor, keywords, ufs_interesse, valor_min, valor_max}],
+  "editais": [{pncp_id, objeto_compra, valor_total_estimado, uf, municipio, orgao_cnpj,
+               orgao_razao_social, modalidade_id, modalidade_nome, data_publicacao,
+               data_encerramento, link_pncp, ...}],
+  "matching": [{cnpj_cliente, nome_cliente, edital_pncp_id, score, tag,
+                dimensions:{keywords,valor,geografia,prazo,habilitacao}}],
+  "etl_gap_min": 14, "live_complement_added": 7, "warnings":[],
+  "generated_at": "2026-04-29T06:00:00"
+}
+```
+
+### Phase 2b: PCP v2 (Claude direto — não migrado)
 
 ```bash
 curl -s "https://compras.api.portaldecompraspublicas.com.br/v2/licitacao/processos?page=1"
 ```
 - Paginar (max 3 páginas)
-- Filtrar client-side por keywords + data de publicação
-- Dedup com PNCP
+- Filtrar client-side por keywords + data
+- Append em `editais` do JSON após dedup por `pncp_id`/`numeroControlePNCP`
 
-**2c. Prazos vencendo** — Além de novos editais, checar editais já conhecidos (de reports anteriores) cujo `dataEncerramentoProposta` está em <7 dias.
+### Phase 2c: Prazos vencendo (Claude direto)
+
+Além de novos editais, checar editais já conhecidos (de reports anteriores em `docs/reports/`) cujo `dataEncerramentoProposta` está em <7 dias.
 
 ### Phase 3: Análise Documental Rápida (Claude direto)
 
@@ -127,9 +175,9 @@ Extrair apenas os campos CRÍTICOS para decisão imediata:
 
 **Tempo-alvo:** <2 minutos por edital (análise rápida, não profunda como o report-b2g).
 
-### Phase 4: Matching Cliente × Edital (@analyst)
+### Phase 4: Matching Cliente × Edital (já no coletor)
 
-Para cada par (cliente, edital), calcular:
+Já calculado em `payload.matching` pelo `radar-b2g-collect.py::score_matching`. Claude apenas consome — não recalcula.
 
 **Relevance Score (0-100):**
 
@@ -139,7 +187,7 @@ Para cada par (cliente, edital), calcular:
 | Faixa de valor | 20% | Valor estimado dentro do range do cliente |
 | Geografia | 20% | Edital na UF de interesse do cliente |
 | Prazo | 15% | Dias até encerramento (mais tempo = melhor) |
-| Habilitação | 15% | Cliente provável apto vs não apto (baseado em porte/capital) |
+| Habilitação | 15% | Cliente provável apto vs não apto (capital_social / valor_total_estimado >= 10%) |
 
 **Classificação:**
 
@@ -266,14 +314,29 @@ Ou executar manualmente toda manhã como primeira tarefa.
 /pricing-b2g {objeto} --setor {setor}    → inteligência de preço para ofertar
 ```
 
-## APIs Reference
+## APIs / Sources Reference
+
+**Modo DataLake (default — Phase 1+2a):**
+- Tabela `pncp_raw_bids` (Supabase Postgres) via RPC `search_datalake`
+- Cliente: `scripts/datalake_helper.py::DatalakeClient`
+- Modo híbrido: `last_etl_at()` + complemento live se gap >30min
+
+**Modo Live (fallback ou complemento):**
 
 | API | Endpoint | Uso no Radar |
 |-----|----------|-------------|
-| PNCP Consulta | `/api/consulta/v1/contratacoes/publicacao` | Editais novos |
-| PNCP Arquivos | `/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos` | Lista documentos |
-| PNCP Download | `/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/{n}` | PDF do edital |
-| PCP v2 | `compras.api.portaldecompraspublicas.com.br/v2/licitacao/processos` | Editais complementares |
+| PNCP Consulta | `/api/consulta/v1/contratacoes/publicacao` | Phase 2a fallback / hybrid complement |
+| PNCP Arquivos | `/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos` | Phase 3a — sempre live (binários) |
+| PNCP Download | `/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/{n}` | Phase 3b — sempre live (binários) |
+| PCP v2 | `compras.api.portaldecompraspublicas.com.br/v2/licitacao/processos` | Phase 2b — sempre live (não ingerido) |
+
+## Limitações conhecidas
+
+1. **Frescor:** ETL `pncp_raw_bids` roda incremental 3×/dia (8/14/20h BRT). Modo híbrido cobre gaps >30min com 1 curl PNCP. Para `--urgente` (modo `abertas`), o complemento live é desativado pois `dataEncerramentoProposta` não tem gap material.
+2. **PCP v2 fora do DataLake:** `--no-pcp` ausente fará Claude executar Phase 2b separadamente (curl direto PCP).
+3. **PDFs sempre live:** Phase 3 não usa DataLake (binários não armazenados).
+4. **Compute cost:** com carteira full (27 UFs × 4 modalidades = 108 RPCs paginados), cada execução custa ~108 chamadas RPC + opcionalmente ~20 curls hybrid. 4×/dia = ~432-512 RPCs/dia.
+5. **tsquery sintetizada:** keywords compostas (ex: "limpeza hospitalar") são convertidas para `(limpeza & hospitalar)`. Setores com >100 keywords podem produzir tsquery longa com alto fan-out — considere CSAT por cliente em vez de carteira agregada se latência crescer.
 
 ## Params
 
