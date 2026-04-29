@@ -554,7 +554,7 @@ export async function fetchAlertasPublicos(
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await fetch(`${backendUrl}/v1/alertas/${sectorId}/uf/${uf.toUpperCase()}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: 86400 },
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
