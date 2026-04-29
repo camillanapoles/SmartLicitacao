@@ -1,8 +1,9 @@
 """DataLake Supabase shared helper.
 
 Centraliza acesso ao DataLake (`pncp_raw_bids`, `pncp_supplier_contracts`,
-`enriched_entities`) para os commands B2G (`/intel-busca`, `/pricing-b2g`,
-`/intel-b2g`, `/retention-b2g`, `/radar-b2g`, etc.).
+`enriched_entities`, `ingestion_runs`) para os commands B2G (`/intel-busca`,
+`/pricing-b2g`, `/intel-b2g`, `/retention-b2g`, `/radar-b2g`, `/war-room-b2g`,
+`/report-b2g`).
 
 Pattern espelha `scripts/intel-collect.py:575-720` (referência original):
 - Flag `DATALAKE_QUERY_ENABLED=true` ativa o cliente
@@ -23,6 +24,14 @@ Uso típico:
         else:
             for row in rows:
                 ...
+
+NÃO MIGRADO — fluxos que permanecem live em todos os commands:
+- PNCP `/pncp/v1/orgaos/.../arquivos` (lista + download de PDFs do edital):
+  DataLake não armazena binários nem indexa metadata de arquivos.
+- SICAF (captcha-gated): script dedicado `scripts/collect-sicaf.py`.
+- Portal Transparência (PT_KEY): cache pode ser feito em
+  `enriched_entities.data.sancoes` com sub-TTL 7d via caller.
+- WebSearch (regulatório, jurisprudência, notícias).
 """
 
 from __future__ import annotations
@@ -428,10 +437,19 @@ class DatalakeClient:
     # ------------------------------------------------------------------
 
     def last_etl_at(self, source: str = "pncp") -> tuple[datetime | None, dict]:
-        """Último ARQ run bem-sucedido em `ingestion_runs`.
+        """Último ARQ run completado em `ingestion_runs`.
+
+        Schema real (validado 2026-04-29):
+        - tabela NÃO tem coluna `source` (PNCP é implícito; outras fontes têm tabelas
+          próprias)
+        - `completed_at` é populado raramente (quase sempre NULL); usamos `started_at`
+          como melhor aproximação
+        - status válidos: 'completed' (sucesso), 'running', 'partial'
 
         Usado pelo `/radar-b2g` modo híbrido: se `last_etl_at < NOW() - 30min`, o caller
         complementa o resultado do DataLake com 1 curl PNCP cobrindo `[last_etl_at, NOW()]`.
+
+        Arg `source` é mantido por compat com callers antigos mas é ignorado.
         """
         if not self.is_enabled:
             return None, {"datalake_error": self._init_error or "disabled"}
@@ -441,23 +459,231 @@ class DatalakeClient:
         try:
             r = (
                 sb.table("ingestion_runs")
-                .select("finished_at,started_at,status")
-                .eq("source", source)
-                .eq("status", "success")
-                .order("finished_at", desc=True)
+                .select("started_at,completed_at,status,run_type")
+                .eq("status", "completed")
+                .order("started_at", desc=True)
                 .limit(1)
                 .execute()
             )
             rows = r.data or []
             if not rows:
                 return None, {"source": "ingestion_runs_empty"}
-            ts_raw = rows[0].get("finished_at") or rows[0].get("started_at")
+            ts_raw = rows[0].get("completed_at") or rows[0].get("started_at")
             if not ts_raw:
                 return None, {"source": "ingestion_runs_no_timestamp"}
             ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
-            return ts, {"source": "ingestion_runs", "finished_at": ts_raw}
+            return ts, {
+                "source": "ingestion_runs",
+                "started_at": rows[0].get("started_at"),
+                "run_type": rows[0].get("run_type"),
+            }
         except Exception as e:
             return None, {"datalake_error": f"ingestion_runs query failed: {e}"}
+
+    # ------------------------------------------------------------------
+    # bid_detail (single edital lookup)
+    # ------------------------------------------------------------------
+
+    def bid_detail(self, pncp_id: str) -> tuple[dict | None, dict]:
+        """SELECT por PK em `pncp_raw_bids`.
+
+        Args:
+            pncp_id: `numeroControlePNCP` raw, formato Lei 14.133:
+                `{cnpj14}-1-{seq:06d}/{ano}` (ex: `13714142000162-1-000014/2026`).
+                Outras modalidades podem usar `-2-` ou `-3-`.
+
+        Returns:
+            (bid_dict | None, meta). bid_dict contém todas as colunas da tabela
+            (objeto_compra, valor_total_estimado, modalidade_id/nome, datas, orgao,
+            link_pncp, link_sistema_origem, situacao_compra, etc.).
+        """
+        if not self.is_enabled:
+            return None, {"datalake_error": self._init_error or "disabled"}
+        sb = self._client()
+        if sb is None:
+            return None, {"datalake_error": self._init_error or "client unavailable"}
+        try:
+            r = (
+                sb.table("pncp_raw_bids")
+                .select(
+                    "pncp_id,objeto_compra,valor_total_estimado,modalidade_id,modalidade_nome,"
+                    "uf,municipio,codigo_municipio_ibge,esfera_id,situacao_compra,"
+                    "orgao_cnpj,orgao_razao_social,unidade_nome,"
+                    "data_publicacao,data_abertura,data_encerramento,"
+                    "link_pncp,link_sistema_origem,source,is_active,ingested_at,updated_at"
+                )
+                .eq("pncp_id", pncp_id)
+                .eq("is_active", True)
+                .limit(1)
+                .execute()
+            )
+            rows = r.data or []
+            if not rows:
+                return None, {"datalake_error": "not_found", "pncp_id": pncp_id}
+            return rows[0], {"source": "datalake_bid_detail", "pncp_id": pncp_id}
+        except Exception as e:
+            return None, {"datalake_error": f"bid_detail query failed: {e}"}
+
+    # ------------------------------------------------------------------
+    # top_competitors (groupby ni_fornecedor sobre supplier_contracts)
+    # ------------------------------------------------------------------
+
+    def top_competitors(
+        self,
+        orgao_cnpj: str | None = None,
+        setor_keywords: list[str] | None = None,
+        ufs: list[str] | None = None,
+        meses: int = 24,
+        limit: int = 10,
+    ) -> tuple[list[dict] | None, dict]:
+        """Top fornecedores agrupados por `ni_fornecedor`.
+
+        Wrapper sobre `supplier_contracts` + groupby em-memória. Ordena por
+        `n_contratos DESC, valor_total DESC`.
+
+        Args:
+            orgao_cnpj: filtra por órgão comprador (opcional)
+            setor_keywords: lista de tokens ILIKE AND no objeto_contrato (opcional)
+            ufs: filtro de UF (opcional)
+            meses: janela em data_assinatura (default 24)
+            limit: top-N a retornar (default 10)
+
+        Returns:
+            (rows, meta) onde rows é
+            `[{ni_fornecedor, nome_fornecedor, n_contratos, valor_total, ultimo_contrato_data, ufs}]`
+            ou (None, error_meta).
+        """
+        contratos, meta = self.supplier_contracts(
+            orgao_cnpj=orgao_cnpj,
+            keywords=setor_keywords,
+            ufs=ufs,
+            meses=meses,
+            limit=1000,
+        )
+        if contratos is None:
+            return None, meta
+        if not contratos:
+            return [], {**meta, "source": "datalake_top_competitors", "n_input": 0}
+
+        agg: dict[str, dict] = {}
+        for c in contratos:
+            ni = c.get("ni_fornecedor")
+            if not ni:
+                continue
+            slot = agg.setdefault(
+                ni,
+                {
+                    "ni_fornecedor": ni,
+                    "nome_fornecedor": c.get("nome_fornecedor"),
+                    "n_contratos": 0,
+                    "valor_total": 0.0,
+                    "ultimo_contrato_data": None,
+                    "ufs": set(),
+                },
+            )
+            slot["n_contratos"] += 1
+            try:
+                slot["valor_total"] += float(c.get("valor_global") or 0)
+            except (ValueError, TypeError):
+                pass
+            data = c.get("data_assinatura")
+            if data and (slot["ultimo_contrato_data"] is None or data > slot["ultimo_contrato_data"]):
+                slot["ultimo_contrato_data"] = data
+            uf = c.get("uf")
+            if uf:
+                slot["ufs"].add(uf)
+            if not slot["nome_fornecedor"] and c.get("nome_fornecedor"):
+                slot["nome_fornecedor"] = c.get("nome_fornecedor")
+
+        ranked = sorted(
+            agg.values(),
+            key=lambda r: (r["n_contratos"], r["valor_total"]),
+            reverse=True,
+        )[:limit]
+        for r in ranked:
+            r["valor_total"] = round(r["valor_total"], 2)
+            r["ufs"] = sorted(r["ufs"])
+
+        return ranked, {
+            "source": "datalake_top_competitors",
+            "n_input": len(contratos),
+            "n_unique_suppliers": len(agg),
+            "limit": limit,
+        }
+
+    # ------------------------------------------------------------------
+    # agg_by_orgao (groupby orgao_cnpj sobre supplier_contracts)
+    # ------------------------------------------------------------------
+
+    def agg_by_orgao(
+        self,
+        setor_keywords: list[str],
+        ufs: list[str] | None = None,
+        meses: int = 12,
+        limit: int = 20,
+    ) -> tuple[list[dict] | None, dict]:
+        """Top órgãos contratantes para um setor (sinal de demanda real).
+
+        Args:
+            setor_keywords: tokens ILIKE AND no objeto_contrato (obrigatório)
+            ufs: filtro UF (opcional)
+            meses: janela em data_assinatura (default 12)
+            limit: top-N (default 20)
+
+        Returns:
+            (rows, meta) onde rows é
+            `[{orgao_cnpj, orgao_nome, uf, n_contratos, valor_total, ticket_medio}]`
+            ordenado por `valor_total DESC`.
+        """
+        if not setor_keywords:
+            return None, {"datalake_error": "setor_keywords required"}
+
+        contratos, meta = self.supplier_contracts(
+            keywords=setor_keywords,
+            ufs=ufs,
+            meses=meses,
+            limit=1000,
+        )
+        if contratos is None:
+            return None, meta
+        if not contratos:
+            return [], {**meta, "source": "datalake_agg_by_orgao", "n_input": 0}
+
+        agg: dict[str, dict] = {}
+        for c in contratos:
+            cnpj = c.get("orgao_cnpj")
+            if not cnpj:
+                continue
+            slot = agg.setdefault(
+                cnpj,
+                {
+                    "orgao_cnpj": cnpj,
+                    "orgao_nome": c.get("orgao_nome"),
+                    "uf": c.get("uf"),
+                    "n_contratos": 0,
+                    "valor_total": 0.0,
+                },
+            )
+            slot["n_contratos"] += 1
+            try:
+                slot["valor_total"] += float(c.get("valor_global") or 0)
+            except (ValueError, TypeError):
+                pass
+            if not slot["orgao_nome"] and c.get("orgao_nome"):
+                slot["orgao_nome"] = c.get("orgao_nome")
+
+        for r in agg.values():
+            r["valor_total"] = round(r["valor_total"], 2)
+            r["ticket_medio"] = round(r["valor_total"] / r["n_contratos"], 2) if r["n_contratos"] else 0.0
+
+        ranked = sorted(agg.values(), key=lambda r: r["valor_total"], reverse=True)[:limit]
+
+        return ranked, {
+            "source": "datalake_agg_by_orgao",
+            "n_input": len(contratos),
+            "n_unique_orgaos": len(agg),
+            "limit": limit,
+        }
 
     # ------------------------------------------------------------------
     # Date helpers
