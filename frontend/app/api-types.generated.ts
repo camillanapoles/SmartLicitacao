@@ -8138,6 +8138,11 @@ export interface components {
             fonte: string;
             /** Gerado Em */
             gerado_em: string;
+            /**
+             * Is Empty Period
+             * @default false
+             */
+            is_empty_period: boolean;
             /** License */
             license: string;
             /** Mes */

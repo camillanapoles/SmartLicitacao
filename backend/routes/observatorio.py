@@ -3,26 +3,45 @@
 Returns aggregated stats from the PNCP datalake for a specific month/year,
 enabling the /observatorio monthly reports (data journalism / linkbait).
 
-Public (no auth). Cache: InMemory 24h TTL per (mes, ano).
+Public (no auth). Cache: InMemory 24h TTL on success per (mes, ano), 5min
+negative TTL on timeout/error (AC10). Empty current month → 404 + noindex
+header (anti-Soft 404). Empty historical month → 200 + is_empty_period:true
++ X-Robots-Tag: noindex (AC11).
 """
 
+import asyncio
+import calendar
 import csv
 import io
 import logging
+import os
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
+import sentry_sdk
 from fastapi import APIRouter, HTTPException, Path, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from metrics import OBSERVATORIO_BUDGET_EXCEEDED
+
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["observatorio"])
 
-_CACHE_TTL_SECONDS = 24 * 60 * 60  # 24h
-_obs_cache: dict[str, tuple[dict, float]] = {}
+# STORY-431 AC10: 15s hard budget per Supabase round-trip (current+prev month)
+_QUERY_BUDGET_S = 15.0
+_CACHE_TTL_SECONDS = 24 * 60 * 60  # 24h on success
+# STORY-431 AC10: negative cache TTL on timeout/error — same pattern as PR #535 (sitemap)
+_NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
+
+# STORY-431 AC11: empty-period behavior toggle for testing
+# 'auto' (default) | '404' (force HTTPException) | 'noindex' (force 200 + noindex) | 'render' (no special handling)
+_EMPTY_PERIOD_BEHAVIOR = os.getenv("OBSERVATORIO_EMPTY_PERIOD_BEHAVIOR", "auto").lower()
+
+# 3-tuple cache entry: (data, stored_at, ttl) — supports per-entry TTL
+_obs_cache: dict[str, tuple[dict, float, float]] = {}
 
 MONTH_NAMES_PT = {
     1: "janeiro", 2: "fevereiro", 3: "março", 4: "abril",
@@ -96,11 +115,68 @@ class RelatorioMensal(BaseModel):
     gerado_em: str
     fonte: str
     license: str
+    # STORY-431 AC11: marker for historical empty months (no data ingested in window).
+    # Frontend uses this to render EmptyStatePeriod CTA instead of "R$ 0,00" cards.
+    is_empty_period: bool = False
 
 
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+def _is_period_historical(mes: int, ano: int) -> bool:
+    """STORY-431 AC11: treat months >30d in the past as historical.
+
+    Used by route handler to choose between 404 (current empty) and
+    200+is_empty_period (historical empty).
+    """
+    try:
+        return (date.today() - date(ano, mes, 1)).days > 30
+    except ValueError:
+        return False
+
+
+def _apply_empty_period_response(
+    data: dict,
+    mes: int,
+    ano: int,
+    response: Optional[Response],
+) -> Optional[RelatorioMensal]:
+    """STORY-431 AC11: route the empty-period response per behavior toggle.
+
+    Returns the RelatorioMensal to serve (with appropriate headers set) OR
+    raises HTTPException(404) for a current empty month.
+
+    Returns None if the period is non-empty (caller proceeds normally).
+    """
+    if data.get("total_editais", 0) > 0:
+        return None
+
+    behavior = _EMPTY_PERIOD_BEHAVIOR
+    is_historical = _is_period_historical(mes, ano)
+
+    sentry_sdk.set_tag("observatorio_outcome", "empty_period")
+
+    if behavior == "render":
+        # Force-render the empty payload as if it were a normal response (test override).
+        return RelatorioMensal(**data)
+
+    if behavior == "404" or (behavior == "auto" and not is_historical):
+        # Current month with no data yet — anti-Soft 404 per AC11.
+        raise HTTPException(
+            status_code=404,
+            detail="Relatório não disponível para este período",
+            headers={"X-Robots-Tag": "noindex, nofollow"},
+        )
+
+    # behavior in {"noindex", "auto"+historical} → 200 + is_empty_period + noindex
+    # Mark the payload as an empty period so the frontend renders the
+    # EmptyStatePeriod CTA rather than the misleading "R$ 0,00" cards.
+    if response is not None:
+        response.headers["X-Robots-Tag"] = "noindex"
+    payload = {**data, "is_empty_period": True}
+    return RelatorioMensal(**payload)
+
 
 @router.get(
     "/observatorio/relatorio/{mes}/{ano}",
@@ -117,13 +193,32 @@ async def get_relatorio_mensal(
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
 
+    # STORY-431 AC14: default outcome tag — overridden in error/empty paths.
+    sentry_sdk.set_tag("observatorio_outcome", "success")
+
     cache_key = f"{mes}:{ano}"
     cached = _get_cached(cache_key)
-    if cached:
+    if cached is not None:
+        empty_resp = _apply_empty_period_response(cached, mes, ano, response)
+        if empty_resp is not None:
+            return empty_resp
         return RelatorioMensal(**cached)
 
     data = await _generate_relatorio(mes, ano)
-    _set_cached(cache_key, data)
+
+    # STORY-431 AC10: shorter TTL when payload is empty (negative cache 5min)
+    # so the next request retries quickly once data ingestion catches up.
+    cache_ttl = (
+        _NEGATIVE_CACHE_TTL_SECONDS if data.get("total_editais", 0) == 0
+        else _CACHE_TTL_SECONDS
+    )
+    _set_cached(cache_key, data, ttl=cache_ttl)
+
+    # STORY-431 AC11: empty period → 404 (current) or 200+noindex (historical)
+    empty_resp = _apply_empty_period_response(data, mes, ano, response)
+    if empty_resp is not None:
+        return empty_resp
+
     return RelatorioMensal(**data)
 
 
@@ -164,17 +259,47 @@ async def get_relatorio_csv(
 # ---------------------------------------------------------------------------
 
 def _get_cached(key: str) -> Optional[dict]:
-    if key not in _obs_cache:
+    entry = _obs_cache.get(key)
+    if entry is None:
         return None
-    data, ts = _obs_cache[key]
-    if time.time() - ts >= _CACHE_TTL_SECONDS:
+    data, ts, ttl = entry
+    if time.time() - ts >= ttl:
         del _obs_cache[key]
         return None
     return data
 
 
-def _set_cached(key: str, data: dict) -> None:
-    _obs_cache[key] = (data, time.time())
+def _set_cached(key: str, data: dict, ttl: float = _CACHE_TTL_SECONDS) -> None:
+    _obs_cache[key] = (data, time.time(), ttl)
+
+
+def _empty_relatorio_payload(mes: int, ano: int) -> dict:
+    """STORY-431 AC10/AC11: zero-filled payload returned on timeout/error or
+    historical empty period. Marked with is_empty_period=True so the frontend
+    can render the EmptyStatePeriod CTA instead of misleading "R$ 0,00" cards.
+    """
+    mes_nome = MONTH_NAMES_PT.get(mes, str(mes))
+    try:
+        _, last_day = calendar.monthrange(ano, mes)
+    except calendar.IllegalMonthError:
+        last_day = 30
+    return {
+        "mes": mes,
+        "ano": ano,
+        "mes_nome": mes_nome,
+        "periodo": f"Editais publicados de 1 a {last_day} de {mes_nome} de {ano}",
+        "total_editais": 0,
+        "valor_total": 0.0,
+        "valor_medio": 0.0,
+        "top_ufs": [],
+        "modalidades": [],
+        "tendencia_semanal": [],
+        "setores_em_alta": [],
+        "gerado_em": datetime.now(timezone.utc).isoformat(),
+        "fonte": "SmartLic Observatório — dados PNCP (Portal Nacional de Contratações Públicas)",
+        "license": "Creative Commons BY 4.0 — https://creativecommons.org/licenses/by/4.0/",
+        "is_empty_period": True,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -216,9 +341,6 @@ def _query_historical_sync(data_inicial: str, data_final: str) -> list[dict]:
 async def _generate_relatorio(mes: int, ano: int) -> dict:
     from datalake_query import query_datalake
     from unified_schemas.unified import VALID_UFS
-    import asyncio
-    import calendar
-    from datetime import date
 
     # Date range for the requested month
     _, last_day = calendar.monthrange(ano, mes)
@@ -240,47 +362,108 @@ async def _generate_relatorio(mes: int, ano: int) -> dict:
     results: list[dict] = []
     prev_results: list[dict] = []
 
+    # STORY-431 AC10: hard 15s budget per Supabase round-trip with negative cache.
+    # Pattern from PR #535 (sitemap fix): wait_for + label-aware Counter + Sentry tag.
     if is_historical:
         try:
-            results = await asyncio.to_thread(
-                _query_historical_sync, data_inicial, data_final
+            results = await asyncio.wait_for(
+                asyncio.to_thread(_query_historical_sync, data_inicial, data_final),
+                timeout=_QUERY_BUDGET_S,
             )
             logger.info(
                 "observatorio: historical query for %d/%d returned %d rows",
                 mes, ano, len(results),
             )
-        except Exception as e:
-            logger.warning("observatorio: historical query failed for %d/%d: %s", mes, ano, e)
+        except asyncio.TimeoutError:
+            logger.warning(
+                "[observatorio] budget %.0fs exceeded for %d/%d",
+                _QUERY_BUDGET_S, mes, ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="historical").inc()
+            sentry_sdk.set_tag("observatorio_outcome", "timeout")
+            return _empty_relatorio_payload(mes, ano)
+        except Exception as exc:
+            logger.error(
+                "[observatorio] unexpected error %r for %d/%d", exc, mes, ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="historical").inc()
+            sentry_sdk.set_tag("observatorio_outcome", "error")
+            return _empty_relatorio_payload(mes, ano)
     else:
         try:
-            results = await query_datalake(
-                ufs=list(VALID_UFS),
-                data_inicial=data_inicial,
-                data_final=data_final,
-                limit=5000,
+            results = await asyncio.wait_for(
+                query_datalake(
+                    ufs=list(VALID_UFS),
+                    data_inicial=data_inicial,
+                    data_final=data_final,
+                    limit=5000,
+                ),
+                timeout=_QUERY_BUDGET_S,
             )
-        except Exception as e:
-            logger.warning("observatorio: query failed for %d/%d: %s", mes, ano, e)
+        except asyncio.TimeoutError:
+            logger.warning(
+                "[observatorio] budget %.0fs exceeded (live datalake) for %d/%d",
+                _QUERY_BUDGET_S, mes, ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="current").inc()
+            sentry_sdk.set_tag("observatorio_outcome", "timeout")
+            return _empty_relatorio_payload(mes, ano)
+        except Exception as exc:
+            logger.error(
+                "[observatorio] live datalake error %r for %d/%d", exc, mes, ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="current").inc()
+            sentry_sdk.set_tag("observatorio_outcome", "error")
+            return _empty_relatorio_payload(mes, ano)
 
-    # Previous month always via datalake (or historical if also old)
+    # Previous month: best-effort under the same budget. A failure here only
+    # degrades the "setores em alta" comparison — not a fatal error.
     prev_is_historical = (today - date(prev_ano, prev_mes, 1)).days > 30
     if prev_is_historical:
         try:
-            prev_results = await asyncio.to_thread(
-                _query_historical_sync, prev_inicial, prev_final
+            prev_results = await asyncio.wait_for(
+                asyncio.to_thread(_query_historical_sync, prev_inicial, prev_final),
+                timeout=_QUERY_BUDGET_S,
             )
-        except Exception as e:
-            logger.warning("observatorio: historical prev month query failed: %s", e)
+        except asyncio.TimeoutError:
+            logger.warning(
+                "[observatorio] budget %.0fs exceeded (prev_month historical) for %d/%d",
+                _QUERY_BUDGET_S, prev_mes, prev_ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="prev_month").inc()
+            prev_results = []
+        except Exception as exc:
+            logger.warning(
+                "[observatorio] prev_month historical error %r for %d/%d",
+                exc, prev_mes, prev_ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="prev_month").inc()
+            prev_results = []
     else:
         try:
-            prev_results = await query_datalake(
-                ufs=list(VALID_UFS),
-                data_inicial=prev_inicial,
-                data_final=prev_final,
-                limit=5000,
+            prev_results = await asyncio.wait_for(
+                query_datalake(
+                    ufs=list(VALID_UFS),
+                    data_inicial=prev_inicial,
+                    data_final=prev_final,
+                    limit=5000,
+                ),
+                timeout=_QUERY_BUDGET_S,
             )
-        except Exception as e:
-            logger.warning("observatorio: prev month query failed: %s", e)
+        except asyncio.TimeoutError:
+            logger.warning(
+                "[observatorio] budget %.0fs exceeded (prev_month live) for %d/%d",
+                _QUERY_BUDGET_S, prev_mes, prev_ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="prev_month").inc()
+            prev_results = []
+        except Exception as exc:
+            logger.warning(
+                "[observatorio] prev_month live error %r for %d/%d",
+                exc, prev_mes, prev_ano,
+            )
+            OBSERVATORIO_BUDGET_EXCEEDED.labels(period_age="prev_month").inc()
+            prev_results = []
 
     total = len(results)
     mes_nome = MONTH_NAMES_PT[mes]
@@ -377,6 +560,10 @@ async def _generate_relatorio(mes: int, ano: int) -> dict:
         "gerado_em": datetime.now(timezone.utc).isoformat(),
         "fonte": "SmartLic Observatório — dados PNCP (Portal Nacional de Contratações Públicas)",
         "license": "Creative Commons BY 4.0 — https://creativecommons.org/licenses/by/4.0/",
+        # STORY-431 AC11: marker stays False on success even when total==0 (data
+        # really is zero for the period). _empty_relatorio_payload sets it to
+        # True only on timeout/error fallback paths.
+        "is_empty_period": False,
     }
 
 

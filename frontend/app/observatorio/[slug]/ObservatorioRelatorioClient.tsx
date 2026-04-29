@@ -1,8 +1,12 @@
 'use client';
 
 /**
- * STORY-431 AC3+AC4+AC5: Client component for Observatory report page.
+ * STORY-431 AC3+AC4+AC5+AC12: Client component for Observatory report page.
  * Renders Recharts visualizations, CSV download button, and embed code.
+ *
+ * AC12: null-safe array access (top_ufs/modalidades/setores_em_alta/tendencia_semanal
+ * may be undefined when backend returns historical empty payload), gerado_em
+ * date guard, EmptyStatePeriod CTA when total_editais === 0.
  */
 
 import { useState } from 'react';
@@ -10,6 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
+import { EmptyStatePeriod } from '@/components/EmptyStatePeriod';
 
 const CHART_COLORS = [
   '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#d97706',
@@ -53,6 +58,7 @@ interface Relatorio {
   gerado_em: string;
   fonte: string;
   license: string;
+  is_empty_period?: boolean;
 }
 
 function formatBRL(v: number): string {
@@ -108,27 +114,36 @@ export default function ObservatorioRelatorioClient({
         <p className="text-gray-500 text-sm">{relatorio.periodo}</p>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-        <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
-          <p className="text-xs text-blue-500 font-semibold uppercase tracking-wide mb-1">Total de editais</p>
-          <p className="text-3xl font-black text-blue-800">{formatInt(relatorio.total_editais)}</p>
-          <p className="text-xs text-blue-400 mt-1">editais publicados</p>
+      {/* AC12: when total_editais === 0 we replace the misleading "R$ 0,00"
+          cards with an EmptyStatePeriod CTA pointing back to the hub. */}
+      {relatorio.total_editais === 0 ? (
+        <EmptyStatePeriod
+          message={`Ainda não temos dados consolidados para ${mesDisplay} de ${ano}. Veja outros meses no Observatório.`}
+          actionHref="/observatorio"
+          actionLabel="Ver outros meses"
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+          <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+            <p className="text-xs text-blue-500 font-semibold uppercase tracking-wide mb-1">Total de editais</p>
+            <p className="text-3xl font-black text-blue-800">{formatInt(relatorio.total_editais)}</p>
+            <p className="text-xs text-blue-400 mt-1">editais publicados</p>
+          </div>
+          <div className="bg-green-50 rounded-xl p-5 border border-green-100">
+            <p className="text-xs text-green-500 font-semibold uppercase tracking-wide mb-1">Valor total estimado</p>
+            <p className="text-3xl font-black text-green-800">{formatBRL(relatorio.valor_total)}</p>
+            <p className="text-xs text-green-400 mt-1">soma dos valores estimados</p>
+          </div>
+          <div className="bg-purple-50 rounded-xl p-5 border border-purple-100">
+            <p className="text-xs text-purple-500 font-semibold uppercase tracking-wide mb-1">Valor médio por edital</p>
+            <p className="text-3xl font-black text-purple-800">{formatBRL(relatorio.valor_medio)}</p>
+            <p className="text-xs text-purple-400 mt-1">excluindo outliers P95+</p>
+          </div>
         </div>
-        <div className="bg-green-50 rounded-xl p-5 border border-green-100">
-          <p className="text-xs text-green-500 font-semibold uppercase tracking-wide mb-1">Valor total estimado</p>
-          <p className="text-3xl font-black text-green-800">{formatBRL(relatorio.valor_total)}</p>
-          <p className="text-xs text-green-400 mt-1">soma dos valores estimados</p>
-        </div>
-        <div className="bg-purple-50 rounded-xl p-5 border border-purple-100">
-          <p className="text-xs text-purple-500 font-semibold uppercase tracking-wide mb-1">Valor médio por edital</p>
-          <p className="text-3xl font-black text-purple-800">{formatBRL(relatorio.valor_medio)}</p>
-          <p className="text-xs text-purple-400 mt-1">excluindo outliers P95+</p>
-        </div>
-      </div>
+      )}
 
       {/* Chart 1: Top 10 UFs */}
-      {relatorio.top_ufs.length > 0 && (
+      {(relatorio.top_ufs ?? []).length > 0 && (
         <section className="mb-10">
           <h2 className="text-xl font-bold text-gray-800 mb-1">Top 10 estados por volume</h2>
           <p className="text-sm text-gray-500 mb-4">Fonte: SmartLic Observatório — dados PNCP</p>
@@ -146,7 +161,7 @@ export default function ObservatorioRelatorioClient({
       )}
 
       {/* Chart 2: Modalidade distribution */}
-      {relatorio.modalidades.length > 0 && (
+      {(relatorio.modalidades ?? []).length > 0 && (
         <section className="mb-10">
           <h2 className="text-xl font-bold text-gray-800 mb-1">Distribuição por modalidade</h2>
           <p className="text-sm text-gray-500 mb-4">Fonte: SmartLic Observatório — dados PNCP</p>
@@ -178,12 +193,12 @@ export default function ObservatorioRelatorioClient({
       )}
 
       {/* Sectors in high growth */}
-      {relatorio.setores_em_alta.length > 0 && (
+      {(relatorio.setores_em_alta ?? []).length > 0 && (
         <section className="mb-10">
           <h2 className="text-xl font-bold text-gray-800 mb-1">Setores em alta</h2>
           <p className="text-sm text-gray-500 mb-4">Crescimento vs. mês anterior — Fonte: SmartLic Observatório</p>
           <div className="space-y-2">
-            {relatorio.setores_em_alta.map((s) => (
+            {(relatorio.setores_em_alta ?? []).map((s) => (
               <div key={s.setor_id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg">
                 <span className="font-medium text-gray-800">{s.setor_name}</span>
                 <div className="text-right">
@@ -225,7 +240,9 @@ export default function ObservatorioRelatorioClient({
 
       <footer className="mt-8 pt-6 border-t border-gray-100">
         <p className="text-xs text-gray-400">
-          {relatorio.fonte} · Gerado em {new Date(relatorio.gerado_em).toLocaleDateString('pt-BR')}
+          {relatorio.fonte} · Gerado em {relatorio.gerado_em
+            ? new Date(relatorio.gerado_em).toLocaleDateString('pt-BR')
+            : '—'}
         </p>
       </footer>
     </main>

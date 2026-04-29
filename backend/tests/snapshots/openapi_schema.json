@@ -7709,6 +7709,11 @@
             "title": "Gerado Em",
             "type": "string"
           },
+          "is_empty_period": {
+            "default": false,
+            "title": "Is Empty Period",
+            "type": "boolean"
+          },
           "license": {
             "title": "License",
             "type": "string"

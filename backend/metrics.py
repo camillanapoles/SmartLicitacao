@@ -1053,6 +1053,13 @@ PIPELINE_DURATION_SECONDS = _create_histogram(
     buckets=[10, 30, 60, 90, 100, 110, 120, 180],
 )
 
+# STORY-431 AC10: Observatório monthly relatorio time budget (15s wait_for)
+OBSERVATORIO_BUDGET_EXCEEDED = _create_counter(
+    "smartlic_observatorio_budget_exceeded_total",
+    "Observatório monthly relatorio query exceeded 15s budget or errored",
+    labelnames=["period_age"],  # "historical" | "prev_month" | "current"
+)
+
 
 # ============================================================================
 # STORY-4.5 (TD-SYS-002): PNCP breaking-change canary
