@@ -474,6 +474,50 @@ def _is_schema_error(exc: Exception) -> bool:
     return any(code in msg for code in ("PGRST205", "PGRST204", "42703", "42P01"))
 
 
+def _is_query_timeout(exc: Exception) -> bool:
+    """SEN-BE-001b: Detect PostgreSQL ``query_canceled`` (SQLSTATE 57014).
+
+    Surfaces when ``ALTER ROLE service_role SET statement_timeout = '60s'``
+    cancels a query that ran past its budget. We must distinguish it from
+    a generic Supabase outage so:
+        * the caller can surface it as HTTP 504 (gateway timeout) rather
+          than 500 (internal error);
+        * Sentry gets a focused breadcrumb (tag ``query_timeout=true``)
+          instead of a noisy generic ``Exception`` event.
+
+    Detection prefers ``postgrest.exceptions.APIError.code`` because it is
+    structured and version-stable. Falls back to message parsing for
+    transports that wrap the error differently (e.g. raw ``psycopg2``
+    ``QueryCanceledError``).
+    """
+    # Structured detection on postgrest APIError (preferred).
+    code = getattr(exc, "code", None)
+    if code == "57014":
+        return True
+
+    # Fallback: message-level scan for resilience to SDK version drift
+    # and for non-postgrest transports (psycopg2, asyncpg, etc.).
+    msg = str(exc)
+    if "57014" in msg:
+        return True
+    lower = msg.lower()
+    return (
+        "canceling statement due to statement timeout" in lower
+        or "query_canceled" in lower
+    )
+
+
+class QueryTimeoutError(Exception):
+    """SEN-BE-001b: Raised when a Supabase query is canceled by Postgres
+    statement_timeout (SQLSTATE 57014).
+
+    Re-exposed alongside the HTTPException(504) raised by ``sb_execute`` so
+    that non-HTTP callers (background workers, cron jobs) can catch it and
+    apply their own retry/backoff logic without importing FastAPI.
+    """
+    pass
+
+
 # DEBT-110 AC1: CB thresholds configurable via env vars
 _CB_WINDOW_SIZE = int(os.getenv("SUPABASE_CB_WINDOW_SIZE", "10"))
 # STORY-416 (decided 2026-04-10): raise the sliding-window failure-rate
@@ -684,6 +728,42 @@ async def sb_execute(query, *, category: str = "read"):
         if category_cb is not supabase_cb:
             supabase_cb._record_failure(exc)
 
+    def _handle_query_timeout(exc: Exception) -> None:
+        """SEN-BE-001b AC4: convert SQLSTATE 57014 into a 504 + Sentry breadcrumb.
+
+        Records the failure on the CB (a real timeout IS a Supabase-side
+        problem and the streak guard should see it), tags Sentry with
+        ``query_timeout=true`` so the dashboard separates it from generic
+        500s, and finally raises ``HTTPException(504)`` so FastAPI surfaces
+        the right status to the client.
+        """
+        SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
+        _record_failure_all(exc)
+        logger.warning(
+            "[supabase] query_timeout SQLSTATE=57014 category=%s exc=%s",
+            category,
+            exc,
+        )
+        # Sentry breadcrumb — best-effort, must never mask the original error.
+        try:
+            import sentry_sdk
+            sentry_sdk.set_tag("query_timeout", "true")
+            sentry_sdk.set_tag("supabase_category", category)
+            sentry_sdk.capture_message(
+                f"Supabase query_timeout (SQLSTATE 57014, category={category}): {exc}",
+                level="warning",
+            )
+        except Exception:
+            pass
+
+        # Lazy import — keep FastAPI off the hot import path of this module
+        # (other callers like ARQ workers do not need it on cold start).
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=504,
+            detail="Database query timed out (SQLSTATE 57014). Please retry.",
+        ) from exc
+
     try:
         result = await asyncio.to_thread(query.execute)
         SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
@@ -701,6 +781,10 @@ async def sb_execute(query, *, category: str = "read"):
             SUPABASE_RETRY_TOTAL.labels(outcome="success").inc()
             return result
         except Exception as retry_exc:
+            # SEN-BE-001b: 57014 on retry path also surfaces as 504.
+            if _is_query_timeout(retry_exc):
+                SUPABASE_RETRY_TOTAL.labels(outcome="failure").inc()
+                _handle_query_timeout(retry_exc)
             SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
             _record_failure_all(retry_exc)
             SUPABASE_RETRY_TOTAL.labels(outcome="failure").inc()
@@ -724,6 +808,10 @@ async def sb_execute(query, *, category: str = "read"):
             f"Circuit breaker internal error ({category}): {e}"
         ) from e
     except Exception as e:
+        # SEN-BE-001b AC4: distinguish SQLSTATE 57014 (statement_timeout) so
+        # the caller surfaces 504 (gateway timeout) instead of a generic 500.
+        if _is_query_timeout(e):
+            _handle_query_timeout(e)
         SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
         _record_failure_all(e)
         raise
