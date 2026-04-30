@@ -1050,17 +1050,28 @@ async def _compute_contratos_stats(
     top_fornecedores = sorted(forn_agg.values(), key=lambda x: x["valor"], reverse=True)[:10]
     by_uf = sorted(uf_agg.values(), key=lambda x: x["valor"], reverse=True)
 
-    # Monthly trend (last 12 months)
+    # Monthly trend (last 12 calendar months).
+    # Walk year/month explicitly: timedelta(days=30*i) overlaps long months
+    # (Jan/Mar) and skips Feb (28d) at certain calendar positions, e.g. on
+    # 2026-04-30 days*30 strides land at "2026-04, 2026-03, 2026-03, 2026-01"
+    # — "2026-02" never appears, so contracts assinados em Feb são excluídos
+    # do summary totalmente, e contratos em Mar são double-counted via
+    # `sum(t["count"] for t in trend)` abaixo. Bug afeta produção em janelas
+    # curtas (5 failing tests em `test_blog_stats.py::TestContratos*` são
+    # sintoma, não causa). Fix: enumerar 12 meses calendário únicos.
     now = datetime.now(timezone.utc)
     trend = []
-    for i in range(12):
-        d = now - timedelta(days=30 * i)
-        month_key = d.strftime("%Y-%m")
+    year, month = now.year, now.month
+    for _ in range(12):
+        month_key = f"{year:04d}-{month:02d}"
         trend.append({
             "month": month_key,
             "count": monthly.get(month_key, 0),
             "value": round(monthly_values.get(month_key, 0.0), 2),
         })
+        month -= 1
+        if month == 0:
+            month, year = 12, year - 1
     trend.reverse()
 
     # Recalculate summary totals from the trend window (last 12 months, contracts
