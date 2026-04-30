@@ -26,6 +26,19 @@ const mockLicitacao: LicitacaoItem = {
 };
 
 describe('LicitacaoCard - Deadline Terminology Clarity', () => {
+  // Issue #550 — fix date-bomb: mockLicitacao.data_encerramento = "2026-04-30T18:00:00"
+  // is exactly today's date once the calendar reaches 2026-04-30, leaving <24h until
+  // deadline. The component renders "horas" instead of "X dia(s)" and the regex
+  // /Você tem \d+ dia/ stops matching. Fake the system clock to a fixed point well
+  // before encerramento so the test is deterministic regardless of the real wall clock.
+  beforeAll(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-02-10T10:00:00'));
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   describe('Clear terminology requirements', () => {
     it('deve exibir "Recebe propostas" ao invés de termos ambíguos', () => {
       render(<LicitacaoCard licitacao={mockLicitacao} />);
