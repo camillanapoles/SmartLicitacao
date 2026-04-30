@@ -1,0 +1,71 @@
+name: Weekly Load Test — Stage 4-7 Pattern
+
+on:
+  schedule:
+    # Sun 02:00 UTC = Sat 23:00 BRT (low-traffic window)
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target API URL'
+        required: false
+        default: 'https://api.smartlic.tech'
+      users:
+        description: 'Concurrent users'
+        required: false
+        default: '50'
+      duration:
+        description: 'Test duration (e.g., 10m)'
+        required: false
+        default: '10m'
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install Locust
+        run: pip install locust==2.32.0
+      - name: Run Stage 4-7 reproducer
+        env:
+          TARGET_URL: ${{ github.event.inputs.target_url || 'https://api.smartlic.tech' }}
+          USERS: ${{ github.event.inputs.users || '50' }}
+          DURATION: ${{ github.event.inputs.duration || '10m' }}
+        run: |
+          cd backend/tests/load
+          locust -f stage_4_7_pattern.py \
+            --host "$TARGET_URL" \
+            --users "$USERS" \
+            --spawn-rate 5 \
+            --run-time "$DURATION" \
+            --headless \
+            --csv=load-test-results \
+            --html=load-test-report.html \
+            --exit-code-on-error 1
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ github.run_id }}
+          path: |
+            backend/tests/load/load-test-results_*.csv
+            backend/tests/load/load-test-report.html
+          retention-days: 30
+      - name: Sentry alert on failure
+        if: failure()
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_BACKEND }}
+        run: |
+          if [[ -n "$SENTRY_DSN" ]]; then
+            pip install sentry-sdk==2.18.0
+            python -c "
+            import sentry_sdk, os
+            sentry_sdk.init(dsn=os.environ['SENTRY_DSN'])
+            sentry_sdk.capture_message('Weekly load test failed — Stage 4-7 pattern reproducer', level='error')
+            "
+          fi
