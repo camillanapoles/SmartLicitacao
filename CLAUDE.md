@@ -219,6 +219,20 @@ gh api /repos/{owner}/{repo}/actions/runs --jq '.workflow_runs[:5] | .[] | {stat
 - **Deploy de emergência:** `railway redeploy --service bidiq-backend -y` (bypassa Actions).
 - **Lição CRIT-080:** `jemalloc LD_PRELOAD` + `Sentry StarletteIntegration` + `cryptography>=46` causam SIGSEGV em POST requests (auth → TLS handshake). GET requests funcionam; POST crasham.
 
+### Troubleshooting: Backend Wedge (Stage 4-7 pattern)
+
+**Sintomas:** `curl https://api.smartlic.tech/health/live` timeout + Sentry `slow_request >60s` spike + Railway deployment SUCCESS mas serviço unresponsive (silent twin) + Worker RSS >4GB sustained.
+
+**Triage 5min + Recovery 15-45min runbook executável:** [`docs/runbooks/backend-wedge-recovery.md`](docs/runbooks/backend-wedge-recovery.md)
+
+Cobre:
+- **Discriminator Matrix curl** (4 comandos bypass Cloudflare via Railway direct domain)
+- **Decision Tree** (wedge vs saturation vs Cloudflare-only)
+- **R1 `deploymentRedeploy` GraphQL workaround** (silent twin FAILED bug — keen-neumann session 2026-04-29)
+- **R2-R5 escalation** (capacity / gunicorn restart / Supabase Management API tighten / rollback)
+- **30min soak protocol** post-recovery + critério REGRESSION
+- **9 sessions Stage 4-7 cycle 2026-04-27→29** referenciadas
+
 ### GitHub CLI
 
 ```bash
