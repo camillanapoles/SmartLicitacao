@@ -795,6 +795,42 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
     case 4: {
       // 6 fetches paralelos saturavam o backend (todos timeoutavam em ~30s+) → sitemap vazio em produção.
       // Serializados: 5-7s cada, total ~30-45s, dentro do orçamento de runtime ISR.
+      //
+      // HOTFIX 2026-04-30 (Stage 8 wedge): build-time pre-flight probe.
+      // Backend saturado pelo SSG fan-out (4146 pages) → cascade timeout em sitemap/4.xml
+      // → Next.js worker mata route em 60s × 3 attempts → build FAILED.
+      // Memory: feedback_build_hammers_backend_cascade. Probe 3s cheap; abort entity
+      // sitemap quando backend unreachable evita 6×(15+2+15)s = 192s wasted hammering.
+      // ISR revalidate=3600 garante recovery automática quando backend voltar saudável.
+      {
+        const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+        try {
+          const probe = await fetch(`${backendUrl}/health/live`, {
+            signal: AbortSignal.timeout(3000),
+            cache: 'no-store',
+          });
+          if (!probe.ok) {
+            const err = new Error(`sitemap/4 probe HTTP ${probe.status}`);
+            console.warn('[sitemap/4] backend probe non-ok — skipping entity sitemap', probe.status);
+            Sentry.captureMessage('sitemap_4_backend_probe_failed', {
+              level: 'warning',
+              tags: { sitemap_id: '4', sitemap_outcome: 'probe_http_error', status: String(probe.status) },
+              contexts: { sitemap: { url: `${backendUrl}/health/live` } },
+            });
+            void err;
+            return [];
+          }
+        } catch (e) {
+          console.warn('[sitemap/4] backend probe timeout/error — skipping entity sitemap', e);
+          Sentry.captureMessage('sitemap_4_backend_probe_failed', {
+            level: 'warning',
+            tags: { sitemap_id: '4', sitemap_outcome: 'probe_timeout' },
+            contexts: { sitemap: { url: `${backendUrl}/health/live` } },
+          });
+          return [];
+        }
+      }
+
       const cnpjList = await fetchSitemapCnpjs();
       const contratosOrgaoList = await fetchContratosOrgaoIndexable();
       const orgaoList = await fetchSitemapOrgaos();
