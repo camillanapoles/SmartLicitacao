@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as Sentry from "@sentry/nextjs";
 import { useAuth } from "../components/AuthProvider";
 import { useAnalytics, getStoredUTMParams } from "../../hooks/useAnalytics";
 import { translateAuthError } from "../../lib/error-messages";
@@ -72,6 +73,14 @@ export default function SignupPage() {
   const [isResending, setIsResending] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
 
+  // CONV-INST-003: Timestamp when success screen was shown (for 5-min timeout calculation)
+  const [signupStartedAt, setSignupStartedAt] = useState<number>(0);
+  // Shared refs for SignupSuccess instrumentation
+  const pollingIterationsRef = useRef<number>(0);
+  const lastResendAtRef = useRef<number | null>(null);
+  // Tracks resend attempt count for email_verification_resent event
+  const resendAttemptRef = useRef<number>(0);
+
   const passwordMeetsPolicy =
     password.length >= 8 && /[A-Z]/.test(password) && /\d/.test(password);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -93,31 +102,63 @@ export default function SignupPage() {
   }, [success, countdown]);
 
   // GTM-FIX-009 AC7/AC9: Poll for confirmation every 5s
+  // CONV-INST-003 AC2+AC7: Instrument polling — track iterations and fire
+  // email_verification_completed + email_verification_pending events.
   useEffect(() => {
     if (!success || isConfirmed) return;
+    const pollingStarted = signupStartedAt || Date.now();
     const interval = setInterval(async () => {
+      pollingIterationsRef.current += 1;
       try {
         const response = await fetch(
           `/api/auth/status?email=${encodeURIComponent(email)}`
         );
         const data = await response.json();
         if (data.confirmed) {
+          // AC2: Fire email_verification_completed
+          trackEvent("email_verification_completed", {
+            time_to_confirm_ms: Date.now() - pollingStarted,
+            email_domain: email.split("@")[1] ?? "",
+            polling_iterations: pollingIterationsRef.current,
+          });
           setIsConfirmed(true);
           clearInterval(interval);
           toast.success("Email confirmado! Redirecionando...");
           setTimeout(() => router.push("/onboarding"), 1500);
         }
       } catch {
-        // Silently retry on next interval
+        // AC7: Sentry breadcrumb on polling silent catch — NOT captureException (noise)
+        try {
+          Sentry.addBreadcrumb({
+            category: "auth",
+            message: "email_polling_iteration_failed",
+            level: "info",
+          });
+        } catch {
+          // Sentry unavailable — ignore
+        }
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [success, isConfirmed, email, router]);
+  }, [success, isConfirmed, email, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // GTM-FIX-009 AC3/AC5: Resend handler
+  // CONV-INST-003 AC4: Track email_verification_resent on each call
   const handleResend = async () => {
     if (countdown > 0 || isResending) return;
     setIsResending(true);
+    resendAttemptRef.current += 1;
+    const attemptNumber = resendAttemptRef.current;
+    const timeSinceSignupMs = signupStartedAt ? Date.now() - signupStartedAt : 0;
+
+    // AC4: Track before network call (captures attempt even if request fails)
+    trackEvent("email_verification_resent", {
+      email_domain: email.split("@")[1] ?? "",
+      attempt_number: attemptNumber,
+      time_since_signup_ms: timeSinceSignupMs,
+      success: false, // will be overridden below if ok
+    });
+
     try {
       const response = await fetch("/api/auth/resend-confirmation", {
         method: "POST",
@@ -125,6 +166,14 @@ export default function SignupPage() {
         body: JSON.stringify({ email }),
       });
       if (response.ok) {
+        lastResendAtRef.current = Date.now();
+        // AC4: Re-fire with success=true
+        trackEvent("email_verification_resent", {
+          email_domain: email.split("@")[1] ?? "",
+          attempt_number: attemptNumber,
+          time_since_signup_ms: timeSinceSignupMs,
+          success: true,
+        });
         toast.success("Email reenviado! Verifique sua caixa de entrada.");
         setCountdown(60); // AC5: Reset countdown
       } else {
@@ -142,6 +191,7 @@ export default function SignupPage() {
   // the card branch is disabled (PCT=0).
   const runLegacySignup = async (data: SignupFormData) => {
     await signUpWithEmail(data.email, data.password, data.fullName);
+    setSignupStartedAt(Date.now()); // CONV-INST-003: capture before setSuccess
     setSuccess(true);
     trackEvent('signup_completed', {
       method: "email",
@@ -167,6 +217,7 @@ export default function SignupPage() {
       const body = await res.json().catch(() => ({}));
       throw new Error(body?.detail ?? `signup-trial falhou (${res.status})`);
     }
+    setSignupStartedAt(Date.now()); // CONV-INST-003: capture before setSuccess
     setSuccess(true);
     trackEvent('signup_completed', {
       method: "email",
@@ -325,6 +376,10 @@ export default function SignupPage() {
           setSuccess(false);
           setCountdown(60);
         }}
+        signupStartedAt={signupStartedAt}
+        rolloutBranch={rolloutBranch}
+        pollingIterationsRef={pollingIterationsRef}
+        lastResendAtRef={lastResendAtRef}
       />
     );
   }
