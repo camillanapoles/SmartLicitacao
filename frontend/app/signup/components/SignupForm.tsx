@@ -6,6 +6,8 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/Input";
 import { Label } from "../../../components/ui/Label";
 import { getPasswordStrength, type SignupFormData } from "../../../lib/schemas/forms";
+import { useAnalytics } from "../../../hooks/useAnalytics";
+import { currentDeviceType } from "../../../lib/device-type";
 import Link from "next/link";
 
 // STORY-258: Email type result
@@ -39,8 +41,65 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
   const confirmPassword = watch("confirmPassword");
   const email = watch("email");
   const phone = watch("phone") || "";
+  const fullName = watch("fullName");
 
   const [showPassword, setShowPassword] = useState(false);
+
+  // CONV-INST-002: Analytics
+  const { trackEvent } = useAnalytics();
+
+  // CONV-INST-002: Gate to prevent double-fire in React Strict Mode
+  const formRenderedFiredRef = useRef(false);
+
+  // CONV-INST-002: Track which field errors have already been reported
+  // to avoid duplicate events on re-renders. Key format: "field:type"
+  const firedErrorsRef = useRef<Set<string>>(new Set());
+
+  // CONV-INST-002: fired-fields set to prevent duplicate blur events
+  // (a field can blur multiple times across re-renders)
+  const firedBlursRef = useRef<Set<string>>(new Set());
+
+  // CONV-INST-002: Helper to inject device_type into every event
+  const trackWithDevice = useCallback(
+    (eventName: string, props?: Record<string, unknown>) => {
+      trackEvent(eventName, { ...props, device_type: currentDeviceType() });
+    },
+    [trackEvent]
+  );
+
+  // CONV-INST-002 AC1: Fire signup_form_rendered exactly once on mount
+  useEffect(() => {
+    if (formRenderedFiredRef.current) return;
+    formRenderedFiredRef.current = true;
+    trackWithDevice("signup_form_rendered", {
+      fields_count: 5,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // CONV-INST-002 AC4: Detect new field errors after each validation cycle.
+  // RHF mode:"onBlur" populates errors asynchronously after blur, so we watch
+  // the errors object rather than reading it inside the blur callback.
+  useEffect(() => {
+    const fieldNames = ["fullName", "email", "phone", "password", "confirmPassword"] as const;
+    for (const field of fieldNames) {
+      const fieldError = errors[field];
+      if (fieldError?.type && fieldError?.message) {
+        const key = `${field}:${fieldError.type}`;
+        if (!firedErrorsRef.current.has(key)) {
+          firedErrorsRef.current.add(key);
+          const msgHash = btoa(fieldError.message).slice(0, 16);
+          trackWithDevice("signup_field_error", {
+            field_name: field,
+            error_type: fieldError.type,
+            error_message_hash: msgHash,
+          });
+        }
+      }
+    }
+  // errors object identity changes when new errors appear
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errors]);
 
   // STORY-258: Email validation state
   const [emailCheckLoading, setEmailCheckLoading] = useState(false);
@@ -148,7 +207,17 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
             autoComplete="name"
             error={errors.fullName?.message}
             errorTestId="name-error"
-            {...register("fullName")}
+            {...register("fullName", {
+            onBlur: () => {
+              if (!firedBlursRef.current.has("fullName")) {
+                firedBlursRef.current.add("fullName");
+                trackWithDevice("signup_field_blur", {
+                  field_name: "fullName",
+                  is_filled: (fullName ?? "").trim().length > 0,
+                });
+              }
+            },
+          })}
           />
         </div>
 
@@ -171,7 +240,18 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
                   setEmailCheckResult(null);
                   setEmailCheckError(null);
                 },
-                onBlur: handleEmailBlur,
+                onBlur: async () => {
+                  // Preserve existing STORY-258 check
+                  await handleEmailBlur();
+                  // CONV-INST-002 AC2: blur tracking (fire once per field)
+                  if (!firedBlursRef.current.has("email")) {
+                    firedBlursRef.current.add("email");
+                    trackWithDevice("signup_field_blur", {
+                      field_name: "email",
+                      is_filled: (email ?? "").trim().length > 0,
+                    });
+                  }
+                },
               })}
             />
             {/* STORY-258: Loading spinner */}
@@ -236,7 +316,18 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
                 setPhoneCheckResult(null);
                 setPhoneCheckError(null);
               },
-              onBlur: handlePhoneBlur,
+              onBlur: () => {
+                // Preserve existing STORY-258 check
+                handlePhoneBlur();
+                // CONV-INST-002 AC2: blur tracking (fire once per field)
+                if (!firedBlursRef.current.has("phone")) {
+                  firedBlursRef.current.add("phone");
+                  trackWithDevice("signup_field_blur", {
+                    field_name: "phone",
+                    is_filled: (phone ?? "").trim().length > 0,
+                  });
+                }
+              },
             })}
           />
           {phoneCheckLoading && (
@@ -265,7 +356,17 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
               minLength={8}
               autoComplete="new-password"
               error={errors.password?.message}
-              {...register("password")}
+              {...register("password", {
+                onBlur: () => {
+                  if (!firedBlursRef.current.has("password")) {
+                    firedBlursRef.current.add("password");
+                    trackWithDevice("signup_field_blur", {
+                      field_name: "password",
+                      is_filled: (password ?? "").length > 0,
+                    });
+                  }
+                },
+              })}
             />
             <button
               type="button"
@@ -348,7 +449,17 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
             state={confirmPasswordMatch ? "success" : undefined}
             error={errors.confirmPassword?.message}
             errorTestId="confirm-password-error"
-            {...register("confirmPassword")}
+            {...register("confirmPassword", {
+              onBlur: () => {
+                if (!firedBlursRef.current.has("confirmPassword")) {
+                  firedBlursRef.current.add("confirmPassword");
+                  trackWithDevice("signup_field_blur", {
+                    field_name: "confirmPassword",
+                    is_filled: (confirmPassword ?? "").length > 0,
+                  });
+                }
+              },
+            })}
           />
           {confirmPasswordMatch && !errors.confirmPassword && (
             <p className="mt-1 text-xs text-green-600" data-testid="confirm-password-match">

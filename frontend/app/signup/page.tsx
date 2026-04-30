@@ -14,6 +14,7 @@ import InstitutionalSidebar from "../components/InstitutionalSidebar";
 import { buttonVariants } from "../../components/ui/button";
 import { safeSetItem, safeGetItem } from "../../lib/storage";
 import { signupSchema, type SignupFormData } from "../../lib/schemas/forms";
+import { currentDeviceType } from "../../lib/device-type";
 
 import { SignupSuccess } from "./components/SignupSuccess";
 import { SignupOAuth } from "./components/SignupOAuth";
@@ -235,8 +236,25 @@ export default function SignupPage() {
   const onSubmit = async (data: SignupFormData) => {
     setError(null);
 
-    // AC13: Track signup attempt (after validation, before async work)
-    trackEvent('signup_attempted', { method: "email" });
+    // CONV-INST-002: Mark as submitted BEFORE any await so abandonment cleanup
+    // doesn't misfire if the component unmounts during navigation.
+    submittedRef.current = true;
+
+    // CONV-INST-002 AC3 + AC13: Enrich signup_attempted with completion metrics
+    const allFields = ["fullName", "email", "phone", "password", "confirmPassword"] as const;
+    const filledCount = allFields.filter((f) => {
+      const v = form.getValues(f);
+      return typeof v === "string" ? v.trim().length > 0 : Boolean(v);
+    }).length;
+    const formCompletionPct = Math.round((filledCount / allFields.length) * 100);
+    const validationErrorsCount = Object.keys(form.formState.errors).length;
+
+    trackEvent('signup_attempted', {
+      method: "email",
+      form_completion_pct: formCompletionPct,
+      validation_errors_count: validationErrorsCount,
+      device_type: currentDeviceType(),
+    });
 
     // CONV-003b: compute rollout branch BEFORE the expensive paths.
     // SHA-256 is fast (<1ms) and determines whether to show step 2.
@@ -362,6 +380,47 @@ export default function SignupPage() {
         formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 300);
     }
+  }, []);
+
+  // CONV-INST-002: Track whether the user submitted the form so the abandonment
+  // cleanup doesn't fire a false signup_form_abandoned on successful submit.
+  const submittedRef = useRef(false);
+
+  // CONV-INST-002 AC5: Fire signup_form_abandoned when user leaves without
+  // submitting (component unmount OR window beforeunload).
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!submittedRef.current && form.formState.isDirty) {
+        const filledFields = (
+          ["fullName", "email", "phone", "password", "confirmPassword"] as const
+        ).filter((f) => {
+          const v = form.getValues(f);
+          return typeof v === "string" ? v.trim().length > 0 : Boolean(v);
+        });
+        trackEvent("signup_form_abandoned", {
+          fields_filled: filledFields.length,
+          device_type: currentDeviceType(),
+        });
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      // Also fire on SPA navigation away (unmount without beforeunload)
+      if (!submittedRef.current && form.formState.isDirty) {
+        const filledFields = (
+          ["fullName", "email", "phone", "password", "confirmPassword"] as const
+        ).filter((f) => {
+          const v = form.getValues(f);
+          return typeof v === "string" ? v.trim().length > 0 : Boolean(v);
+        });
+        trackEvent("signup_form_abandoned", {
+          fields_filled: filledFields.length,
+          device_type: currentDeviceType(),
+        });
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (success) {
