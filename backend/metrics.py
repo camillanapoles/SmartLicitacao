@@ -1255,6 +1255,23 @@ FEEDBACK_NEGATIVE_TOTAL = _create_counter(
 )
 
 # ============================================================================
+# MON-FN-005: Mixpanel init + health check failure counters
+# ============================================================================
+
+MIXPANEL_INIT_FAILED = _create_counter(
+    "smartlic_mixpanel_init_failed_total",
+    "MON-FN-005: Mixpanel client init failures by reason",
+    labelnames=["reason"],  # missing_token | import_error | init_failed
+)
+
+HEALTH_CHECK_FAILURES = _create_counter(
+    "smartlic_health_check_failures_total",
+    "MON-FN-005: Readiness probe dependency failures by check name",
+    labelnames=["check"],  # redis | supabase | mixpanel
+)
+
+
+# ============================================================================
 # ASGI app factory for /metrics endpoint
 # ============================================================================
 

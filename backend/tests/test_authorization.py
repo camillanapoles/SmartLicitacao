@@ -17,8 +17,13 @@ from unittest.mock import Mock, patch
 from fastapi import HTTPException
 
 
+UUID_A = "550e8400-e29b-41d4-a716-446655440000"
+UUID_B = "3422b448-2460-4fd2-9183-8000de6f8343"
+UUID_C = "4f6a3cb7-1c5d-4e9a-bbde-a8c4a2a9d01a"
+
+
 class TestGetAdminIds:
-    """Test _get_admin_ids() parsing and normalization."""
+    """Test _get_admin_ids() UUID validation and normalization."""
 
     def test_empty_env_returns_empty_set(self, monkeypatch):
         """Empty ADMIN_USER_IDS returns empty set."""
@@ -29,50 +34,50 @@ class TestGetAdminIds:
 
         assert result == set()
 
-    def test_single_id(self, monkeypatch):
-        """Single admin ID is parsed correctly."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "admin-user-123")
+    def test_single_valid_uuid(self, monkeypatch):
+        """Single valid UUID is accepted."""
+        monkeypatch.setenv("ADMIN_USER_IDS", UUID_A)
         from authorization import _get_admin_ids
 
         result = _get_admin_ids()
 
-        assert result == {"admin-user-123"}
+        assert result == {UUID_A}
 
-    def test_multiple_ids(self, monkeypatch):
-        """Multiple comma-separated IDs are parsed."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "admin-1,admin-2,admin-3")
+    def test_multiple_valid_uuids(self, monkeypatch):
+        """Multiple comma-separated valid UUIDs are parsed."""
+        monkeypatch.setenv("ADMIN_USER_IDS", f"{UUID_A},{UUID_B},{UUID_C}")
         from authorization import _get_admin_ids
 
         result = _get_admin_ids()
 
-        assert result == {"admin-1", "admin-2", "admin-3"}
+        assert result == {UUID_A, UUID_B, UUID_C}
 
     def test_whitespace_handling(self, monkeypatch):
-        """Whitespace around IDs is stripped."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "  admin-1  ,  admin-2  ,  admin-3  ")
+        """Whitespace around UUIDs is stripped."""
+        monkeypatch.setenv("ADMIN_USER_IDS", f"  {UUID_A}  ,  {UUID_B}  ")
         from authorization import _get_admin_ids
 
         result = _get_admin_ids()
 
-        assert result == {"admin-1", "admin-2", "admin-3"}
+        assert result == {UUID_A, UUID_B}
 
     def test_case_normalization(self, monkeypatch):
-        """IDs are normalized to lowercase."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "Admin-User-ABC,ADMIN-USER-XYZ")
+        """UUIDs are normalized to lowercase."""
+        monkeypatch.setenv("ADMIN_USER_IDS", UUID_A.upper())
         from authorization import _get_admin_ids
 
         result = _get_admin_ids()
 
-        assert result == {"admin-user-abc", "admin-user-xyz"}
+        assert result == {UUID_A.lower()}
 
     def test_empty_items_ignored(self, monkeypatch):
         """Empty items from multiple commas are ignored."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "admin-1,,,admin-2,,")
+        monkeypatch.setenv("ADMIN_USER_IDS", f"{UUID_A},,,{UUID_B},,")
         from authorization import _get_admin_ids
 
         result = _get_admin_ids()
 
-        assert result == {"admin-1", "admin-2"}
+        assert result == {UUID_A, UUID_B}
 
     def test_missing_env_var(self, monkeypatch):
         """Missing ADMIN_USER_IDS env var returns empty set."""
@@ -82,6 +87,35 @@ class TestGetAdminIds:
         result = _get_admin_ids()
 
         assert result == set()
+
+    def test_invalid_uuid_rejected(self, monkeypatch):
+        """Non-UUID strings are rejected and not added to the set."""
+        monkeypatch.setenv("ADMIN_USER_IDS", "not-a-uuid,admin-user-123")
+        from authorization import _get_admin_ids
+
+        result = _get_admin_ids()
+
+        assert result == set()
+
+    def test_mixed_valid_invalid_uuids(self, monkeypatch):
+        """Valid UUIDs accepted, invalid ones silently dropped."""
+        monkeypatch.setenv("ADMIN_USER_IDS", f"{UUID_A},not-a-uuid,{UUID_B},bad")
+        from authorization import _get_admin_ids
+
+        result = _get_admin_ids()
+
+        assert result == {UUID_A, UUID_B}
+
+    def test_invalid_uuid_logs_warning(self, monkeypatch, caplog):
+        """Invalid UUIDs emit a warning log."""
+        import logging
+        monkeypatch.setenv("ADMIN_USER_IDS", "invalid-id")
+        from authorization import _get_admin_ids
+
+        with caplog.at_level(logging.WARNING, logger="authorization"):
+            _get_admin_ids()
+
+        assert any("Invalid admin ID" in r.message for r in caplog.records)
 
 
 class TestCheckUserRoles:
@@ -300,11 +334,11 @@ class TestIsAdmin:
     @pytest.mark.asyncio
     async def test_via_env_var_fast_path(self, monkeypatch):
         """AC20: User in ADMIN_USER_IDS env var returns True (no DB call)."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "env-admin-1,env-admin-2")
+        monkeypatch.setenv("ADMIN_USER_IDS", f"{UUID_A},{UUID_B}")
         from authorization import is_admin as _is_admin
 
         with patch("authorization.check_user_roles") as mock_check:
-            result = await _is_admin("env-admin-1")
+            result = await _is_admin(UUID_A)
 
         assert result is True
         # Should NOT have called Supabase
@@ -312,12 +346,12 @@ class TestIsAdmin:
 
     @pytest.mark.asyncio
     async def test_via_env_var_case_insensitive(self, monkeypatch):
-        """Env var match is case-insensitive."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "Admin-User-ABC")
+        """Env var match is case-insensitive (UUID normalized to lowercase)."""
+        monkeypatch.setenv("ADMIN_USER_IDS", UUID_A.upper())
         from authorization import is_admin as _is_admin
 
         with patch("authorization.check_user_roles") as mock_check:
-            result = await _is_admin("ADMIN-USER-ABC")
+            result = await _is_admin(UUID_A)
 
         assert result is True
         mock_check.assert_not_called()
@@ -351,11 +385,11 @@ class TestHasMasterAccess:
     @pytest.mark.asyncio
     async def test_via_env_admin(self, monkeypatch):
         """User in ADMIN_USER_IDS has master access (no DB call)."""
-        monkeypatch.setenv("ADMIN_USER_IDS", "env-admin")
+        monkeypatch.setenv("ADMIN_USER_IDS", UUID_A)
         from authorization import has_master_access as _has_master_access
 
         with patch("authorization.check_user_roles") as mock_check:
-            result = await _has_master_access("env-admin")
+            result = await _has_master_access(UUID_A)
 
         assert result is True
         mock_check.assert_not_called()

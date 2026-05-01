@@ -160,14 +160,14 @@ def get_coupon_checkout_url() -> str:
 # ============================================================================
 
 def _get_top_trial_opportunity(user_id: str) -> dict | None:
-    """STORY-371 AC1: Get the highest-value trial opportunity for email personalization."""
+    """Get the highest-value trial session for email personalization."""
     from supabase_client import get_supabase
-    from utils.formatters import truncate_text, dias_ate_data, format_brl
+    from utils.formatters import format_brl
     try:
         sb = get_supabase()
         result = (
             sb.table("search_sessions")
-            .select("valor_total, top_result_objeto, top_result_orgao, top_result_numero_controle, top_result_data_encerramento")
+            .select("valor_total")
             .eq("user_id", user_id)
             .gt("valor_total", 0)
             .order("valor_total", desc=True)
@@ -180,17 +180,14 @@ def _get_top_trial_opportunity(user_id: str) -> dict | None:
         valor = float(row.get("valor_total") or 0)
         if valor <= 0:
             return None
-        data_enc = row.get("top_result_data_encerramento")
-        dias = dias_ate_data(data_enc)
-        objeto = truncate_text(row.get("top_result_objeto") or "", 120)
         return {
-            "objeto": objeto,
-            "orgao_nome": row.get("top_result_orgao") or "",
+            "objeto": "",
+            "orgao_nome": "",
             "valor_formatado": format_brl(valor),
             "valor": valor,
-            "data_encerramento": data_enc,
-            "dias_ate_encerramento": dias,
-            "numero_controle": row.get("top_result_numero_controle") or "",
+            "data_encerramento": None,
+            "dias_ate_encerramento": None,
+            "numero_controle": "",
         }
     except Exception as e:
         logger.debug(f"Could not fetch top opportunity for email: {e}")

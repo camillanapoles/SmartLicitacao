@@ -5,6 +5,18 @@ All notable changes to SmartLic will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added — SEO
+- **`app/robots.ts` dynamic route handler (SEO-PROG-007)** — substitui `public/robots.txt` estático por handler env-aware (Next.js 16 Metadata API). Production: Allow `/` + Disallow paths privados (path-exact trailing-slash para evitar prefix-match RFC 9309 §2.2.2). Preview/staging: block-all. AC6: `/alertas/` path-exact desbloqueia 464 páginas GSC previamente bloqueadas.
+- Google-Extended explícito em `Allow: /` para SGE/AI Overviews eligibility.
+- Block de 7 AI crawlers (GPTBot, ClaudeBot, Bytespider etc.) para evitar scraping de dados de treinamento.
+- `SITEMAP_USE_INDEX_VARIANT` flag — `index` (default, `sitemap_index.xml`) ou `legacy` (rollback para `sitemap.xml`).
+- `frontend/scripts/audit-robots-coverage.ts` — script CI que verifica 0 URLs SEO bloqueadas por Disallow.
+- 40 unit tests + Playwright E2E coverage (gated em `PREVIEW_BASE_URL`).
+
+---
+
 ## [0.5.4] - 2026-04-18 - CACHE WARMING DEPRECATION
 
 ### Removed — BREAKING

@@ -189,6 +189,11 @@ async def lifespan(app_instance: FastAPI):
     # === STARTUP ===
     validate_env_vars()
 
+    # MON-FN-005: Boot-fail if required production env vars are missing
+    from startup.assertions import assert_required_env_vars, assert_mixpanel_reachable
+    assert_required_env_vars()
+    assert_mixpanel_reachable()
+
     # CRIT-SYNC-FIX: Detect dangerous async + multi-worker combination
     _check_async_multiworker_mismatch()
 

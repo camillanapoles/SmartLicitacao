@@ -1,7 +1,6 @@
-"""Tests for STORY-371: trial-value endpoint with real top_opportunity."""
+"""Tests for trial-value endpoint top_opportunity (issue #541 — Option B: columns stripped)."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from decimal import Decimal
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from main import app
 from auth import require_auth
@@ -27,7 +26,7 @@ def client():
 
 
 class TestTrialValueTopOpportunity:
-    def test_returns_real_objeto_when_available(self, client):
+    def test_returns_top_opportunity_with_value(self, client):
         mock_db = MagicMock()
 
         profile_result = MagicMock()
@@ -39,12 +38,7 @@ class TestTrialValueTopOpportunity:
                 "total_filtered": 5,
                 "valor_total": "87000.00",
                 "created_at": "2026-04-05T00:00:00Z",
-                "setor": "limpeza",
-                "top_result_objeto": "Pregão Eletrônico de Limpeza Predial",
-                "top_result_orgao": "Prefeitura de Curitiba",
-                "top_result_numero_controle": "PNCP-2026-001",
-                "top_result_data_encerramento": "2026-12-31",
-                "top_result_modalidade": "Pregão Eletrônico",
+                "sectors": ["limpeza"],
             }
         ]
 
@@ -64,9 +58,9 @@ class TestTrialValueTopOpportunity:
         assert resp.status_code == 200
         data = resp.json()
         assert data["top_opportunity"] is not None
-        assert data["top_opportunity"]["objeto"] == "Pregão Eletrônico de Limpeza Predial"
-        assert data["top_opportunity"]["orgao_nome"] == "Prefeitura de Curitiba"
-        assert data["top_opportunity"]["numero_controle"] == "PNCP-2026-001"
+        assert data["top_opportunity"]["value"] == 87000.0
+        assert data["top_opportunity"]["setor"] == "limpeza"
+        assert data["top_opportunity"]["objeto"] == "Oportunidade identificada"
 
     def test_returns_null_when_no_sessions(self, client):
         mock_db = MagicMock()

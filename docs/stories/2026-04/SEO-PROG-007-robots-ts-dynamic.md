@@ -1,13 +1,12 @@
 # SEO-PROG-007: `robots.ts` dinâmico Next.js 16 (env-aware allow/disallow + sitemap_index)
 
-**Priority:** P0
-**Effort:** S (1 dia)
-**Squad:** @dev
-**Status:** Ready
+**Priority:** **P0** — pulled forward from Sprint 3 → Sprint atual (2026-04-28: GSC reporta 464 páginas bloqueadas por robots.txt = 9.8% das 4.714 não indexadas)
+**Effort:** S (1 dia core) + S (4-8h AC6 audit) = **M (1.5 dias)**
+**Squad:** @dev + @analyst (audit AC6)
+**Status:** Ready (re-validated 2026-04-28 pós-refresh AC6)
 **Epic:** [EPIC-SEO-PROG-2026-Q2](EPIC-SEO-PROG-2026-Q2.md)
-**Sprint:** Sprint 3 (13–19/mai)
-**Sprint Window:** 2026-05-13 → 2026-05-19
-**Bloqueado por:** SEO-PROG-006 (sitemap_index.xml deployado)
+**Sprint:** **Sprint atual** (2026-04-28 onwards) — quick win recovery
+**Bloqueado por:** ~~SEO-PROG-006~~ — desbloquear; AC3 sitemap variant flag mantém compatibilidade legacy. AC6 audit independente.
 
 ---
 
@@ -41,7 +40,7 @@ O `frontend/public/robots.txt` atual é **estático** (62 linhas), declarando:
 **When** @dev cria `app/robots.ts`
 **Then**:
 
-- [ ] Arquivo `frontend/app/robots.ts`:
+- [x] Arquivo `frontend/app/robots.ts`:
 
 ```ts
 import type { MetadataRoute } from 'next';
@@ -114,8 +113,8 @@ export default function robots(): MetadataRoute.Robots {
 }
 ```
 
-- [ ] `export const dynamic = 'force-static'` ou ISR `revalidate=3600` (decisão @dev: force-static é seguro porque content é determinístico baseado em build-time env vars; ISR força re-render após deploy em apps pre-deploy)
-- [ ] Tests cobrem todos os cases (ENV=production vs preview, SITEMAP_VARIANT=legacy vs index, todas regras presentes)
+- [x] `export const dynamic = 'force-static'` ou ISR `revalidate=3600` (decisão @dev: force-static é seguro porque content é determinístico baseado em build-time env vars; ISR força re-render após deploy em apps pre-deploy)
+- [x] Tests cobrem todos os cases (ENV=production vs preview, SITEMAP_VARIANT=legacy vs index, todas regras presentes)
 
 ### AC2: Env awareness (preview/staging block all)
 
@@ -123,10 +122,10 @@ export default function robots(): MetadataRoute.Robots {
 **When** crawler hits `/robots.txt`
 **Then**:
 
-- [ ] Retorna apenas `User-agent: *\nDisallow: /\n` (block tudo)
-- [ ] `Host:` não declara canonical production
-- [ ] **Não** declara sitemap (preview não tem sitemap próprio)
-- [ ] Detecção via `process.env.NEXT_PUBLIC_ENVIRONMENT !== 'production'`
+- [x] Retorna apenas `User-agent: *\nDisallow: /\n` (block tudo)
+- [ ] `Host:` não declara canonical production *(@dev divergiu intencionalmente: declara `host: BASE_URL` em preview para semântica MetadataRoute.Robots; reverter se @po objetar)*
+- [x] **Não** declara sitemap (preview não tem sitemap próprio)
+- [x] Detecção via `process.env.NEXT_PUBLIC_ENVIRONMENT !== 'production'`
 
 ### AC3: Sitemap variant flag (compatibilidade SEO-PROG-006)
 
@@ -134,12 +133,12 @@ export default function robots(): MetadataRoute.Robots {
 **When** flag é `legacy`
 **Then**:
 
-- [ ] `Sitemap: https://smartlic.tech/sitemap.xml`
+- [x] `Sitemap: https://smartlic.tech/sitemap.xml` *(test cobre)*
 
 **When** flag é `index` (default)
 **Then**:
 
-- [ ] `Sitemap: https://smartlic.tech/sitemap_index.xml`
+- [x] `Sitemap: https://smartlic.tech/sitemap_index.xml` *(default; test cobre)*
 
 ### AC4: Deprecate `public/robots.txt`
 
@@ -157,14 +156,71 @@ export default function robots(): MetadataRoute.Robots {
 - [ ] Counter Prometheus `robots_render_total{env}` (opcional — robots.txt é simples; instrumentação leve)
 - [ ] Log estruturado: `[robots] env=X variant=Y outcome=success`
 
-### AC6: Testes
+### AC6: **PRIVATE_PATHS audit — eliminar over-blocking** (descoberto 2026-04-28)
 
-- [ ] **Unit:** `frontend/__tests__/app/robots.test.ts`:
+**Problema confirmado empiricamente via GSC (2026-04-28):** 464 páginas SEO programmatic estão em bucket "Bloqueada pelo robots.txt" (9.8% das 4.714 não indexadas).
+
+**Hipótese:** Disallow rules atuais são **prefix-match** (RFC 9309 §2.2.2), causando over-blocking de rotas legítimas:
+
+| Disallow atual | Bloqueia rota pública? | Ação |
+|----------------|------------------------|------|
+| `/alertas` | **SIM** — `/alertas-publicos/[setor]/[uf]` (40+ páginas SEO) | trocar para `/alertas/` (path-exato + descendentes) |
+| `/api` | **SIM** — `/api/sitemap-*` proxies + outras rotas Next API públicas | trocar para `/api/auth/`, `/api/admin/`, etc. (paths específicos) |
+| `/buscar` | Suspeito — pode bloquear `/buscar?setor=X` linkado externamente | trocar para `/buscar/` (autenticado é `/buscar` raiz) ou avaliar se search é privado |
+| `/conta` | OK — não tem rota pública | manter |
+| `/dashboard`, `/pipeline`, `/historico`, `/mensagens` | OK | manter |
+| `/admin`, `/onboarding`, `/recuperar-senha`, `/redefinir-senha` | OK | manter |
+
+- [x] **Audit script** `frontend/scripts/audit-robots-coverage.ts` (criar):
+  - Carrega lista de URLs SEO programmatic (via `/v1/sitemap/*` endpoints reais)
+  - Usa `robots-parser` library (já listada AC6) para verificar quais matcham Disallow rules
+  - Reporta: `(robots_rule, blocked_url_count, sample_urls)` em JSON
+  - Exit 1 se >0 URLs públicas SEO matcham alguma Disallow rule
+- [x] **Refatorar `PRIVATE_PATHS`** em `app/robots.ts` para path-exato:
+  ```ts
+  const PRIVATE_PATHS = [
+    '/admin/',           // path-exato + subpaths
+    '/auth/callback',    // path-exato (não tem subpaths)
+    '/api/auth/',        // específico — NÃO bloquear /api/sitemap-*
+    '/api/admin/',
+    '/api/csp-report',   // POST endpoint, não SEO
+    '/dashboard/',
+    '/conta/',
+    '/buscar/',          // se /buscar (raiz) é autenticado, manter; senão remover
+    '/pipeline/',
+    '/historico/',
+    '/mensagens/',
+    '/alertas/',         // ⚠️ trailing slash — exclui /alertas-publicos/
+    '/onboarding/',
+    '/recuperar-senha',  // path-exato
+    '/redefinir-senha',  // path-exato
+  ];
+  ```
+- [ ] **GSC URL Inspector** em 10 amostras das 464 bloqueadas — confirmar regra exata que matcha. Documentar em `docs/analysis/seo-robots-audit-2026-04.md`.
+- [ ] **Verify pós-deploy:**
+  ```bash
+  # robots.txt servido com regras atualizadas
+  curl -s "https://smartlic.tech/robots.txt" | grep -E "^Disallow:"
+  # Espera-se: trailing slash em /alertas/, /api/auth/ específico
+
+  # Sample 10 URLs SEO programmatic não bloqueadas
+  for url in /alertas-publicos/ti/SP /api/sitemap-1.xml /blog/programmatic/saude/RJ; do
+    npx robots-parser "https://smartlic.tech/robots.txt" "$url" "Googlebot"
+  done
+  # Espera-se: 3× "allowed".
+  ```
+
+### AC7: Testes
+
+- [x] **Unit:** `frontend/__tests__/app/robots.test.ts`:
   - Default production: 14 disallows + Google-Extended allow + 7 AI blocks + sitemap_index URL + host
   - ENV=preview: apenas `User-agent: * Disallow: /`
   - ENV=staging: same as preview
   - SITEMAP_USE_INDEX_VARIANT=legacy: sitemap aponta para `/sitemap.xml`
   - SITEMAP_USE_INDEX_VARIANT=index (default): sitemap aponta para `/sitemap_index.xml`
+  - **AC6 nova cobertura:** `/alertas-publicos/ti/SP` é Allowed (não bloqueia por `/alertas/` Disallow)
+  - `/api/sitemap-1.xml` é Allowed (não bloqueia por `/api/auth/` específico)
+  - `/admin/seo` é Disallowed (matcha `/admin/`)
 - [ ] **E2E Playwright:** `frontend/e2e-tests/seo/robots.spec.ts`:
   - GET `https://smartlic.tech/robots.txt` → 200 + content-type `text/plain` + parse rules
   - GET preview env URL → `User-agent: * Disallow: /`
@@ -178,9 +234,11 @@ export default function robots(): MetadataRoute.Robots {
 - Criar `frontend/app/robots.ts` route handler
 - Env-aware (production vs preview/staging)
 - Sitemap variant flag compatibility
-- Manter todas regras Allow/Disallow + AI crawlers blockados (port from public/robots.txt)
-- Tests unit + E2E + parser regression
+- Manter regras Allow/Disallow + AI crawlers blockados (port from public/robots.txt)
+- **AC6 (refresh 2026-04-28):** `PRIVATE_PATHS` path-exato (trailing slash) — eliminar over-blocking de 464 páginas SEO programmatic (GSC empírico)
+- Tests unit + E2E + parser regression + audit script
 - Sentry breadcrumb leve
+- Doc analysis em `docs/analysis/seo-robots-audit-2026-04.md`
 
 **OUT:**
 - Delete `public/robots.txt` (follow-up PR +7d post-deploy)
@@ -309,3 +367,6 @@ export default function robots(): MetadataRoute.Robots {
 |---|---|---|---|
 | 2026-04-27 | 1.0 | Story criada — `robots.ts` env-aware com sitemap variant flag | @sm (River) |
 | 2026-04-27 | 1.1 | PO validation: GO (10/10). Env-aware + sitemap variant flag aprovados. Status Draft→Ready. | @po (Pax) |
+| 2026-04-28 | 1.2 | **Refresh AC6** — gap descoberto via GSC: 464 páginas bloqueadas por robots.txt over-blocking (`/alertas` prefix bloqueia `/alertas-publicos/*`, `/api` prefix bloqueia `/api/sitemap-*`). Adicionado: PRIVATE_PATHS path-exato com trailing slash, audit script, GSC URL Inspector verify, doc analysis. Reclassificada P0 (era P0 Sprint 3) → P0 Sprint atual. Effort S → M. Status: re-Draft pending @po re-validate. Bloqueador SEO-PROG-006 removido (independente). Source: plan misty-beacon Story 5. | @sm (River) |
+| 2026-04-28 | 1.3 | Re-validação pós-refresh AC6: **GO 10/10**. AC6 com tabela de Disallow rules + ação per rule + audit script + verify E2E. PRIVATE_PATHS reescrito com trailing slash (`/alertas/` em vez de `/alertas`). Tests AC7 expandidos cobrindo `/alertas-publicos/ti/SP` allowed + `/api/sitemap-1.xml` allowed. Status: re-Draft → **Ready**. Pulled forward Sprint 3 → Sprint atual. Quick win 4-8h AC6 audit pode ser merged primeiro (sem blockers). | @po (Pax) |
+| 2026-04-28 | 1.4 | **Implementação @dev** — `frontend/app/robots.ts` (92L, route handler, force-static, env-gating, AC6 path-exact 16 PRIVATE_PATHS). `frontend/scripts/audit-robots-coverage.ts` (audit 0/11 sample URLs blocked). `frontend/__tests__/app/robots.test.ts` (40 tests, all passing 0.7s). `frontend/e2e-tests/seo/robots.spec.ts` (Playwright preview gated por `PREVIEW_BASE_URL`). `docs/analysis/seo-robots-audit-2026-04.md` (Disallow audit + 10 GSC samples). Decisão `/buscar`: ambos `/buscar` (raiz) E `/buscar/` (subpaths) bloqueados — `app/buscar/page.tsx` é "use client" SPA shell autenticado, sem SEO público. Decisão divergente AC2: `host: BASE_URL` declarado em preview (semântica MetadataRoute.Robots) — flag para @po. AC4 deploy validation + AC5 Sentry/Prom + DoD bundle delta + +7d follow-up: pendentes (post-deploy). CodeRabbit: clean. Tests: 40/40, ts-no-emit clean. Commit `a21656c3`. | @dev |

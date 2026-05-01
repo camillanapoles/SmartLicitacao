@@ -318,7 +318,6 @@ async def get_top_dimensions(
 class TopOpportunity(BaseModel):
     title: str
     value: float
-    # STORY-371: Real edital fields
     objeto: str | None = None
     orgao_nome: str | None = None
     numero_controle: str | None = None
@@ -351,12 +350,8 @@ async def get_trial_value(user: dict = Depends(require_auth), db=Depends(get_db)
         trial_start = profile.get("created_at")
         trial_end = profile.get("trial_expires_at")
 
-        # Query search sessions within trial period.
-        # STORY-371: Include optional top_result_* columns for personalization.
-        # These columns may not exist on older DB versions — if the query fails,
-        # the outer try/except will surface a 503 which is the existing behavior.
         query = db.table("search_sessions").select(
-            "total_filtered, valor_total, created_at, sectors, top_result_objeto, top_result_orgao, top_result_numero_controle, top_result_data_encerramento, top_result_modalidade"
+            "total_filtered, valor_total, created_at, sectors"
         ).eq("user_id", user_id)
 
         if trial_start:
@@ -381,30 +376,20 @@ async def get_trial_value(user: dict = Depends(require_auth), db=Depends(get_db)
         searches_executed = len(sessions)
         avg_opportunity_value = total_value / total_opportunities if total_opportunities > 0 else 0.0
 
-        # Top opportunity = session with highest valor_total.
-        # STORY-412: ``objeto_resumo`` removed from the query above, so
-        # the title is always the literal fallback. Keeping the literal
-        # here (instead of interpolating any session field) avoids
-        # accidental PII leakage through search titles and matches the
-        # copy already reviewed by product.
         top_session = sessions[0] if sessions else None
         top_opportunity = None
         if top_session and float(Decimal(str(top_session.get("valor_total") or 0))) > 0:
             top_value = float(Decimal(str(top_session.get("valor_total") or 0)))
-            # STORY-371 AC1: Use real edital fields if available
-            objeto_raw = top_session.get("top_result_objeto") or "Oportunidade identificada"
-            from utils.formatters import truncate_text, dias_ate_data
-            data_enc = top_session.get("top_result_data_encerramento")
             top_opportunity = TopOpportunity(
-                title=truncate_text(objeto_raw, 120),
+                title="Oportunidade identificada",
                 value=top_value,
-                objeto=truncate_text(objeto_raw, 120),
-                orgao_nome=top_session.get("top_result_orgao"),
-                numero_controle=top_session.get("top_result_numero_controle"),
-                data_encerramento=data_enc,
-                dias_ate_encerramento=dias_ate_data(data_enc),
+                objeto="Oportunidade identificada",
+                orgao_nome=None,
+                numero_controle=None,
+                data_encerramento=None,
+                dias_ate_encerramento=None,
                 setor=(top_session.get("sectors") or [None])[0],
-                modalidade=top_session.get("top_result_modalidade"),
+                modalidade=None,
             )
 
         logger.info(

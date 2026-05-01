@@ -22,6 +22,15 @@ _READINESS_REDIS_TIMEOUT_S = 2.0
 _READINESS_SUPABASE_TIMEOUT_S = 3.0
 
 
+def _inc_health_failure(check: str) -> None:
+    """Increment MON-FN-005 health check failure counter. Never raises."""
+    try:
+        from metrics import HEALTH_CHECK_FAILURES
+        HEALTH_CHECK_FAILURES.labels(check=check).inc()
+    except Exception:
+        pass
+
+
 @router.get("/health/live")
 async def health_live():
     """HARDEN-016 AC1: Pure liveness probe — ALWAYS returns 200."""
@@ -61,12 +70,15 @@ async def health_ready(response: Response):
         else:
             checks["redis"] = {"status": "down", "error": "pool unavailable"}
             all_ok = False
+            _inc_health_failure("redis")
     except asyncio.TimeoutError:
         checks["redis"] = {"status": "down", "error": "timeout", "latency_ms": round((time.monotonic() - redis_start) * 1000)}
         all_ok = False
+        _inc_health_failure("redis")
     except Exception as e:
         checks["redis"] = {"status": "down", "error": str(e)[:100], "latency_ms": round((time.monotonic() - redis_start) * 1000)}
         all_ok = False
+        _inc_health_failure("redis")
 
     # Supabase check
     sb_start = time.monotonic()
@@ -78,9 +90,27 @@ async def health_ready(response: Response):
     except asyncio.TimeoutError:
         checks["supabase"] = {"status": "down", "error": "timeout", "latency_ms": round((time.monotonic() - sb_start) * 1000)}
         all_ok = False
+        _inc_health_failure("supabase")
     except Exception as e:
         checks["supabase"] = {"status": "down", "error": str(e)[:100], "latency_ms": round((time.monotonic() - sb_start) * 1000)}
         all_ok = False
+        _inc_health_failure("supabase")
+
+    # Mixpanel check (AC3 MON-FN-005)
+    try:
+        from analytics_events import _get_mixpanel
+        mp = _get_mixpanel()
+        if mp is not None:
+            checks["mixpanel"] = {"status": "configured"}
+        else:
+            checks["mixpanel"] = {"status": "not_configured"}
+            if os.getenv("ENVIRONMENT", "").lower() == "production":
+                all_ok = False
+                _inc_health_failure("mixpanel")
+    except Exception as exc:
+        checks["mixpanel"] = {"status": "check_failed", "error": str(exc)[:100]}
+        all_ok = False
+        _inc_health_failure("mixpanel")
 
     is_ready = _state.startup_time is not None and all_ok
     uptime = round(time.monotonic() - _state.startup_time, 3) if _state.startup_time else 0.0
