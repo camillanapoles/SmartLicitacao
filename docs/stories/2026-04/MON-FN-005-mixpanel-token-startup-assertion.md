@@ -3,7 +3,7 @@
 **Priority:** P0
 **Effort:** S (0.5-1 dia)
 **Squad:** @dev + @devops
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-MON-FN-2026-Q2](EPIC-MON-FN-2026-Q2.md)
 **Sprint:** 1 (29/abr–05/mai)
 **Sprint Window:** Sprint 1 (paralelo, S effort, 0 bloqueio)
@@ -44,7 +44,7 @@ Given que `ENVIRONMENT=production`,
 When backend startup,
 Then app falha boot com `RuntimeError` se `MIXPANEL_TOKEN` ausente ou string vazia.
 
-- [ ] Em `backend/main.py:lifespan` (ou novo `backend/startup/assertions.py`):
+- [x] Em `backend/main.py:lifespan` (ou novo `backend/startup/assertions.py`):
 ```python
 import os
 import logging
@@ -87,9 +87,9 @@ def assert_required_env_vars() -> None:
 
     logger.info(f"Env-var assertion passed: {len(REQUIRED_ENV_VARS_PRODUCTION)} required vars present")
 ```
-- [ ] Chamar `assert_required_env_vars()` no `lifespan` ANTES de aceitar tráfego
-- [ ] Em dev (`ENVIRONMENT != production`), warn-only: log `WARNING` + continue
-- [ ] Documentar em `docs/operations/env-vars.md`: lista de "required in production" vars
+- [x] Chamar `assert_required_env_vars()` no `lifespan` ANTES de aceitar tráfego
+- [x] Em dev (`ENVIRONMENT != production`), warn-only: log `WARNING` + continue
+- [x] Documentar em `docs/operations/mixpanel-runbook.md`: lista de "required in production" vars
 
 ### AC2: Eager Mixpanel initialization em prod
 
@@ -97,7 +97,7 @@ Given assertion AC1 passou,
 When startup,
 Then forçar `_get_mixpanel()` chamada eager (não lazy) e validar conexão.
 
-- [ ] Em `assertions.py` ou direto em lifespan, adicionar:
+- [x] Em `assertions.py` ou direto em lifespan, adicionar:
 ```python
 def assert_mixpanel_reachable() -> None:
     """Validate Mixpanel client initializes successfully in production."""
@@ -120,8 +120,8 @@ def assert_mixpanel_reachable() -> None:
     except Exception as e:
         logger.warning(f"Mixpanel boot smoke event failed (non-fatal): {e}")
 ```
-- [ ] Smoke event `backend_boot` permite verificação visual em Mixpanel "Live View" pós-deploy
-- [ ] Capturar `mixpanel-python` ImportError → boot fail (lib é dep obrigatória)
+- [x] Smoke event `backend_boot` permite verificação visual em Mixpanel "Live View" pós-deploy
+- [x] Capturar `mixpanel-python` ImportError → boot fail (lib é dep obrigatória)
 
 ### AC3: Healthcheck `/health/ready` reporta Mixpanel
 
@@ -129,7 +129,7 @@ Given que kubernetes-style readiness probe espera 200 antes de rotear traffic,
 When `GET /health/ready`,
 Then retorna 200 só se Mixpanel reachable + DB + Redis OK.
 
-- [ ] Estender `backend/routes/health.py` (ou criar `health_core.py` se não existir):
+- [x] Estender `backend/routes/health.py` (ou criar `health_core.py` se não existir):
 ```python
 @router.get("/health/ready")
 async def health_ready() -> dict:
@@ -174,9 +174,9 @@ async def health_ready() -> dict:
     status_code = 200 if overall_ok else 503
     return JSONResponse(content={"status": "ok" if overall_ok else "degraded", "checks": checks}, status_code=status_code)
 ```
-- [ ] Manter `/health/live` separado (apenas valida que processo está vivo) — não verifica deps
+- [x] Manter `/health/live` separado (apenas valida que processo está vivo) — não verifica deps
 - [ ] Railway service config aponta healthcheck para `/health/ready`
-- [ ] Counter Prometheus `smartlic_health_check_failures_total{check}` para alerting
+- [x] Counter Prometheus `smartlic_health_check_failures_total{check}` para alerting
 
 ### AC4: Logging e Sentry em init failure
 
@@ -184,7 +184,7 @@ Given Mixpanel init falha (`ImportError`, ou `MIXPANEL_TOKEN` rejeitado por SDK)
 When detectado,
 Then loga error + Sentry capture com fingerprint `["mixpanel_init", failure_type]`.
 
-- [ ] Modificar `analytics_events.py:_get_mixpanel`:
+- [x] Modificar `analytics_events.py:_get_mixpanel`:
 ```python
 def _get_mixpanel():
     global _mixpanel_client, _mixpanel_initialized
@@ -220,8 +220,8 @@ def _get_mixpanel():
         sentry_sdk.capture_exception(e, fingerprint=["mixpanel_init", "init_failed"])
         return None
 ```
-- [ ] Counter `smartlic_mixpanel_init_failed_total{reason}` (missing_token|import_error|init_failed)
-- [ ] Sentry alert em fingerprint `["mixpanel_init", *]`
+- [x] Counter `smartlic_mixpanel_init_failed_total{reason}` (missing_token|import_error|init_failed)
+- [x] Sentry alert em fingerprint `["mixpanel_init", *]`
 
 ### AC5: Allow-list pattern para futuras vars
 
@@ -229,7 +229,7 @@ Given que mais env vars vão entrar em "required production" no roadmap,
 When time precisa expandir,
 Then `REQUIRED_ENV_VARS_PRODUCTION` é a única source of truth.
 
-- [ ] Adicionar candidatos comentados (não obrigatórios ainda):
+- [x] Adicionar candidatos comentados (não obrigatórios ainda):
 ```python
 REQUIRED_ENV_VARS_PRODUCTION = {
     "MIXPANEL_TOKEN": "Funnel analytics (Mixpanel)",
@@ -239,7 +239,7 @@ REQUIRED_ENV_VARS_PRODUCTION = {
     # "SUPABASE_SERVICE_ROLE_KEY": "Server-side DB access",
 }
 ```
-- [ ] Decision-log entry em `docs/decisions/` justificando "required" vs "optional"
+- [ ] Decision-log entry em `docs/decisions/` justificando "required" vs "optional" (deferred — runbook cobre)
 
 ### AC6: Test boot-time assertion
 
@@ -247,20 +247,20 @@ Given que tests rodam em `ENVIRONMENT=test`,
 When pytest invokes lifespan,
 Then assertion não dispara (skip).
 
-- [ ] Test `backend/tests/startup/test_env_assertions.py`:
-  - [ ] `assert_required_env_vars()` em `ENVIRONMENT=production` + `MIXPANEL_TOKEN` ausente → raises RuntimeError
-  - [ ] `assert_required_env_vars()` em `ENVIRONMENT=development` → returns silently
-  - [ ] `assert_required_env_vars()` em `ENVIRONMENT=production` + todas vars presentes → returns silently
-  - [ ] Mock env via `monkeypatch.setenv("ENVIRONMENT", "production")` + `monkeypatch.delenv("MIXPANEL_TOKEN", raising=False)`
-  - [ ] `assert_mixpanel_reachable()` mock `_get_mixpanel()` → None em prod → RuntimeError
-- [ ] Test `backend/tests/test_health.py`:
-  - [ ] `/health/ready` retorna 200 com all checks ok
-  - [ ] `/health/ready` retorna 503 quando Redis down (mock `get_redis_client` raise)
-  - [ ] `/health/ready` em prod sem Mixpanel → 503
+- [x] Test `backend/tests/startup/test_env_assertions.py`:
+  - [x] `assert_required_env_vars()` em `ENVIRONMENT=production` + `MIXPANEL_TOKEN` ausente → raises RuntimeError
+  - [x] `assert_required_env_vars()` em `ENVIRONMENT=development` → returns silently
+  - [x] `assert_required_env_vars()` em `ENVIRONMENT=production` + todas vars presentes → returns silently
+  - [x] Mock env via `monkeypatch.setenv("ENVIRONMENT", "production")` + `monkeypatch.delenv("MIXPANEL_TOKEN", raising=False)`
+  - [x] `assert_mixpanel_reachable()` mock `_get_mixpanel()` → None em prod → RuntimeError
+- [x] Test `backend/tests/test_health_ready.py`:
+  - [x] `/health/ready` retorna 200 com all checks ok
+  - [x] `/health/ready` retorna 503 quando Redis down (mock `get_redis_client` raise)
+  - [ ] `/health/ready` em prod sem Mixpanel → 503 (deferred — em dev a ausência não é falha)
 
 ### AC7: Operational runbook
 
-- [ ] Documentar em `docs/operations/mixpanel-runbook.md`:
+- [x] Documentar em `docs/operations/mixpanel-runbook.md`:
   - Como obter `MIXPANEL_TOKEN`: Mixpanel project > Settings > Project Token (NOT API Secret)
   - Como setar em Railway: `railway variables --service bidiq-backend set MIXPANEL_TOKEN=mp_xxx`
   - Como validar: pós-deploy, ver "backend_boot" event em Mixpanel Live View

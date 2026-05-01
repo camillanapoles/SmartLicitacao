@@ -25,7 +25,23 @@ def _get_mixpanel():
 
     token = os.getenv("MIXPANEL_TOKEN", "").strip()
     if not token:
-        logger.debug("MIXPANEL_TOKEN not configured — analytics events will be logged only")
+        env = os.getenv("ENVIRONMENT", "development").lower()
+        if env == "production":
+            # MON-FN-005: should never reach here if startup assertion ran correctly
+            logger.critical("MON-FN-005: MIXPANEL_TOKEN absent in production despite startup assertion")
+            try:
+                import sentry_sdk
+                from metrics import MIXPANEL_INIT_FAILED
+                sentry_sdk.capture_message(
+                    "MIXPANEL_TOKEN missing in production post-startup",
+                    level="fatal",
+                    fingerprint=["mixpanel_init", "missing_token"],
+                )
+                MIXPANEL_INIT_FAILED.labels(reason="missing_token").inc()
+            except Exception:
+                pass
+        else:
+            logger.debug("MIXPANEL_TOKEN not configured — analytics events will be logged only")
         return None
 
     try:
@@ -33,11 +49,25 @@ def _get_mixpanel():
         _mixpanel_client = Mixpanel(token)
         logger.info("Mixpanel analytics initialized")
         return _mixpanel_client
-    except ImportError:
-        logger.debug("mixpanel-python not installed — analytics events will be logged only")
+    except ImportError as exc:
+        logger.critical("MON-FN-005: mixpanel-python package missing: %s", exc)
+        try:
+            import sentry_sdk
+            from metrics import MIXPANEL_INIT_FAILED
+            sentry_sdk.capture_exception(exc, fingerprint=["mixpanel_init", "import_error"])
+            MIXPANEL_INIT_FAILED.labels(reason="import_error").inc()
+        except Exception:
+            pass
         return None
-    except Exception as e:
-        logger.debug(f"Mixpanel init failed: {e}")
+    except Exception as exc:
+        logger.error("MON-FN-005: Mixpanel init failed: %s", exc)
+        try:
+            import sentry_sdk
+            from metrics import MIXPANEL_INIT_FAILED
+            sentry_sdk.capture_exception(exc, fingerprint=["mixpanel_init", "init_failed"])
+            MIXPANEL_INIT_FAILED.labels(reason="init_failed").inc()
+        except Exception:
+            pass
         return None
 
 
