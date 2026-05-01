@@ -8,6 +8,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { AnalyticsProvider } from '@/app/components/AnalyticsProvider';
 import mixpanel from 'mixpanel-browser';
 import * as Sentry from '@sentry/nextjs';
+import { usePathname } from 'next/navigation';
 
 // Mock dependencies
 jest.mock('mixpanel-browser');
@@ -26,6 +27,11 @@ jest.mock('../../app/components/CookieConsentBanner', () => ({
 
 jest.mock('../../hooks/useAnalytics', () => ({
   captureUTMParams: jest.fn(),
+  getStoredUTMParams: jest.fn(() => ({})),
+}));
+
+jest.mock('../../lib/analytics-traffic-source', () => ({
+  deriveTrafficSource: jest.fn(() => 'direct'),
 }));
 
 jest.mock('../../app/components/AuthProvider', () => ({
@@ -46,7 +52,8 @@ jest.mock('../../hooks/useClarity', () => ({
 
 const mockMixpanel = mixpanel as jest.Mocked<typeof mixpanel>;
 const { getCookieConsent } = require('../../app/components/CookieConsentBanner');
-const { captureUTMParams } = require('../../hooks/useAnalytics');
+const { captureUTMParams, getStoredUTMParams } = require('../../hooks/useAnalytics');
+const { deriveTrafficSource } = require('../../lib/analytics-traffic-source');
 
 describe('AnalyticsProvider Component', () => {
   const originalEnv = process.env;
@@ -55,12 +62,20 @@ describe('AnalyticsProvider Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     process.env = { ...originalEnv };
     process.env.NEXT_PUBLIC_MIXPANEL_TOKEN = 'test-token-123';
     process.env.NODE_ENV = 'test';
 
     // Mock Sentry.getClient to return null initially
     (Sentry.getClient as jest.Mock).mockReturnValue(null);
+
+    // Default: no UTM params stored, direct traffic
+    getStoredUTMParams.mockReturnValue({});
+    deriveTrafficSource.mockReturnValue('direct');
+
+    // Restore usePathname implementation (reset by resetMocks:true in jest.config.js)
+    (usePathname as jest.Mock).mockReturnValue('/test-page');
   });
 
   afterEach(() => {
@@ -411,6 +426,155 @@ describe('AnalyticsProvider Component', () => {
           debug: true,
         }));
       });
+    });
+  });
+
+  describe('CONV-INST-001: traffic_source enrichment', () => {
+    // AC7 scenario 1: organic_search referrer
+    it('AC7-1: page_load includes traffic_source=organic_search for Google referrer', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      getStoredUTMParams.mockReturnValue({});
+      deriveTrafficSource.mockReturnValue('organic_search');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.track).toHaveBeenCalledWith(
+          'page_load',
+          expect.objectContaining({ traffic_source: 'organic_search' })
+        );
+      });
+    });
+
+    // AC7 scenario 2: utm_campaign
+    it('AC7-2: page_load includes traffic_source=utm_campaign when UTM params present', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      getStoredUTMParams.mockReturnValue({ utm_source: 'blog', utm_medium: 'cta', utm_campaign: 'trial' });
+      deriveTrafficSource.mockReturnValue('utm_campaign');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.track).toHaveBeenCalledWith(
+          'page_load',
+          expect.objectContaining({
+            traffic_source: 'utm_campaign',
+            utm_source: 'blog',
+            utm_campaign: 'trial',
+          })
+        );
+      });
+    });
+
+    // AC7 scenario 3: first navigation → is_landing_page: true
+    it('AC7-3: first navigation sets is_landing_page=true and registers entry_pathname', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      // sessionStorage is clear from beforeEach
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.track).toHaveBeenCalledWith(
+          'page_load',
+          expect.objectContaining({ is_landing_page: true })
+        );
+      });
+
+      expect(mockMixpanel.register).toHaveBeenCalledWith(
+        expect.objectContaining({ entry_pathname: expect.any(String) })
+      );
+    });
+
+    // AC7 scenario 4: second navigation → is_landing_page: false
+    it('AC7-4: second navigation sets is_landing_page=false and does NOT call register with entry_pathname again', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      // Simulate first path already recorded
+      sessionStorage.setItem('smartlic_first_path_recorded', '1');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.track).toHaveBeenCalledWith(
+          'page_load',
+          expect.objectContaining({ is_landing_page: false })
+        );
+      });
+
+      // register should NOT have been called with entry_pathname on second navigation
+      const registerCallsWithEntryPath = (mockMixpanel.register as jest.Mock).mock.calls.filter(
+        (args: unknown[]) => args[0] && typeof args[0] === 'object' && 'entry_pathname' in (args[0] as object)
+      );
+      expect(registerCallsWithEntryPath).toHaveLength(0);
+    });
+
+    it('page_load includes direct traffic_source when no referrer and no UTM', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      getStoredUTMParams.mockReturnValue({});
+      deriveTrafficSource.mockReturnValue('direct');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.track).toHaveBeenCalledWith(
+          'page_load',
+          expect.objectContaining({ traffic_source: 'direct' })
+        );
+      });
+    });
+
+    it('utm_source/utm_campaign not included when UTM params absent', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      getStoredUTMParams.mockReturnValue({});
+      deriveTrafficSource.mockReturnValue('direct');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.track).toHaveBeenCalledWith('page_load', expect.any(Object));
+      });
+
+      const trackArgs = (mockMixpanel.track as jest.Mock).mock.calls.find(
+        (c: unknown[]) => c[0] === 'page_load'
+      );
+      expect(trackArgs![1]).not.toHaveProperty('utm_source');
+      expect(trackArgs![1]).not.toHaveProperty('utm_campaign');
+    });
+
+    it('does not track when consent not granted', () => {
+      getCookieConsent.mockReturnValue({ analytics: false });
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      expect(mockMixpanel.track).not.toHaveBeenCalled();
+      expect(mockMixpanel.register).not.toHaveBeenCalled();
     });
   });
 });

@@ -5,7 +5,8 @@ import mixpanel from 'mixpanel-browser';
 import * as Sentry from '@sentry/nextjs';
 import { usePathname } from 'next/navigation';
 import { getCookieConsent, type CookieConsent } from './CookieConsentBanner';
-import { captureUTMParams } from '../../hooks/useAnalytics';
+import { captureUTMParams, getStoredUTMParams } from '../../hooks/useAnalytics';
+import { deriveTrafficSource } from '../../lib/analytics-traffic-source';
 import { useClarity } from '../../hooks/useClarity';
 import { useAuth } from './AuthProvider';
 import { useUserProfile } from '../../hooks/useUserProfile';
@@ -88,15 +89,40 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
       // STORY-219 AC24-AC27: Capture UTM params on first load
       captureUTMParams();
 
+      // CONV-INST-001: Derive traffic_source + set entry_pathname super-property
+      const utmParams = getStoredUTMParams();
+      const trafficSource = deriveTrafficSource(document.referrer, utmParams);
+
+      // Register entry_pathname as super-property on first navigation of session
+      const FIRST_PATH_KEY = 'smartlic_first_path_recorded';
+      const isFirstPath = !sessionStorage.getItem(FIRST_PATH_KEY);
+      if (isFirstPath) {
+        sessionStorage.setItem(FIRST_PATH_KEY, '1');
+        try {
+          mixpanel.register({ entry_pathname: pathname });
+        } catch {
+          // ignore
+        }
+      }
+
       // Track page_load
       try {
-        mixpanel.track('page_load', {
+        const pageLoadProps: Record<string, unknown> = {
           path: pathname,
           timestamp: new Date().toISOString(),
           environment: process.env.NODE_ENV || 'development',
           referrer: document.referrer || 'direct',
           user_agent: navigator.userAgent,
-        });
+          // CONV-INST-001 AC1: enriched fields
+          traffic_source: trafficSource,
+          is_landing_page: isFirstPath,
+        };
+
+        // Include raw utm_source and utm_campaign when present (AC1)
+        if (utmParams['utm_source']) pageLoadProps['utm_source'] = utmParams['utm_source'];
+        if (utmParams['utm_campaign']) pageLoadProps['utm_campaign'] = utmParams['utm_campaign'];
+
+        mixpanel.track('page_load', pageLoadProps);
       } catch {
         // ignore
       }
