@@ -1,7 +1,7 @@
 """jobs.cron.new_bids_notifier — Daily detection of new bids for in-app notification.
 
 STORY-445: New Bid Count Badge — runs once daily at 12:00 UTC (09:00 BRT) after
-morning ingestion. For each active user with profile_context, queries pncp_raw_bids
+morning ingestion. For each active user with context_data, queries pncp_raw_bids
 and stores count in Redis key ``new_bids_count:{user_id}`` with 26h TTL.
 """
 
@@ -29,7 +29,7 @@ async def run_new_bids_notifier() -> dict:
     """Compute per-user new-bid counts and cache them in Redis.
 
     For each active profile (free_trial + smartlic_pro) that has a setor_id
-    and UFs configured in profile_context, counts bids ingested in the last
+    and UFs configured in context_data, counts bids ingested in the last
     26 h and writes the count to ``new_bids_count:{user_id}`` in Redis.
     """
     try:
@@ -41,12 +41,12 @@ async def run_new_bids_notifier() -> dict:
         now = datetime.now(timezone.utc)
         since = (now - timedelta(hours=26)).isoformat()
 
-        # Fetch active profiles that have profile_context set
+        # Fetch active profiles that have context_data set
         profiles_resp = await sb_execute(
             sb.table("profiles")
-            .select("id, plan_type, profile_context")
+            .select("id, plan_type, context_data")
             .in_("plan_type", ["free_trial", "smartlic_pro"])
-            .not_.is_("profile_context", "null")
+            .not_.is_("context_data", "null")
         )
         profiles = profiles_resp.data or []
 
@@ -60,7 +60,7 @@ async def run_new_bids_notifier() -> dict:
         for profile in profiles:
             try:
                 user_id = profile["id"]
-                ctx = profile.get("profile_context") or {}
+                ctx = profile.get("context_data") or {}
 
                 # Support multiple field name conventions
                 setor_id = (

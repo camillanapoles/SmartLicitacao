@@ -24,23 +24,82 @@ Prepara um dossiê COMPLETO para participar de UM edital específico. Reúne tud
 - `--cnpj` — CNPJ da empresa que vai participar (opcional, enriquece a análise)
 - `--preco-alvo` — Preço que o cliente pretende ofertar (opcional, valida contra mercado)
 
+## Capacidades — DataLake-first (v2)
+
+Phase 1a (metadata edital), Phase 1c (perfil empresa), Phase 3 (pricing), Phase 4
+(mapa competitivo) consolidados em invocação única do coletor:
+
+| Aspecto | DataLake (default) | Live (fallback) |
+|---------|-------------------|-----------------|
+| Metadata edital | `bid_detail(pncp_id)` em `pncp_raw_bids` | `/api/consulta/v1/contratacoes/publicacao?cnpj=...` |
+| Perfil empresa | `enriched_entity('fornecedor', cnpj)` TTL 30d | OpenCNPJ live se cache miss |
+| Pricing órgão | `pricing_stats(keywords, orgao_cnpj=..., meses=24)` | n/a |
+| Pricing mercado | `pricing_stats(keywords, ufs=[uf], meses=24)` | n/a |
+| Incumbentes | `top_competitors(orgao_cnpj, setor_keywords, meses=24)` | n/a |
+| Latência | 3-8s | 60-120s |
+
+**Phase 1b (PDFs) e Phase 2 (leitura integral) permanecem live** — DataLake não
+armazena binários. Claude executa após o coletor.
+
+**Resolução de `pncp_id` (tri-step automático):**
+1. Aceita URL PNCP, `{cnpj}/{ano}/{seq}` (legacy) ou `pncp_id` raw
+2. Tenta candidate `{cnpj}-1-{seq:06d}/{ano}` → `bid_detail`
+3. Cache miss → `search_bids` janela do ano + filtra orgao+sequencial
+4. Ainda 0 → fallback live `/api/consulta/...?cnpj={cnpj_orgao}`
+
+---
+
 ## What It Does
 
-### Phase 1: Coleta Completa do Edital (@data-engineer)
+### Phase 1a + 1c + 3 + 4: Coleta consolidada (1 invocação)
 
-**1a. Metadados do edital**
 ```bash
-# Buscar dados do edital via PNCP
-curl -s "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao\
-  ?dataInicial={ano}0101\
-  &dataFinal={hoje_YYYYMMDD}\
-  &cnpj={cnpj_orgao}\
-  &pagina=1&tamanhoPagina=50"
-```
-- Filtrar pelo sequencialCompra correto
-- Extrair todos os metadados (objeto, orgão, UF, valor, modalidade, datas, situação)
+cd /mnt/d/pncp-poc
 
-**1b. Download de TODOS os documentos**
+# pncp_id raw
+python scripts/war-room-b2g-collect.py "13714142000162-1-000014/2026" \
+    --cnpj 12345678000190 \
+    --preco-alvo 850000 \
+    --output docs/war-room/war-room-data-{cnpj_orgao}-{ano}-{seq}-{YYYY-MM-DD}.json
+
+# Formato legacy
+python scripts/war-room-b2g-collect.py "13714142000162/2026/14" --output ...
+
+# URL PNCP
+python scripts/war-room-b2g-collect.py "https://pncp.gov.br/app/editais/13714142000162-1-000014/2026" --output ...
+```
+
+O coletor:
+1. **Resolve `pncp_id`** via tri-step (candidate → search_bids → live)
+2. **bid_detail** → metadata completa do edital
+3. **enriched_entity** → perfil cliente (cache 30d) ou live OpenCNPJ
+4. **pricing_stats(orgao_cnpj)** → P10/P25/P50/P75/P90 do MESMO órgão (24m)
+5. **pricing_stats(ufs=[uf])** → P10/P25/P50/P75/P90 da MESMA UF (24m)
+6. **top_competitors(orgao_cnpj, setor_keywords)** → top 10 incumbentes
+7. **position_preco_alvo** → se `--preco-alvo`, calcula P{X} e alerta inexequibilidade/risco
+
+**Output JSON:**
+```json
+{
+  "fonte":"datalake|live", "fonte_resolucao":"bid_detail|search_bids_year|live_pncp",
+  "edital":{pncp_id, objeto_compra, valor_total_estimado, modalidade_id, modalidade_nome,
+            uf, municipio, orgao_cnpj, orgao_razao_social, data_publicacao,
+            data_abertura, data_encerramento, link_pncp, ...},
+  "perfil_empresa":{razao_social, cnae_principal, capital_social, ufs_atuacao, ...} | null,
+  "pricing_orgao":{n,p10,p25,mediana,p75,p90,media,dp,cv,sample[]} | null,
+  "pricing_mercado":{n,...} | null,
+  "incumbentes":[{ni_fornecedor, nome_fornecedor, n_contratos, valor_total, ufs}],
+  "keywords":[...],
+  "preco_alvo":850000,
+  "preco_alvo_info":{posicao:"P55", posicao_pct:55.2, alerta:null|"ABAIXO_P10"|"ACIMA_P90"},
+  "warnings":[...], "no_pdfs": false
+}
+```
+
+### Phase 1b: Download PDFs (Claude direto — sempre live)
+
+Após o coletor, Claude executa Phase 1b/2 sobre `payload.edital.orgao_cnpj` + sequencial extraído de `pncp_id`:
+
 ```bash
 # Listar todos os documentos publicados
 curl -s "https://pncp.gov.br/api/pncp/v1/orgaos/{cnpj_orgao}/compras/{ano}/{seq}/arquivos"
@@ -385,16 +444,32 @@ Tiago Sasaki - Consultor de Licitações
 /retention-b2g {CNPJ}                    → registrar resultado no report mensal
 ```
 
-## APIs Reference
+## APIs / Sources Reference
+
+**Modo DataLake (default — Phase 1a+1c+3+4):**
+- Tabela `pncp_raw_bids` via `bid_detail(pncp_id)`
+- Tabela `pncp_supplier_contracts` via `pricing_stats` + `top_competitors`
+- Tabela `enriched_entities` via `enriched_entity('fornecedor', cnpj)` (TTL 30d)
+- Cliente: `scripts/datalake_helper.py::DatalakeClient`
+
+**Modo Live (sempre — Phase 1b/2; ou cache miss):**
 
 | API | Endpoint | Uso |
 |-----|----------|-----|
-| PNCP Consulta | `/api/consulta/v1/contratacoes/publicacao` | Metadados + histórico |
-| PNCP Arquivos | `/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos` | Lista documentos |
-| PNCP Download | `/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/{n}` | PDFs completos |
-| PNCP Itens | `/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens` | Preços unitários |
-| OpenCNPJ | `api.opencnpj.org/{CNPJ}` | Perfil empresa + concorrentes |
-| Portal Transparência | `api.portaldatransparencia.gov.br/api-de-dados/` | Sanções + contratos |
+| PNCP Consulta | `/api/consulta/v1/contratacoes/publicacao` | Resolução `pncp_id` Step 3 (fallback) |
+| PNCP Arquivos | `/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos` | Phase 1b — lista PDFs |
+| PNCP Download | `/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/{n}` | Phase 1b — PDFs |
+| PNCP Itens | `/api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens` | Preços unitários (futuro) |
+| OpenCNPJ | `api.opencnpj.org/{CNPJ}` | Perfil empresa (cache miss) |
+| Portal Transparência | `api.portaldatransparencia.gov.br/api-de-dados/` | Sanções (PT_KEY required) |
+
+## Limitações conhecidas
+
+1. **Frescor:** `pncp_supplier_contracts` ETL 3×/sem (mon/wed/fri). Para edital recém-publicado (<4h) o `bid_detail` em `pncp_raw_bids` (ETL 3×/dia) deve ter cobertura; pricing 24m tolera gap.
+2. **`pncp_id` formato Lei 14.133:** `{cnpj14}-1-{seq:06d}/{ano}` (6 dígitos). Modalidade Concorrência (`-2-`) ou Inexigibilidade (`-3-`) podem variar; tri-step cobre via search_bids + live fallback.
+3. **PDFs sempre live (Phase 1b/2):** DataLake não armazena binários por design.
+4. **Sanções placeholder:** PT_KEY ausente → `perfil_empresa.sancoes` vazio. Quando PT_KEY for setado, caller persiste em `enriched_entities.data.sancoes` sub-TTL 7d.
+5. **Compute cost:** 1 `bid_detail` + 2 `pricing_stats` + 1 `top_competitors` = ~4 RPCs por execução (~3-8s).
 
 ## Params
 

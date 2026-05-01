@@ -28,7 +28,9 @@ python scripts/collect-report-data.py --cnpj {CNPJ} --dias 30 --output {DATA_JSO
 
 **NÃO passar `--ufs` manualmente.** O script deriva UFs do histórico de contratos.
 
-Verificar output: quantos editais abertos? Alguma API falhou (`_metadata.sources`)?
+**DataLake-first (parcial):** quando `DATALAKE_QUERY_ENABLED=true` no `.env` e `supabase-py` instalado, o coletor imprime `[datalake] enabled — DataLake-first plumbing ativa`. Nesta versão a infra está plumbed mas a substituição das funções `collect_*` (opencnpj, supplier_contracts, competitive_intel) está marcada como `TODO(datalake-step5)` no código. Substituição completa em PR dedicado. Use `--no-datalake` para forçar live full quando precisar diagnóstico.
+
+Verificar output: quantos editais abertos? Alguma API falhou (`_metadata.sources`)? Status válidos: `"API"`, `"API_PARTIAL"`, `"API_FAILED"`, `"API_CORRUPT"`, `"DATALAKE"`, `"CALCULATED"`, `"UNAVAILABLE"`.
 
 ### Step 2.5 — Investigação e Correção de Falhas de API (OBRIGATÓRIO)
 

@@ -1,6 +1,6 @@
 # STORY-371 — Email Dia 10 com Edital Real
 
-**Status:** InReview
+**Status:** InProgress
 **Priority:** P1 — Conversão (email mais próximo da decisão de compra, hoje genérico)
 **Origem:** Conselho de CEOs Advisory Board — melhorias on-page funil conversão (2026-04-11)
 **Componentes:** backend/services/trial_email_sequence.py, backend/routes/analytics.py
@@ -24,7 +24,7 @@ Esse nível de personalização transforma o email de lembrete em prova de valor
 
 ### AC1: Extensão de `GET /v1/analytics/trial-value`
 
-- [x] Endpoint existente em `backend/routes/analytics.py` passa a retornar campo `top_opportunity` além dos campos já existentes
+- [ ] Endpoint existente em `backend/routes/analytics.py` passa a retornar campo `top_opportunity` além dos campos já existentes — **uncheck 2026-04-28: endpoint atualmente retorna 503 (`column search_sessions.top_result_objeto does not exist`); 5 evt Sentry/24h. Code consumer existe mas migration faltando**
 - [x] `top_opportunity` contém:
   ```json
   {
@@ -38,10 +38,10 @@ Esse nível de personalização transforma o email de lembrete em prova de valor
     "modalidade": "string"
   }
   ```
-- [x] Lógica de seleção: edital de maior `valor_global` encontrado nas sessões de busca do usuário durante o trial (join com `search_sessions` + `pncp_raw_bids` ou `search_results_cache`)
+- [ ] Lógica de seleção: edital de maior `valor_global` encontrado nas sessões de busca do usuário durante o trial (join com `search_sessions` + `pncp_raw_bids` ou `search_results_cache`) — **uncheck 2026-04-28: commit edf82379 implementou SELECT direto em `search_sessions.top_result_*` sem JOIN; e cols não existem; populator (UPDATE search_sessions SET top_result_*) ausente — feature está sempre NULL**
 - [x] Fallback: `top_opportunity: null` se usuário nunca executou busca com resultados
 - [x] Schema Pydantic atualizado (`TopOpportunity` com 7 campos adicionais)
-- [x] Testes: usuário com buscas (retorna oportunidade), usuário sem buscas (retorna null), truncamento de objeto
+- [ ] Testes: usuário com buscas (retorna oportunidade), usuário sem buscas (retorna null), truncamento de objeto — **uncheck 2026-04-28: testes existem em `test_trial_value_top_opportunity.py` mas mockam dados — não capturam realidade de schema drift; não cobre runtime real**
 
 ### AC2: Template de email dia 10 com edital real
 
@@ -107,3 +107,4 @@ Esse nível de personalização transforma o email de lembrete em prova de valor
 |------|--------|------|
 | 2026-04-11 | @sm | Story criada — Conselho de CEOs Advisory Board |
 | 2026-04-11 | @po | GO 10/10 — Draft → Ready |
+| 2026-04-28 | @sm | Status correction InReview→InProgress: ACs falsamente marcados [x] em sessão ancient-kahn discriminator. Commit edf82379 (2026-04-11) shipou apenas consumer code (analytics.py SELECT, trial_email_sequence.py SELECT, template HTML, frontend highlight, formatters) — NÃO incluiu migration adicionando 5 cols `top_result_*` a `search_sessions`, NÃO incluiu populator (UPDATE search_sessions SET top_result_* após search complete). Sintoma vivo: 5 evt Sentry/24h `42703 column does not exist`; endpoint /v1/analytics/trial-value 503 silent; email dia 10 cai em fallback genérico. Trabalho restante: criar migration `top_result_*` em search_sessions + .down.sql; implementar populator no fluxo de search complete (provável `backend/jobs/queue/search.py` ou search_state_manager.py); novos testes integração (não-mocked). |

@@ -125,7 +125,9 @@ describe('sitemap() — coverage thresholds (STORY-SEO-001 AC7)', () => {
     // Falhas HTTP não quebram build (fetchSitemapJson retorna null → callers usam [])
     // mas Sentry.captureException é chamado com tags sitemap_endpoint + sitemap_outcome='http_error'
     expect(urls.length).toBe(0);
-  });
+    // SEN-BE-007 AC12: retry 1× backoff 2s × 6 endpoints = ~12s — ampliar timeout
+    // para acomodar retries em falha total. Caminho feliz mantém p95 abaixo de 5s.
+  }, 30000);
 
   it('shard 0 (core pages) emite ≥ 10 URLs independente do backend (não depende de fetch)', async () => {
     (global.fetch as jest.Mock).mockImplementation(() => Promise.reject(new Error('backend offline')));

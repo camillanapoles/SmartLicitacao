@@ -1,6 +1,6 @@
 # SEN-BE-002: Schema drift — colunas ausentes em `profiles` e `search_sessions`
 
-**Status:** Ready
+**Status:** Blocked
 **Origem:** Sentry unresolved — issues 7407804459 (10 evt) + 7407623714 (5 evt)
 **Prioridade:** P1 — Alto (endpoints `/v1/me/profile-context` e `/v1/analytics/trial-value` quebram)
 **Complexidade:** S (Small)
@@ -70,3 +70,4 @@ Pipeline CI (CRIT-050) deveria ter pegado: `migration-check.yml` no push para ma
 |------|--------|------|
 | 2026-04-23 | @sm | Story criada a partir de Sentry scan — schema drift 9 dias vivo |
 | 2026-04-23 | @po | Validação 10/10 → **GO**. LIVE (lastSeen 2026-04-22). Nota: HOTFIX-001 fixou coluna `sectors` — esta story trata colunas DIFERENTES (profile_context, top_result_objeto). Promovida Draft → Ready |
+| 2026-04-28 | @sm | Status Ready→Blocked + refinamento finding em sessão ancient-kahn. Discriminator psql (Supabase Management API) + grep app code revelou: (1) **AC1 `profile_context` é wontfix-decay** — rename para `context_data` foi feito (commit 2abede68 PR #540), TODAS queries app code atuais usam nome correto, 10 evt Sentry são pré-fix decay lag; pode marcar `wontfix-decay` quando lastSeen cessar (recomendado: aguardar 48h pós-PR #540 e fechar Sentry issue 7407804459). (2) **AC2 `top_result_objeto` NÃO é simples migration-missing** — é STORY-371 incomplete. Commit edf82379 shipou consumer code (SELECT) sem migration nem populator; migration sozinha = no-op (sempre NULL). Caminho real: STORY-371 honest reopen (status InProgress, ACs uncheck) + fix completo com migration + populator + tests. SEN-BE-002 desbloqueia QUANDO STORY-371 incluir migration. **AC3-AC7 redirecionados para STORY-371**. |

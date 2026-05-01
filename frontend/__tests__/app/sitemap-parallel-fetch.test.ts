@@ -67,6 +67,10 @@ function makeFastFetchMock() {
   (global.fetch as jest.Mock).mockImplementation(
     (url: string | URL | Request, _init?: RequestInit) => {
       const urlStr = typeof url === 'string' ? url : url.toString();
+      // HOTFIX 2026-04-30: pre-flight probe /health/live precede entity fetches.
+      if (urlStr.includes('/health/live')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) } as Response);
+      }
       const allEndpoints = [...ENTITY_ENDPOINTS, '/v1/sitemap/licitacoes-indexable'];
       const endpoint = allEndpoints.find((e) => urlStr.includes(e));
       const payload = endpoint ? PAYLOAD_BY_ENDPOINT[endpoint] : {};
@@ -123,6 +127,10 @@ describe('sitemap() — fetch behavior (signal + serialization)', () => {
     (global.fetch as jest.Mock).mockImplementation(
       (url: string | URL | Request) => {
         const urlStr = typeof url === 'string' ? url : url.toString();
+        // HOTFIX 2026-04-30: probe /health/live precede entity fetches; resolve sync.
+        if (urlStr.includes('/health/live')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) } as Response);
+        }
         const endpoint = ENTITY_ENDPOINTS.find((e) => urlStr.includes(e));
         if (endpoint) {
           initiated.push(endpoint);

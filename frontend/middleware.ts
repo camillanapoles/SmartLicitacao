@@ -216,6 +216,15 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(NextResponse.next());
   }
 
+  // SEO-SITEMAP-CACHE: sitemap sub-routes have '.' in path (e.g. /sitemap/0.xml)
+  // and would be caught by the static-asset early-return below, bypassing the
+  // isPublicContentRoute check. Handle them explicitly so GSC can cache them.
+  if (pathname.startsWith('/sitemap/') && pathname.endsWith('.xml')) {
+    const response = addSecurityHeaders(NextResponse.next());
+    response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+    return response;
+  }
+
   // Allow static assets and Next.js internals
   if (
     pathname.startsWith("/_next") ||

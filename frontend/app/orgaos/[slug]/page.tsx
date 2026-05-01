@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import OrgaoPerfilClient from './OrgaoPerfilClient';
 import { LeadCapture } from '@/components/LeadCapture';
+import { fetchWithBudget } from '@/lib/safe-fetch';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
@@ -46,16 +47,12 @@ export function generateStaticParams() {
 }
 
 async function fetchOrgaoStats(slug: string): Promise<OrgaoStats | null> {
-  try {
-    const resp = await fetch(`${BACKEND_URL}/v1/orgao/${slug}/stats`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!resp.ok) return null;
-    return await resp.json();
-  } catch {
-    return null;
-  }
+  return fetchWithBudget<OrgaoStats>(`${BACKEND_URL}/v1/orgao/${slug}/stats`, {
+    timeout: 10000,
+    retries: 1,
+    revalidate: 86400,
+    label: 'orgao-stats',
+  });
 }
 
 export async function generateMetadata({

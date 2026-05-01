@@ -193,7 +193,17 @@ python -c "import json; d=json.load(open('{DATA_JSON}')); ... ; json.dump(d, ope
 
 ---
 
-## APIs Reference
+## APIs / Sources Reference
+
+**DataLake-first (parcial — quando `DATALAKE_QUERY_ENABLED=true` e `--no-datalake` ausente):**
+- `enriched_entity('fornecedor', cnpj14)` — perfil empresa (cache TTL 30d)
+- `supplier_contracts(ni_fornecedor=cnpj14, meses=24)` — histórico contratos
+- `top_competitors(orgao_cnpj, setor_keywords, meses=24)` — incumbentes por órgão
+- `agg_by_orgao(setor_keywords, ufs)` — panorama setorial
+
+**Status:** infra plumbed em `scripts/collect-report-data.py` desde 2026-04-29; substituição das funções `collect_*` marcada como `TODO(datalake-step5)`. Rode com `--no-datalake` p/ forçar live.
+
+**APIs Live (sempre — Phase 2 PDFs; ou cache miss / fontes não migradas):**
 
 | API | Endpoint | Auth | Rate Limit |
 |-----|----------|------|------------|

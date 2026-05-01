@@ -53,6 +53,19 @@ except ImportError:
 # HARD-000: Extracted dedup module
 from report_dedup import normalize_for_dedup as _normalize_for_dedup, jaccard_similarity as _jaccard_similarity, semantic_dedup as _semantic_dedup
 
+# DataLake-first opt-in: stable since 2026-04-29 commit pricing-b2g pilot.
+# Quando DATALAKE_QUERY_ENABLED=true e --no-datalake ausente, o coletor pode
+# substituir 7 das 14 chamadas live por DataLake (enriched_entity, supplier_contracts,
+# search_bids, top_competitors, agg_by_orgao, pricing_stats). A migracao completa
+# das funcoes collect_* esta marcada com `# TODO(datalake-step5)` no codigo —
+# nesta versao apenas a infra esta plumbed; substituicao por funcao em PRs futuros.
+try:
+    from datalake_helper import DatalakeClient as _DatalakeClient
+    _DATALAKE_AVAILABLE = True
+except ImportError:
+    _DatalakeClient = None  # type: ignore[assignment, misc]
+    _DATALAKE_AVAILABLE = False
+
 try:
     import yaml
 except ImportError:
@@ -379,6 +392,11 @@ def collect_opencnpj(api: ApiClient, cnpj14: str) -> dict:
 
     If OpenCNPJ fails, automatically tries BrasilAPI as secondary source.
     The report MUST have company data — we don't accept 'indisponível'.
+
+    TODO(datalake-step5): wrap in DataLake-first via
+    `_dl_client.enriched_entity('fornecedor', cnpj14, max_age_days=30)`.
+    Cache hit returns shape OpenCNPJ-compatible; substituir tag _source para
+    "DATALAKE" e pular as chamadas live. Cache miss cai no fluxo atual.
     """
     print("\n📋 Phase 1a: Receita Federal — Perfil da empresa")
     data, status = api.get(
@@ -1107,6 +1125,11 @@ def collect_pncp_contratos_fornecedor(
     razao_social: str = "",
 ) -> tuple[list[dict], dict]:
     """Fetch contract history from PNCP by supplier CNPJ.
+
+    TODO(datalake-step5): substituir Strategies 1+2 por
+    `_dl_client.supplier_contracts(ni_fornecedor=cnpj14, meses=24, limit=1000)`.
+    Latencia ~500ms vs ~30-60s live (paginacao 2 anos x ate 4 paginas).
+    Cache miss/none cai no fluxo atual.
 
     FIX 4: Multi-strategy contract collection:
       Strategy 1 — PNCP /contratos with cnpjFornecedor (date-windowed, client-side filter)
@@ -4776,6 +4799,12 @@ def collect_competitive_intel(
     Mutates editais in place, adding `competitive_intel` field.
     Deduplicates by orgão CNPJ to avoid redundant API calls. Parallel across orgãos.
     Results cached with 7-day TTL (data changes slowly).
+
+    TODO(datalake-step5): substituir loop de fetch por orgao por
+    `_dl_client.top_competitors(orgao_cnpj=cnpj_orgao, setor_keywords=keywords,
+    meses=24, limit=10)` — 1 RPC por orgao em <500ms (vs paginacao live de
+    ate 30s por orgao). Aplicar em paralelo sobre top 15 orgaos como hoje.
+    Cache 7-day local pode ficar como complemento.
     """
     # Collect unique orgão CNPJs
     orgao_map: dict[str, list[dict]] = {}  # cnpj_orgao → [editais]
@@ -9031,6 +9060,16 @@ Examples:
     parser.add_argument("--skip-brasilapi", action="store_true", help="Skip BrasilAPI query")
     parser.add_argument("--skip-portfolio-optimization", action="store_true", help="Pular otimização de portfólio (capacity, correlation, optimal set)")
     parser.add_argument("--skip-scenarios", action="store_true", help="Pular cálculo de cenários, sensibilidade e triggers")
+    parser.add_argument(
+        "--no-datalake",
+        action="store_true",
+        help=(
+            "Forca live PNCP/OpenCNPJ/PCP em todas as coletas, ignorando DataLake. "
+            "Default: usa DataLake quando DATALAKE_QUERY_ENABLED=true e supabase-py "
+            "instalado. Esta versao tem infra plumbed mas substituicao das funcoes "
+            "collect_* esta marcada como TODO(datalake-step5) — extensao em PR futuro."
+        ),
+    )
     parser.add_argument("--coverage", action="store_true", help="Habilitar diagnóstico de cobertura PNCP (112 chamadas extras — desativado por padrão)")
     parser.add_argument("--re-enrich", help=(
         "Re-enriquecer um JSON existente sem re-coletar APIs. "
@@ -9041,6 +9080,21 @@ Examples:
     ))
 
     args = parser.parse_args()
+
+    # ---- DataLake plumbing (Step 5 partial — infra ready, function-by-function ----
+    # ---- substitution marked as TODO(datalake-step5) in collect_* helpers) ----
+    _use_datalake = (
+        _DATALAKE_AVAILABLE
+        and not args.no_datalake
+        and os.getenv("DATALAKE_QUERY_ENABLED", "").lower() in ("true", "1")
+    )
+    _dl_client = _DatalakeClient() if _use_datalake and _DatalakeClient else None
+    if _dl_client and not _dl_client.is_enabled:
+        _dl_client = None  # env vars missing or supabase-py absent
+    if _dl_client:
+        print("[datalake] enabled — DataLake-first plumbing ativa (substituicao parcial; ver TODO(datalake-step5))")
+    elif args.no_datalake:
+        print("[datalake] disabled via --no-datalake — fluxo live preservado")
 
     # ---- RE-ENRICH MODE: reprocess existing JSON without API calls ----
     if args.re_enrich:

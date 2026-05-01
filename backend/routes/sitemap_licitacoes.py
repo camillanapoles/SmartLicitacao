@@ -14,17 +14,23 @@ import os
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
 from admin import require_admin
 from metrics import record_sitemap_count
+from routes._sitemap_cache_headers import SITEMAP_CACHE_HEADERS
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["sitemap"])
 
-_CACHE_TTL_SECONDS = 24 * 60 * 60  # 24h
-_cache: Optional[tuple[dict, float]] = None
+_CACHE_TTL_SECONDS = 24 * 60 * 60  # 24h success
+# Negative cache TTL — same pattern as PR #529 perfil-b2g hotfix.
+_NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
+# Outer async budget: covers bids parallel queries + contracts (which has its
+# own 60s wait_for). Hard cap so a wedged datalake cannot block the route.
+_BUDGET_S = 90.0
+_cache: Optional[tuple[dict, float, float]] = None  # (data, stored_at, ttl)
 
 _DEFAULT_BIDS_THRESHOLD = 5
 _DEFAULT_CONTRACTS_THRESHOLD = 1
@@ -48,28 +54,55 @@ class LicitacoesIndexableResponse(BaseModel):
     response_model=LicitacoesIndexableResponse,
     summary="Combos setor×UF indexáveis (público — sitemap)",
 )
-async def get_licitacoes_indexable():
+async def get_licitacoes_indexable(response: Response):
     """Retorna combos setor×UF com bids OR contracts suficientes."""
+    response.headers.update(SITEMAP_CACHE_HEADERS)
     global _cache
 
     if _cache is not None:
-        data, ts = _cache
-        if time.time() - ts < _CACHE_TTL_SECONDS:
+        data, ts, ttl = _cache
+        if time.time() - ts < ttl:
             record_sitemap_count("licitacoes-indexable", len(data.get("combos", [])))
             return LicitacoesIndexableResponse(**data)
 
     bids_threshold = int(os.getenv("MIN_ACTIVE_BIDS_FOR_INDEX", str(_DEFAULT_BIDS_THRESHOLD)))
-    combos = await _compute_indexable_combos(bids_threshold)
 
     from datetime import datetime, timezone
-    result = {
-        "combos": combos,
-        "total": len(combos),
-        "threshold": bids_threshold,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _cache = (result, time.time())
-    record_sitemap_count("licitacoes-indexable", len(combos))
+    try:
+        combos = await asyncio.wait_for(
+            _compute_indexable_combos(bids_threshold),
+            timeout=_BUDGET_S,
+        )
+        result = {
+            "combos": combos,
+            "total": len(combos),
+            "threshold": bids_threshold,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _cache = (result, time.time(), _CACHE_TTL_SECONDS)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "get_licitacoes_indexable: budget %.0fs exceeded — returning empty negative cache",
+            _BUDGET_S,
+        )
+        result = {
+            "combos": [],
+            "total": 0,
+            "threshold": bids_threshold,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _cache = (result, time.time(), _NEGATIVE_CACHE_TTL_SECONDS)
+    except Exception as exc:
+        logger.error("get_licitacoes_indexable unexpected error: %s", exc)
+        result = {
+            "combos": [],
+            "total": 0,
+            "threshold": bids_threshold,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _cache = (result, time.time(), _NEGATIVE_CACHE_TTL_SECONDS)
+
+    record_sitemap_count("licitacoes-indexable", len(result.get("combos", [])))
     return LicitacoesIndexableResponse(**result)
 
 
@@ -90,7 +123,7 @@ async def refresh_sitemap_cache(_admin=Depends(require_admin)):
         "threshold": bids_threshold,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    _cache = (result, time.time())
+    _cache = (result, time.time(), _CACHE_TTL_SECONDS)
     logger.info("sitemap_licitacoes: cache refreshed manually — %d combos", len(combos))
     return {"status": "refreshed", "total_combos": len(combos), "threshold": bids_threshold}
 

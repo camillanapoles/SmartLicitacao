@@ -117,6 +117,68 @@ O relatório mensal é um documento público que será lido por jornalistas, aca
 - [x] Teste do endpoint `/v1/observatorio/relatorio/{mes}/{ano}` — mock do datalake, verificar estrutura do response (10 testes, todos passando)
 - [x] Teste da rota frontend — renderiza sem erros com dados mockados (`__tests__/app/observatorio-page.test.tsx`)
 
+### AC10: Backend hard budget (refresh 2026-04-28)
+
+Sob o incidente Disk IO Supabase (2026-04-27/28), endpoints DB-bound sem budget congelaram o backend. O Observatório roda 2 round-trips Supabase por request (mês atual + mês anterior, com `asyncio.to_thread(_query_historical_sync, ...)`). Sem budget, qualquer degradação do banco propaga para o evento loop do FastAPI.
+
+- [x] Wrap de cada `asyncio.to_thread(_query_historical_sync, ...)` em `asyncio.wait_for(..., timeout=15.0)` (mês atual e mês anterior)
+- [x] Mesmo padrão para o caminho `query_datalake` quando a janela é `current` (≤30d)
+- [x] `try/except asyncio.TimeoutError` retorna `_empty_relatorio_payload(mes, ano)` cacheado por 5min (negative cache, mesmo padrão de PR #535 sitemap)
+- [x] `try/except Exception` para erros genéricos (ex: connection drop) com mesmo fallback
+- [x] Counter Prometheus `smartlic_observatorio_budget_exceeded_total{period_age}` (labels: `historical|prev_month|current`) registrado em `backend/metrics.py`
+- [x] Sentry tag `observatorio_outcome={success|timeout|error|empty_period}` para SLO observability
+
+### AC11: Empty-period behavior (anti-Soft 404)
+
+GSC indexava `/observatorio/raio-x-abril-2026` (mês atual sem ingestão completa) como página com "R$ 0,00". Quebra confiança e queima crawl budget.
+
+- [x] Quando `total_editais == 0`:
+  - Mês atual (≤30d) → HTTP 404 + header `X-Robots-Tag: noindex, nofollow`
+  - Mês histórico (>30d) → HTTP 200 + campo `is_empty_period: true` + header `X-Robots-Tag: noindex`
+- [x] Env var `OBSERVATORIO_EMPTY_PERIOD_BEHAVIOR` (default `auto`; override `404`/`noindex`/`render` para testes/operacional)
+- [x] Sentry tag `observatorio_outcome=empty_period`
+
+### AC12: Frontend null-safety guards
+
+A página renderizava JSON-LD `Dataset` mesmo com `total_editais=0` (Google indexava entidade vazia) e `Date(undefined)` quebrava a formatação do rodapé.
+
+- [x] `relatorio.top_ufs/modalidades/setores_em_alta/tendencia_semanal` acessados via `(relatorio.X ?? []).length` (TS interface mantida; defensivo nos call sites)
+- [x] `gerado_em` formatação com guarda: `relatorio.gerado_em ? new Date(...).toLocaleDateString('pt-BR') : '—'`
+- [x] JSON-LD em `page.tsx` só é emitido quando `relatorio.periodo` tem string não-vazia E `total_editais > 0`
+- [x] Quando `total_editais === 0`, cards "R$ 0,00" são substituídos por `<EmptyStatePeriod ... />` (CTA para o hub do Observatório)
+- [x] Componente `frontend/components/EmptyStatePeriod.tsx` criado (props: `message`, `actionHref`, `actionLabel`)
+
+### AC13: Frontend notFound() em fetch failure
+
+- [x] `frontend/app/observatorio/[slug]/page.tsx`: quando `fetchRelatorio` retorna `null` ou throw → `notFound()` (404 nativo do Next.js)
+- [x] Slug malformado (parseSlug retorna `null`) → `notFound()`
+- [x] `generateMetadata` retorna `{ robots: { index: false, follow: false } }` quando dado ausente OU `total_editais === 0`
+
+### AC14: Sentry observability
+
+- [x] Backend: tag `observatorio_outcome` em todas as paths (`success`, `timeout`, `error`, `empty_period`)
+- [x] Frontend: `Sentry.captureMessage('observatorio_empty_period', { level: 'warning', tags: { mes, ano, slug } })` quando `total_editais === 0`
+
+### AC15: Verify E2E (post-deploy — não executado pelo @dev)
+
+Comandos de verificação documentados (executados pelo orchestrator pós-deploy):
+
+```bash
+# Empty current month → 404 + noindex,nofollow
+curl -i "https://api.smartlic.tech/v1/observatorio/relatorio/$(date +%-m)/$(date +%Y)"
+
+# Historical empty → 200 + is_empty_period:true + noindex
+curl -i "https://api.smartlic.tech/v1/observatorio/relatorio/1/2025" | grep -i "x-robots-tag\|is_empty_period"
+
+# Frontend integration: Soft 404 ressuscita?
+curl -s "https://smartlic.tech/observatorio/raio-x-janeiro-2025" | grep -E 'noindex|EmptyState|R\$ 0,00'
+
+# Prometheus counter ticks?
+curl -s "https://api.smartlic.tech/metrics" | grep observatorio_budget_exceeded
+```
+
+- [ ] Verificação E2E executada pós-deploy (orchestrator)
+
 ---
 
 ## Scope
@@ -186,3 +248,4 @@ _(a preencher pelo @dev durante implementação)_
 | Data | Autor | Mudança |
 |------|-------|---------|
 | 2026-04-11 | @sm (River) | Story criada — ativo diferencial: datalake de 40K licitações único no mercado. Relatório mensal é o caminho mais rápido para backlinks naturais de DA alto. |
+| 2026-04-28 | @dev | Implemented AC10-AC15: backend asyncio.wait_for budget 15s + negative cache 5min on TimeoutError/Exception; empty current month → 404 + X-Robots-Tag noindex,nofollow; historical empty → 200 + is_empty_period:true + noindex; Prometheus counter smartlic_observatorio_budget_exceeded_total + Sentry tag observatorio_outcome. Frontend null guards (top_ufs/modalidades/setores_em_alta/tendencia_semanal/gerado_em); EmptyStatePeriod component replaces R$ 0,00 cards when total=0; notFound() on fetch failure; generateMetadata robots:noindex when empty; JSON-LD only when periodo non-empty + total>0; Sentry.captureMessage when empty. AC1-AC9 unchanged (Done). 3 new tests (current empty 404, historical noindex, budget timeout cache). Ready for @qa. |

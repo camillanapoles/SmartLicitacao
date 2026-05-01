@@ -14,37 +14,110 @@ import { getAllMasterclassTemas } from '@/lib/masterclasses';
 // pattern that hid ECONNREFUSED / DNS / 5xx errors at build time — which is exactly how
 // `sitemap/4.xml` went empty in production for weeks without Sentry or Prometheus alerting.
 // The wrapper still returns null on failure (callers default to []), so build never breaks.
+//
+// SEN-BE-007 AC11: structured Sentry breadcrumb on every fetch (success and failure)
+// with sitemap_outcome ∈ {success, http_error, timeout, empty_data}, latency_ms, and
+// url_count. Distinguishes timeout from generic fetch_error (previously lumped together).
 async function fetchSitemapJson<T>(
   endpoint: string,
   extract: (data: unknown) => T,
   label: string,
 ): Promise<T | null> {
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
   const url = `${backendUrl}${endpoint}`;
+  const startedAt = Date.now();
+  let outcome: 'success' | 'http_error' | 'timeout' | 'empty_data' = 'success';
+  let statusCode = 0;
+  let urlCount = 0;
+  let result: T | null = null;
+  let capturedError: unknown = null;
   try {
     const resp = await fetch(url, {
-      cache: 'no-store',
+      next: { revalidate: 3600 },
       signal: AbortSignal.timeout(15000),
     });
+    statusCode = resp.status;
     if (!resp.ok) {
+      outcome = 'http_error';
       const err = new Error(`Sitemap fetch ${label} returned HTTP ${resp.status}`);
+      capturedError = err;
       console.error(`[sitemap] ${err.message} url=${url}`);
       Sentry.captureException(err, {
         tags: { sitemap_endpoint: label, sitemap_outcome: 'http_error' },
         contexts: { sitemap: { endpoint, url, status: resp.status } },
       });
-      return null;
+      result = null;
+    } else {
+      const data = (await resp.json()) as unknown;
+      result = extract(data);
+      // Count URLs in extracted payload — defensive shape check.
+      if (Array.isArray(result)) {
+        urlCount = result.length;
+      } else if (result && typeof result === 'object') {
+        // Shape varies per endpoint (combos/cnpjs/orgaos/slugs/catmats). Sum any array values.
+        for (const v of Object.values(result as Record<string, unknown>)) {
+          if (Array.isArray(v)) urlCount += v.length;
+        }
+      }
+      if (urlCount === 0) {
+        outcome = 'empty_data';
+      }
     }
-    const data = (await resp.json()) as unknown;
-    return extract(data);
   } catch (err) {
-    console.error(`[sitemap] fetch ${label} failed`, err);
+    capturedError = err;
+    const errName = (err as Error)?.name || '';
+    if (errName === 'TimeoutError' || errName === 'AbortError') {
+      outcome = 'timeout';
+    } else {
+      outcome = 'http_error';
+    }
+    console.error(`[sitemap] fetch ${label} failed (${outcome})`, err);
     Sentry.captureException(err, {
-      tags: { sitemap_endpoint: label, sitemap_outcome: 'fetch_error' },
+      tags: { sitemap_endpoint: label, sitemap_outcome: outcome },
       contexts: { sitemap: { endpoint, url } },
     });
-    return null;
+    result = null;
+  } finally {
+    Sentry.addBreadcrumb({
+      category: 'sitemap',
+      message: `fetch ${label}`,
+      level: outcome === 'success' ? 'info' : 'warning',
+      data: {
+        sitemap_outcome: outcome,
+        status_code: statusCode,
+        latency_ms: Date.now() - startedAt,
+        url_count: urlCount,
+        endpoint,
+      },
+    });
   }
+  // Reference capturedError to silence unused-variable lint while keeping the
+  // explicit assignment for future structured-logging needs.
+  void capturedError;
+  return result;
+}
+
+// SEN-BE-007 AC12: 1× retry with 2s backoff. Retries on null result (timeout or
+// http_error). Does NOT retry on `empty_data` — an empty array is a valid response
+// from the backend (e.g. no indexable combos yet). Total worst case: 15s + 2s + 15s = 32s.
+async function fetchSitemapJsonWithRetry<T>(
+  endpoint: string,
+  extract: (data: unknown) => T,
+  label: string,
+): Promise<T | null> {
+  const first = await fetchSitemapJson<T>(endpoint, extract, label);
+  if (first !== null) {
+    return first;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const second = await fetchSitemapJson<T>(endpoint, extract, `${label}-retry`);
+  if (second === null) {
+    Sentry.captureMessage(`sitemap_retry_exhausted_${label}`, {
+      level: 'warning',
+      tags: { sitemap_endpoint: label, sitemap_outcome: 'retry_exhausted' },
+    });
+  }
+  return second;
 }
 
 /**
@@ -71,7 +144,7 @@ async function fetchLicitacoesIndexable(): Promise<{ setor: string; uf: string }
   if (_licitacoesIndexableFetched && _licitacoesIndexableCache !== null) {
     return _licitacoesIndexableCache;
   }
-  const result = await fetchSitemapJson<{ setor: string; uf: string }[]>(
+  const result = await fetchSitemapJsonWithRetry<{ setor: string; uf: string }[]>(
     '/v1/sitemap/licitacoes-indexable',
     (d) => ((d as { combos?: { setor: string; uf: string }[] }).combos ?? []),
     'licitacoes-indexable',
@@ -79,7 +152,11 @@ async function fetchLicitacoesIndexable(): Promise<{ setor: string; uf: string }
   // SEO-440: empty fallback — without confirmed backend data, we cannot indicate
   // which combos are indexable. Returning generateLicitacoesParams() (all 405 combos)
   // would place noindex pages in sitemap → GSC "Excluded by noindex" mass error.
-  _licitacoesIndexableCache = result ?? [];
+  // 2026-04-28 elegant-dream: distinguir fetch-failed de fetched-empty.
+  // Antes: result ?? [] colapsava null+[] em "fetched=true,cache=[]" stuck 1h ISR.
+  // Agora: null (timeout/erro) NAO marca fetched → proximo ISR retry o backend.
+  if (result === null) return [];
+  _licitacoesIndexableCache = result;
   _licitacoesIndexableFetched = true;
   return _licitacoesIndexableCache;
 }
@@ -90,12 +167,13 @@ let _contratosOrgaoFetched = false;
 
 async function fetchContratosOrgaoIndexable(): Promise<string[]> {
   if (_contratosOrgaoFetched) return _contratosOrgaoCache;
-  const result = await fetchSitemapJson<string[]>(
+  const result = await fetchSitemapJsonWithRetry<string[]>(
     '/v1/sitemap/contratos-orgao-indexable',
     (d) => ((d as { orgaos?: string[] }).orgaos ?? []),
     'contratos-orgao-indexable',
   );
-  _contratosOrgaoCache = result ?? [];
+  if (result === null) return [];
+  _contratosOrgaoCache = result;
   _contratosOrgaoFetched = true;
   return _contratosOrgaoCache;
 }
@@ -106,12 +184,13 @@ let _cnpjFetched = false;
 
 async function fetchSitemapCnpjs(): Promise<string[]> {
   if (_cnpjFetched) return _cnpjCache;
-  const result = await fetchSitemapJson<string[]>(
+  const result = await fetchSitemapJsonWithRetry<string[]>(
     '/v1/sitemap/cnpjs',
     (d) => ((d as { cnpjs?: string[] }).cnpjs ?? []),
     'cnpjs',
   );
-  _cnpjCache = result ?? [];
+  if (result === null) return [];
+  _cnpjCache = result;
   _cnpjFetched = true;
   return _cnpjCache;
 }
@@ -126,12 +205,13 @@ let _fornecedoresCnpjFetched = false;
 
 async function fetchSitemapFornecedoresCnpj(): Promise<string[]> {
   if (_fornecedoresCnpjFetched) return _fornecedoresCnpjCache;
-  const result = await fetchSitemapJson<string[]>(
+  const result = await fetchSitemapJsonWithRetry<string[]>(
     '/v1/sitemap/fornecedores-cnpj',
     (d) => ((d as { cnpjs?: string[] }).cnpjs ?? []),
     'fornecedores-cnpj',
   );
-  _fornecedoresCnpjCache = result ?? [];
+  if (result === null) return [];
+  _fornecedoresCnpjCache = result;
   _fornecedoresCnpjFetched = true;
   return _fornecedoresCnpjCache;
 }
@@ -142,12 +222,13 @@ let _municipiosFetched = false;
 
 async function fetchSitemapMunicipios(): Promise<string[]> {
   if (_municipiosFetched) return _municipiosCache;
-  const result = await fetchSitemapJson<string[]>(
+  const result = await fetchSitemapJsonWithRetry<string[]>(
     '/v1/sitemap/municipios',
     (d) => ((d as { slugs?: string[] }).slugs ?? []),
     'municipios',
   );
-  _municipiosCache = result ?? [];
+  if (result === null) return [];
+  _municipiosCache = result;
   _municipiosFetched = true;
   return _municipiosCache;
 }
@@ -158,24 +239,26 @@ let _itensFetched = false;
 
 async function fetchSitemapItens(): Promise<string[]> {
   if (_itensFetched) return _itensCache;
-  const result = await fetchSitemapJson<string[]>(
+  const result = await fetchSitemapJsonWithRetry<string[]>(
     '/v1/sitemap/itens',
     (d) => ((d as { catmats?: string[] }).catmats ?? []),
     'itens',
   );
-  _itensCache = result ?? [];
+  if (result === null) return [];
+  _itensCache = result;
   _itensFetched = true;
   return _itensCache;
 }
 
 async function fetchSitemapOrgaos(): Promise<string[]> {
   if (_orgaoFetched) return _orgaoCache;
-  const result = await fetchSitemapJson<string[]>(
+  const result = await fetchSitemapJsonWithRetry<string[]>(
     '/v1/sitemap/orgaos',
     (d) => ((d as { orgaos?: string[] }).orgaos ?? []),
     'orgaos',
   );
-  _orgaoCache = result ?? [];
+  if (result === null) return [];
+  _orgaoCache = result;
   _orgaoFetched = true;
   return _orgaoCache;
 }
@@ -395,12 +478,8 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
           changeFrequency: 'monthly' as const,
           priority: 0.8,
         },
-        {
-          url: `${baseUrl}/observatorio/raio-x-marco-2026`,
-          lastModified: new Date('2026-04-01'),
-          changeFrequency: 'monthly' as const,
-          priority: 0.7,
-        },
+        // STORY-SEO-017 AC4: removido /observatorio/raio-x-marco-2026 — rota nao existe
+        // em frontend/app/observatorio/, gerava 404 no sitemap sweep 2026-04-24.
         // S3: Comparador de Editais
         {
           url: `${baseUrl}/comparador`,
@@ -664,19 +743,27 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
         };
       });
 
-      // SEO Wave 3.2: Licitações do dia — last 30 days
-      const licitacoesDoDialRoutes: MetadataRoute.Sitemap = Array.from({ length: 30 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().slice(0, 10);
-        const freq: 'hourly' | 'daily' = i === 0 ? 'hourly' : 'daily';
-        return {
-          url: `${baseUrl}/blog/licitacoes-do-dia/${dateStr}`,
-          lastModified: i === 0 ? today : d,
-          changeFrequency: freq,
-          priority: i === 0 ? 0.9 : 0.7,
-        };
-      });
+      // STORY-SEO-017: Licitacoes do dia — apenas datas com >=5 bids ativos.
+      // Substitui Array.from({length:30}) hardcoded que gerava 42 URLs 404 no GSC
+      // sweep 2026-04-24 (datas sem dados em pncp_raw_bids: fim de semana, feriado).
+      const indexableDates = await fetchSitemapJsonWithRetry<string[]>(
+        '/v1/sitemap/licitacoes-do-dia-indexable',
+        (d) => ((d as { dates?: string[] }).dates ?? []),
+        'licitacoes-do-dia-indexable',
+      );
+      const todayStr = today.toISOString().slice(0, 10);
+      const licitacoesDoDialRoutes: MetadataRoute.Sitemap = (indexableDates ?? [])
+        .slice(0, 30)
+        .map((dateStr) => {
+          const d = new Date(dateStr + 'T12:00:00');
+          const isToday = dateStr === todayStr;
+          return {
+            url: `${baseUrl}/blog/licitacoes-do-dia/${dateStr}`,
+            lastModified: isToday ? today : d,
+            changeFrequency: (isToday ? 'hourly' : 'daily') as 'hourly' | 'daily',
+            priority: isToday ? 0.9 : 0.7,
+          };
+        });
 
       // SEO Frente 4: City pSEO pages (/blog/licitacoes/cidade/[cidade])
       // STORY-439 AC2: City × Sector pSEO pages (1.215 URLs) removidas do sitemap.
@@ -708,6 +795,42 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
     case 4: {
       // 6 fetches paralelos saturavam o backend (todos timeoutavam em ~30s+) → sitemap vazio em produção.
       // Serializados: 5-7s cada, total ~30-45s, dentro do orçamento de runtime ISR.
+      //
+      // HOTFIX 2026-04-30 (Stage 8 wedge): build-time pre-flight probe.
+      // Backend saturado pelo SSG fan-out (4146 pages) → cascade timeout em sitemap/4.xml
+      // → Next.js worker mata route em 60s × 3 attempts → build FAILED.
+      // Memory: feedback_build_hammers_backend_cascade. Probe 3s cheap; abort entity
+      // sitemap quando backend unreachable evita 6×(15+2+15)s = 192s wasted hammering.
+      // ISR revalidate=3600 garante recovery automática quando backend voltar saudável.
+      {
+        const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+        try {
+          const probe = await fetch(`${backendUrl}/health/live`, {
+            signal: AbortSignal.timeout(3000),
+            cache: 'no-store',
+          });
+          if (!probe.ok) {
+            const err = new Error(`sitemap/4 probe HTTP ${probe.status}`);
+            console.warn('[sitemap/4] backend probe non-ok — skipping entity sitemap', probe.status);
+            Sentry.captureMessage('sitemap_4_backend_probe_failed', {
+              level: 'warning',
+              tags: { sitemap_id: '4', sitemap_outcome: 'probe_http_error', status: String(probe.status) },
+              contexts: { sitemap: { url: `${backendUrl}/health/live` } },
+            });
+            void err;
+            return [];
+          }
+        } catch (e) {
+          console.warn('[sitemap/4] backend probe timeout/error — skipping entity sitemap', e);
+          Sentry.captureMessage('sitemap_4_backend_probe_failed', {
+            level: 'warning',
+            tags: { sitemap_id: '4', sitemap_outcome: 'probe_timeout' },
+            contexts: { sitemap: { url: `${backendUrl}/health/live` } },
+          });
+          return [];
+        }
+      }
+
       const cnpjList = await fetchSitemapCnpjs();
       const contratosOrgaoList = await fetchContratosOrgaoIndexable();
       const orgaoList = await fetchSitemapOrgaos();

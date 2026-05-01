@@ -1,12 +1,17 @@
 /**
- * STORY-431 AC1+AC3+AC4+AC5+AC7: Observatory monthly report page.
+ * STORY-431 AC1+AC3+AC4+AC5+AC7+AC13+AC14: Observatory monthly report page.
  *
  * Slug format: raio-x-abril-2026 → mes=4, ano=2026
  * Renders charts (BarChart, PieChart, LineChart), CSV download, embed button.
+ *
+ * AC13: notFound() on fetch failure or malformed slug; generateMetadata returns
+ * robots:noindex when data is missing.
+ * AC14: Sentry.captureMessage when relatorio is empty (warning level + tags).
  */
 
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
 import ObservatorioRelatorioClient from './ObservatorioRelatorioClient';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
@@ -53,23 +58,31 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const parsed = parseSlug(slug);
-  if (!parsed) return { title: 'Relatório não encontrado' };
+  // STORY-431 AC13: malformed slug → noindex metadata (page itself returns 404).
+  if (!parsed) {
+    return {
+      title: 'Relatório não encontrado',
+      robots: { index: false, follow: false },
+    };
+  }
 
   const { mes, ano } = parsed;
   const mesDisplay = MONTH_NAMES_DISPLAY[mes] ?? String(mes);
   const relatorio = await fetchRelatorio(mes, ano);
 
-  const totalDisplay = relatorio?.total_editais
-    ? new Intl.NumberFormat('pt-BR').format(relatorio.total_editais)
-    : null;
+  // STORY-431 AC13: missing or empty payload → noindex metadata so an
+  // accidentally-cached blank page never lands in Google's index.
+  if (!relatorio || !relatorio.total_editais) {
+    return {
+      title: `Raio-X das Licitações — ${mesDisplay} ${ano}`,
+      description: `Análise mensal das licitações públicas brasileiras em ${mesDisplay.toLowerCase()} de ${ano}.`,
+      robots: { index: false, follow: false },
+    };
+  }
 
-  const title = totalDisplay
-    ? `${totalDisplay} editais em ${mesDisplay} de ${ano} — Raio-X das Licitações`
-    : `Raio-X das Licitações — ${mesDisplay} ${ano}`;
-
-  const description = totalDisplay
-    ? `O Brasil publicou ${totalDisplay} editais no PNCP em ${mesDisplay.toLowerCase()} de ${ano}. Análise completa por UF, modalidade e setor com dados reais. Licença Creative Commons BY 4.0.`
-    : `Análise mensal das licitações públicas brasileiras em ${mesDisplay.toLowerCase()} de ${ano}. Dados PNCP, livre para citar.`;
+  const totalDisplay = new Intl.NumberFormat('pt-BR').format(relatorio.total_editais);
+  const title = `${totalDisplay} editais em ${mesDisplay} de ${ano} — Raio-X das Licitações`;
+  const description = `O Brasil publicou ${totalDisplay} editais no PNCP em ${mesDisplay.toLowerCase()} de ${ano}. Análise completa por UF, modalidade e setor com dados reais. Licença Creative Commons BY 4.0.`;
 
   return {
     title,
@@ -92,49 +105,70 @@ export default async function RelatorioPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  // STORY-431 AC13: malformed slug → 404 (page itself, plus noindex metadata).
   const parsed = parseSlug(slug);
   if (!parsed) notFound();
 
   const { mes, ano } = parsed;
   const relatorio = await fetchRelatorio(mes, ano);
+  // STORY-431 AC13: backend null/throw → 404 instead of rendering a blank page.
   if (!relatorio) notFound();
 
   const mesDisplay = MONTH_NAMES_DISPLAY[mes] ?? String(mes);
+  const totalEditais = Number(relatorio.total_editais ?? 0);
+  const periodoNonEmpty = typeof relatorio.periodo === 'string' && relatorio.periodo.trim().length > 0;
 
-  const datasetSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Dataset',
-    name: `Raio-X das Licitações — ${mesDisplay} ${ano}`,
-    description: relatorio.periodo,
-    url: `https://smartlic.tech/observatorio/${slug}`,
-    license: 'https://creativecommons.org/licenses/by/4.0/',
-    creator: {
-      '@type': 'Organization',
-      name: 'SmartLic',
-      url: 'https://smartlic.tech',
-    },
-    temporalCoverage: `${ano}-${String(mes).padStart(2, '0')}`,
-    spatialCoverage: 'Brasil',
-    distribution: [
-      {
-        '@type': 'DataDownload',
-        encodingFormat: 'text/csv',
-        contentUrl: `https://smartlic.tech/v1/observatorio/relatorio/${mes}/${ano}/csv`,
-      },
-      {
-        '@type': 'DataDownload',
-        encodingFormat: 'application/json',
-        contentUrl: `https://smartlic.tech/v1/observatorio/relatorio/${mes}/${ano}`,
-      },
-    ],
-  };
+  // STORY-431 AC14: empty period → Sentry warning so we know how often this
+  // surface degrades to the EmptyStatePeriod CTA.
+  if (totalEditais === 0) {
+    Sentry.captureMessage('observatorio_empty_period', {
+      level: 'warning',
+      tags: { mes: String(mes), ano: String(ano), slug },
+    });
+  }
+
+  // STORY-431 AC12: only emit the Dataset JSON-LD when the period is real
+  // (non-empty + has a periodo string). Avoids polluting Google with an
+  // "empty Dataset" structured-data entry.
+  const shouldEmitJsonLd = periodoNonEmpty && totalEditais > 0;
+  const datasetSchema = shouldEmitJsonLd
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        name: `Raio-X das Licitações — ${mesDisplay} ${ano}`,
+        description: relatorio.periodo,
+        url: `https://smartlic.tech/observatorio/${slug}`,
+        license: 'https://creativecommons.org/licenses/by/4.0/',
+        creator: {
+          '@type': 'Organization',
+          name: 'SmartLic',
+          url: 'https://smartlic.tech',
+        },
+        temporalCoverage: `${ano}-${String(mes).padStart(2, '0')}`,
+        spatialCoverage: 'Brasil',
+        distribution: [
+          {
+            '@type': 'DataDownload',
+            encodingFormat: 'text/csv',
+            contentUrl: `https://smartlic.tech/v1/observatorio/relatorio/${mes}/${ano}/csv`,
+          },
+          {
+            '@type': 'DataDownload',
+            encodingFormat: 'application/json',
+            contentUrl: `https://smartlic.tech/v1/observatorio/relatorio/${mes}/${ano}`,
+          },
+        ],
+      }
+    : null;
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }}
-      />
+      {datasetSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }}
+        />
+      )}
       <ObservatorioRelatorioClient
         relatorio={relatorio}
         slug={slug}

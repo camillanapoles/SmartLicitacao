@@ -7709,6 +7709,11 @@
             "title": "Gerado Em",
             "type": "string"
           },
+          "is_empty_period": {
+            "default": false,
+            "title": "Is Empty Period",
+            "type": "boolean"
+          },
           "license": {
             "title": "License",
             "type": "string"
@@ -9326,6 +9331,32 @@
           "updated_at"
         ],
         "title": "SitemapItensResponse",
+        "type": "object"
+      },
+      "SitemapLicitacoesDoDiaResponse": {
+        "properties": {
+          "dates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dates",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dates",
+          "total",
+          "updated_at"
+        ],
+        "title": "SitemapLicitacoesDoDiaResponse",
         "type": "object"
       },
       "SitemapMunicipiosResponse": {
@@ -16035,7 +16066,7 @@
     },
     "/v1/fornecedores/{cnpj}/profile": {
       "get": {
-        "description": "Agrega historico de contratos do PNCP + dados cadastrais (BrasilAPI via\nenriched_entities) para a pagina /fornecedores/{cnpj}.\n\nPublico, sem auth. Cache: 24h TTL em memoria.",
+        "description": "Agrega historico de contratos do PNCP + dados cadastrais (BrasilAPI via\nenriched_entities) para a pagina /fornecedores/{cnpj}.\n\nPublico, sem auth. Cache: 24h TTL em memoria (5min em fallback partial).",
         "operationId": "fornecedor_profile_v1_fornecedores__cnpj__profile_get",
         "parameters": [
           {
@@ -18856,7 +18887,7 @@
     },
     "/v1/sitemap/fornecedores-cnpj": {
       "get": {
-        "description": "Retorna os CNPJs de fornecedores com mais contratos em pncp_supplier_contracts.\n\nUsado pelo frontend para gerar /fornecedores/{cnpj} no sitemap.xml.\nLimite: 5.000 CNPJs por volume de contratos (mais contratos = maior valor SEO).\nCache: 24h em memoria.",
+        "description": "Retorna os CNPJs de fornecedores com mais contratos em pncp_supplier_contracts.\n\nUsado pelo frontend para gerar /fornecedores/{cnpj} no sitemap.xml.\nLimite: 5.000 CNPJs por volume de contratos (mais contratos = maior valor SEO).\nCache: 24h em memoria sucesso, 5min em falha (negative cache PR #529 pattern).",
         "operationId": "sitemap_fornecedores_cnpj_v1_sitemap_fornecedores_cnpj_get",
         "responses": {
           "200": {
@@ -18894,6 +18925,28 @@
         "summary": "Lista de codigos CATMAT para sitemap.xml",
         "tags": [
           "itens-publicos"
+        ]
+      }
+    },
+    "/v1/sitemap/licitacoes-do-dia-indexable": {
+      "get": {
+        "description": "Retorna apenas datas com bids suficientes para ter pagina renderizavel.\n\nElimina os 42 URLs 404 reportados no GSC sweep 2026-04-24.",
+        "operationId": "sitemap_licitacoes_do_dia_indexable_v1_sitemap_licitacoes_do_dia_indexable_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitemapLicitacoesDoDiaResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Datas dos ultimos 30d com >=5 bids ativos (sitemap /blog/licitacoes-do-dia/)",
+        "tags": [
+          "sitemap"
         ]
       }
     },
@@ -19146,8 +19199,58 @@
     },
     "/v1/trial-emails/webhook": {
       "post": {
-        "description": "AC11: Handle Resend webhook events for email tracking.",
+        "description": "Handle Resend webhook events for email tracking.\n\nSecurity: Svix HMAC-SHA256 signature verified against `RESEND_WEBHOOK_SECRET`.\nReplay protection: timestamp must be within 5 minutes of now.\nFail-closed \u2014 missing secret or invalid signature returns 401.\n\nAccepts the full delivery lifecycle (sent \u2192 delivered \u2192 opened \u2192 clicked)\nplus failure paths (bounced, complained, delivery_delayed, failed) so the\nadmin funnel dashboard can distinguish \"email never arrived\" from \"email\narrived but wasn't engaged\". Service handler\n(`services.trial_email_sequence.handle_resend_webhook`) populates the\ncolumns added in migration 20260424180000_trial_email_delivery_tracking.\n\nReturns 200 for processed/ignored/skipped so Resend doesn't retry; 401 on\nsignature failure (Resend will retry \u2014 desired so legitimate events aren't\nlost during transient secret rotation).",
         "operationId": "resend_webhook_v1_trial_emails_webhook_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "svix-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Svix-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "svix-timestamp",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Svix-Timestamp"
+            }
+          },
+          {
+            "in": "header",
+            "name": "svix-signature",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Svix-Signature"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -19156,6 +19259,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Resend Webhook",

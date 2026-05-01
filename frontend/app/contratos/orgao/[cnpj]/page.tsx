@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { buildCanonical } from '@/lib/seo';
 import { LeadCapture } from '@/components/LeadCapture';
+import TrackingLink from '@/components/TrackingLink';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
@@ -167,6 +168,22 @@ export default async function OrgaoContratosPage({ params }: Props) {
               CNPJ: {stats.orgao_cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}
               {' · '}Atualizado em {new Date(stats.last_updated).toLocaleDateString('pt-BR')}
             </p>
+
+            <section aria-labelledby="hero-cta-heading" className="mt-6 bg-blue-50 rounded-lg p-6 text-center">
+              <h2 id="hero-cta-heading" className="text-lg font-bold text-gray-900 mb-1">
+                Quer monitorar {stats.orgao_nome} e descobrir oportunidades antes da concorrência?
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">O SmartLic rastreia novos editais e contratos automaticamente.</p>
+              <TrackingLink
+                href={`/signup?utm_source=programmatic&utm_medium=cta&utm_campaign=conv-cta-001&utm_content=contratos-orgao&page_cnpj=${cnpj}`}
+                eventName="cta_clicked"
+                eventProps={{ cta_name: 'contratos_orgao_hero', destination: '/signup', page_type: 'contratos_orgao', page_cnpj: cnpj, orgao_nome: stats.orgao_nome }}
+                className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
+              >
+                Teste grátis por 14 dias
+              </TrackingLink>
+              <p className="mt-2 text-xs text-gray-500">Sem cartão de crédito · 14 dias grátis</p>
+            </section>
           </div>
         </div>
 
@@ -277,7 +294,25 @@ export default async function OrgaoContratosPage({ params }: Props) {
           {/* Aviso Legal */}
           <p className="text-xs text-ink-secondary italic">{stats.aviso_legal}</p>
 
-          {/* Lead Capture */}
+          {/* Footer CTA */}
+          <section aria-labelledby="footer-cta-heading" className="bg-blue-50 rounded-lg p-6 text-center">
+            <h2 id="footer-cta-heading" className="text-xl font-bold text-gray-900 mb-2">
+              Monitore editais e contratos de {stats.orgao_nome}
+            </h2>
+            <p className="text-gray-600 mb-4">
+              O SmartLic rastreia licitações abertas do PNCP e avisa quando surgem oportunidades relevantes.
+            </p>
+            <TrackingLink
+              href={`/signup?utm_source=programmatic&utm_medium=cta&utm_campaign=conv-cta-001&utm_content=contratos-orgao-footer&page_cnpj=${cnpj}`}
+              eventName="cta_clicked"
+              eventProps={{ cta_name: 'contratos_orgao_footer', destination: '/signup', page_type: 'contratos_orgao', page_cnpj: cnpj, orgao_nome: stats.orgao_nome }}
+              className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Teste grátis por 14 dias
+            </TrackingLink>
+            <p className="mt-2 text-xs text-gray-500">Sem cartão de crédito · 14 dias grátis</p>
+          </section>
+
           <LeadCapture
             source="contratos-orgao"
             heading="Monitore contratos deste orgao"

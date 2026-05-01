@@ -44,6 +44,5 @@ docs/
 *.log
 logs/
 
-# Docker (Railway builds its own)
-Dockerfile
+# Docker — keep Dockerfile (railway.toml uses builder=DOCKERFILE)
 docker-compose*.yml

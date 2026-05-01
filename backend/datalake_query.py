@@ -14,6 +14,7 @@ Falls back to an empty list (fail-open) if Supabase is unreachable.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -36,6 +37,13 @@ _query_cache: dict[str, tuple[float, list[dict]]] = {}
 _EMBEDDING_CACHE_TTL = 3600  # 1 hour
 _EMBEDDING_CACHE_MAX_ENTRIES = 100
 _embedding_cache: dict[str, tuple[float, list[float]]] = {}
+
+# Concurrency limiter: prevents bot/crawler fan-out from saturating the
+# Supabase connection pool. Cache hits bypass this entirely.
+# 5 concurrent DB-bound calls × ≤27 UFs × 15s statement_timeout = well within
+# the 25-connection pool limit. Requests that cannot acquire within 2s fail
+# fast (return []) instead of queuing into a pool-exhaustion wedge.
+_SEO_SEMAPHORE = asyncio.Semaphore(5)
 
 
 def _cache_key(
@@ -137,96 +145,108 @@ async def query_datalake(
         return _cached
 
     try:
-        from supabase_client import get_supabase
+        await asyncio.wait_for(_SEO_SEMAPHORE.acquire(), timeout=2.0)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[DatalakeQuery] Concurrency limit reached — shedding request to protect pool"
+        )
+        return []
+
+    try:
+        from supabase_client import get_supabase, sb_execute
         sb = get_supabase()
     except Exception as e:
+        _SEO_SEMAPHORE.release()
         logger.warning(f"[DatalakeQuery] Supabase unavailable: {e}")
         return []
 
     # STORY-438: Generate query embedding when enabled
-    query_embedding: list[float] | None = None
-    if EMBEDDING_ENABLED:
-        query_text = _build_embedding_query_text(keywords, custom_terms)
-        if query_text:
-            query_embedding = await _get_query_embedding(query_text)
+    try:
+        query_embedding: list[float] | None = None
+        if EMBEDDING_ENABLED:
+            query_text = _build_embedding_query_text(keywords, custom_terms)
+            if query_text:
+                query_embedding = await _get_query_embedding(query_text)
 
-    rpc_params: dict[str, Any] = {
-        "p_ufs": ufs,
-        "p_date_start": data_inicial,
-        "p_date_end": data_final,
-        "p_tsquery": tsquery,
-        "p_websearch_text": websearch_text,
-        "p_modalidades": modalidades,
-        "p_valor_min": valor_min,
-        "p_valor_max": valor_max,
-        "p_esferas": esferas,
-        "p_modo": modo_busca,
-        "p_limit": limit,
-    }
+        rpc_params: dict[str, Any] = {
+            "p_ufs": ufs,
+            "p_date_start": data_inicial,
+            "p_date_end": data_final,
+            "p_tsquery": tsquery,
+            "p_websearch_text": websearch_text,
+            "p_modalidades": modalidades,
+            "p_valor_min": valor_min,
+            "p_valor_max": valor_max,
+            "p_esferas": esferas,
+            "p_modo": modo_busca,
+            "p_limit": limit,
+        }
 
-    # STORY-438: Include embedding when available
-    if query_embedding is not None:
-        rpc_params["p_embedding"] = query_embedding
+        # STORY-438: Include embedding when available
+        if query_embedding is not None:
+            rpc_params["p_embedding"] = query_embedding
 
-    logger.info(
-        f"[DatalakeQuery] ufs={ufs}, dates={data_inicial}/{data_final}, "
-        f"tsquery={tsquery!r}, websearch={websearch_text!r}, "
-        f"embedding={'yes' if query_embedding else 'no'}, limit={limit}"
-    )
+        logger.info(
+            f"[DatalakeQuery] ufs={ufs}, dates={data_inicial}/{data_final}, "
+            f"tsquery={tsquery!r}, websearch={websearch_text!r}, "
+            f"embedding={'yes' if query_embedding else 'no'}, limit={limit}"
+        )
 
-    # PostgREST caps results at 1000 rows per call.
-    # Paginate per-UF to avoid truncação em queries multi-UF.
-    _POSTGREST_ROW_CAP = 1000
-    rows: list[dict] = []
-    for uf in ufs:
-        uf_params = {**rpc_params, "p_ufs": [uf]}
-        try:
-            result = sb.rpc("search_datalake", uf_params).execute()
-            uf_rows = result.data or []
-            # Detecta possível truncamento silencioso do PostgREST (limite 1000 linhas/chamada)
-            if len(uf_rows) == _POSTGREST_ROW_CAP:
-                logger.warning(
-                    f"[DatalakeQuery] UF {uf} returned exactly {_POSTGREST_ROW_CAP} rows "
-                    f"— possível truncamento silencioso do PostgREST. "
-                    f"Considere reduzir o intervalo de datas ou aumentar a granularidade da query."
-                )
-                try:
-                    from metrics import DATALAKE_TRUNCATION_SUSPECTED
-                    DATALAKE_TRUNCATION_SUSPECTED.labels(uf=uf).inc()
-                except Exception:
-                    pass  # Métricas são opcionais — nunca bloqueiam o fluxo principal
-            rows.extend(uf_rows)
-        except Exception as e:
-            logger.warning(f"[DatalakeQuery] RPC failed for UF={uf}: {type(e).__name__}: {e}")
-
-    if not rows:
-        # STORY-437 AC3: Trigram fallback when FTS returns 0
-        if TRIGRAM_FALLBACK_ENABLED and (tsquery or websearch_text):
-            trigram_term = _build_trigram_term(keywords, custom_terms)
-            if trigram_term:
-                rows = _query_trigram_fallback(sb, trigram_term, ufs, limit)
-                if rows:
-                    normalized = [_row_to_normalized(row) for row in rows]
-                    for r in normalized:
-                        r["_source"] = "trigram_fallback"
-                    logger.info(
-                        '{"event": "trigram_fallback_activated", "query": %r, "results_found": %d}',
-                        trigram_term, len(normalized),
+        # PostgREST caps results at 1000 rows per call.
+        # Paginate per-UF to avoid truncação em queries multi-UF.
+        _POSTGREST_ROW_CAP = 1000
+        rows: list[dict] = []
+        for uf in ufs:
+            uf_params = {**rpc_params, "p_ufs": [uf]}
+            try:
+                result = await sb_execute(sb.rpc("search_datalake", uf_params), category="rpc")
+                uf_rows = result.data or []
+                # Detecta possível truncamento silencioso do PostgREST (limite 1000 linhas/chamada)
+                if len(uf_rows) == _POSTGREST_ROW_CAP:
+                    logger.warning(
+                        f"[DatalakeQuery] UF {uf} returned exactly {_POSTGREST_ROW_CAP} rows "
+                        f"— possível truncamento silencioso do PostgREST. "
+                        f"Considere reduzir o intervalo de datas ou aumentar a granularidade da query."
                     )
-                    _cache_put(_ck, normalized)
-                    return normalized
+                    try:
+                        from metrics import DATALAKE_TRUNCATION_SUSPECTED
+                        DATALAKE_TRUNCATION_SUSPECTED.labels(uf=uf).inc()
+                    except Exception:
+                        pass  # Métricas são opcionais — nunca bloqueiam o fluxo principal
+                rows.extend(uf_rows)
+            except Exception as e:
+                logger.warning(f"[DatalakeQuery] RPC failed for UF={uf}: {type(e).__name__}: {e}")
 
-        logger.warning("[DatalakeQuery] All UF queries returned 0 rows")
-        return []
+        if not rows:
+            # STORY-437 AC3: Trigram fallback when FTS returns 0
+            if TRIGRAM_FALLBACK_ENABLED and (tsquery or websearch_text):
+                trigram_term = _build_trigram_term(keywords, custom_terms)
+                if trigram_term:
+                    rows = await asyncio.to_thread(_query_trigram_fallback, sb, trigram_term, ufs, limit)
+                    if rows:
+                        normalized = [_row_to_normalized(row) for row in rows]
+                        for r in normalized:
+                            r["_source"] = "trigram_fallback"
+                        logger.info(
+                            '{"event": "trigram_fallback_activated", "query": %r, "results_found": %d}',
+                            trigram_term, len(normalized),
+                        )
+                        _cache_put(_ck, normalized)
+                        return normalized
 
-    normalized = [_row_to_normalized(row) for row in rows]
+            logger.warning("[DatalakeQuery] All UF queries returned 0 rows")
+            return []
 
-    logger.info(f"[DatalakeQuery] Returned {len(normalized)} records from local DB ({len(ufs)} UFs)")
+        normalized = [_row_to_normalized(row) for row in rows]
 
-    # S3-FIX: Cache results before returning
-    _cache_put(_ck, normalized)
+        logger.info(f"[DatalakeQuery] Returned {len(normalized)} records from local DB ({len(ufs)} UFs)")
 
-    return normalized
+        # S3-FIX: Cache results before returning
+        _cache_put(_ck, normalized)
+
+        return normalized
+    finally:
+        _SEO_SEMAPHORE.release()
 
 
 def _query_trigram_fallback(

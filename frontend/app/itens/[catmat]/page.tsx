@@ -2,6 +2,9 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import { fetchWithBudget } from '@/lib/safe-fetch';
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
@@ -44,34 +47,29 @@ interface ItemProfile {
 }
 
 async function fetchProfile(catmat: string): Promise<ItemProfile | null> {
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-  try {
-    const res = await fetch(`${backendUrl}/v1/itens/${catmat}/profile`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (res.status === 404 || res.status === 400) return null;
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+  return fetchWithBudget<ItemProfile>(`${BACKEND_URL}/v1/itens/${catmat}/profile`, {
+    timeout: 10000,
+    retries: 1,
+    revalidate: 86400,
+    label: 'item-profile',
+  });
 }
 
+// Memory feedback_isr_fetch_cache_alignment_next16: usar `next.revalidate` em vez de
+// `cache: 'no-store'` — alinha com semântica ISR (revalidate=86400 abaixo).
 export async function generateStaticParams() {
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-  try {
-    const res = await fetch(`${backendUrl}/v1/sitemap/itens`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const catmats: string[] = (data.catmats || []).slice(0, _MAX_STATIC_CATMATS);
-    return catmats.map((catmat) => ({ catmat }));
-  } catch {
-    return [];
-  }
+  const data = await fetchWithBudget<{ catmats?: string[] }>(
+    `${BACKEND_URL}/v1/sitemap/itens`,
+    {
+      timeout: 15000,
+      retries: 0,
+      revalidate: 86400,
+      label: 'sitemap-itens-static',
+      fallback: { catmats: [] },
+    },
+  );
+  const catmats: string[] = (data?.catmats || []).slice(0, _MAX_STATIC_CATMATS);
+  return catmats.map((catmat) => ({ catmat }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
