@@ -13,6 +13,7 @@ Endpoint:
   GET /v1/compliance/{cnpj}/profile  — perfil de due diligence B2G
 """
 
+import asyncio
 import logging
 import re
 import time
@@ -23,6 +24,8 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from pipeline.budget import _run_with_budget
+
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["compliance-publicos"])
 
@@ -31,6 +34,10 @@ _compliance_cache: dict[str, tuple[dict, float]] = {}
 
 _CNPJ_RE = re.compile(r"^\d{14}$")
 _HTTP_TIMEOUT = 10.0
+# RES-BE-015: budget for Supabase enriched_entities lookup. MUST be <
+# Supabase service_role ``statement_timeout=15s`` (FLOOR validated;
+# memory feedback_pool_leak_caller_timeout_vs_sql_timeout).
+_RAZAO_SOCIAL_QUERY_BUDGET_S = 5.0
 
 _PORTAL_BASE = "https://api.portaldatransparencia.gov.br"
 
@@ -164,8 +171,11 @@ async def compliance_profile(cnpj: str):
 
 async def _fetch_razao_social(cnpj: str) -> str:
     """Tenta obter a razao social de enriched_entities (Supabase) ou BrasilAPI."""
-    # 1. enriched_entities
-    try:
+    # 1. enriched_entities — RES-BE-015: ``_run_with_budget`` + ``to_thread``
+    # so the sync supabase-py client never blocks the event loop and any
+    # saturation increments
+    # ``smartlic_pipeline_budget_exceeded_total{phase=route,source=compliance_publicos.razao_social}``.
+    def _sync_query() -> list[dict]:
         from supabase_client import get_supabase
         sb = get_supabase()
         resp = (
@@ -176,11 +186,25 @@ async def _fetch_razao_social(cnpj: str) -> str:
             .limit(1)
             .execute()
         )
-        if resp.data:
-            data = resp.data[0].get("data") or {}
+        return resp.data or []
+
+    try:
+        rows = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=_RAZAO_SOCIAL_QUERY_BUDGET_S,
+            phase="route",
+            source="compliance_publicos.razao_social",
+        )
+        if rows:
+            data = rows[0].get("data") or {}
             nome = data.get("razao_social") or ""
             if nome:
                 return nome
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[Compliance] enriched_entities lookup exceeded %.1fs budget for %s",
+            _RAZAO_SOCIAL_QUERY_BUDGET_S, cnpj,
+        )
     except Exception as e:
         logger.debug("[Compliance] enriched_entities lookup falhou para %s: %s", cnpj, e)
 

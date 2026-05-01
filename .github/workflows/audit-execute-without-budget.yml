@@ -1,0 +1,163 @@
+name: "Audit .execute() without _run_with_budget (RES-BE-001 / RES-BE-015)"
+
+# Guards against a regression of the 2026-04-27 to 2026-04-30 outage cycle
+# (Stage 2-8). Bare ``.execute()`` in an async route — or
+# ``asyncio.wait_for(asyncio.to_thread(...))`` — leaks the Supabase pool slot
+# until ``statement_timeout=15s`` fires server-side, and the cancelled
+# future's cleanup blocks the event loop.
+#
+# This workflow runs on every PR that touches ``backend/routes/`` or the
+# audit script itself, posts a sticky PR comment with any findings, and
+# fails (exit 1) if violations are found in the RES-BE-015 sweep scope.
+
+on:
+  pull_request:
+    paths:
+      - 'backend/routes/**'
+      - 'backend/scripts/audit_execute_without_budget.py'
+      - '.github/workflows/audit-execute-without-budget.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/routes/**'
+      - 'backend/scripts/audit_execute_without_budget.py'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: audit-execute-budget-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit routes for unprotected .execute()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run audit (RES-BE-015 scope)
+        id: audit
+        run: |
+          set +e
+          python backend/scripts/audit_execute_without_budget.py --json \
+            > /tmp/audit-violations.jsonl
+          STATUS=$?
+          set -e
+
+          # Emit a human-readable summary to the job log too.
+          python backend/scripts/audit_execute_without_budget.py \
+            > /tmp/audit-violations.txt 2>&1 || true
+          cat /tmp/audit-violations.txt
+
+          COUNT=$(wc -l < /tmp/audit-violations.jsonl | tr -d ' ')
+          if [ -z "$COUNT" ]; then COUNT=0; fi
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "has_violations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_violations=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Emit GitHub annotations
+        if: steps.audit.outputs.has_violations == 'true'
+        run: |
+          # One ::error:: per violation so reviewers see them inline on the
+          # Files Changed tab.
+          python - <<'PY'
+          import json, sys
+          with open("/tmp/audit-violations.jsonl") as fh:
+              for line in fh:
+                  v = json.loads(line)
+                  # Strip leading workspace path so file= matches the repo path.
+                  rel = v["file"].split("/backend/", 1)[-1]
+                  rel = "backend/" + rel if not rel.startswith("backend/") else rel
+                  print(
+                      "::error file={f},line={l},col={c}::[{k}] {d}".format(
+                          f=rel, l=v["line"], c=max(1, v["col"] + 1),
+                          k=v["kind"], d=v["detail"],
+                      )
+                  )
+          PY
+
+      - name: Post / update PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const hasViolations = '${{ steps.audit.outputs.has_violations }}' === 'true';
+            const count = '${{ steps.audit.outputs.count }}';
+
+            const marker = '<!-- audit-execute-without-budget -->';
+            const okBody = `${marker}
+            ## Audit \`.execute()\` without \`_run_with_budget\` — PASS
+
+            Zero violations in the RES-BE-015 sweep scope (11 long-tail SEO
+            programmatic routes). The Stage 2-8 antipattern
+            (\`asyncio.wait_for(asyncio.to_thread(...))\` and bare sync
+            \`.execute()\` in async routes) is not present.
+
+            > Run locally with \`python backend/scripts/audit_execute_without_budget.py\`.`;
+
+            let body = okBody;
+            if (hasViolations) {
+              const raw = fs.readFileSync('/tmp/audit-violations.txt', 'utf8');
+              body = `${marker}
+            ## Audit \`.execute()\` without \`_run_with_budget\` — **FAIL** (${count} violation(s))
+
+            The 2026-04-27 to 2026-04-30 outage cycle (Stage 2-8) was caused
+            by sync \`.execute()\` in async route handlers. This PR introduces
+            (or retains) the same anti-pattern. Wrap each callsite in
+            \`pipeline.budget._run_with_budget(asyncio.to_thread(_sync_query),
+            budget=N, phase='route', source='<module>.<endpoint>')\`.
+
+            <details><summary>Violations</summary>
+
+            \`\`\`
+            ${raw.slice(0, 60_000)}
+            \`\`\`
+
+            </details>
+
+            Run locally:
+            \`\`\`
+            python backend/scripts/audit_execute_without_budget.py
+            \`\`\``;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail on violations
+        if: steps.audit.outputs.has_violations == 'true'
+        run: exit 1

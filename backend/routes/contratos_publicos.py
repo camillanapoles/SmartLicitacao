@@ -22,6 +22,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from pipeline.budget import _run_with_budget
 from sectors import SECTORS
 
 logger = logging.getLogger(__name__)
@@ -34,9 +35,13 @@ _NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
 # Hard request budget for fornecedor_profile (Googlebot-hit programmatic SEO route).
 _FORNECEDOR_PROFILE_BUDGET_S = 30.0
 # Budget for _fetch_sector_contracts + orgao_contratos_stats sync queries.
-# sync .execute() runs in asyncio.to_thread; wait_for caps wall-clock so the
-# Railway 120s proxy timeout never trips on these Googlebot-heavy routes.
-_SECTOR_QUERY_BUDGET_S = 10.0
+# RES-BE-015: tightened from 10s -> 5s and routed through ``_run_with_budget``.
+# Budget MUST be < Supabase service_role ``statement_timeout=15s`` (FLOOR
+# validated; see memory ``feedback_pool_leak_caller_timeout_vs_sql_timeout``).
+# Caller-side ``wait_for`` alone cancels the await but the Python thread
+# holds the pool slot until ``statement_timeout`` fires server-side — that
+# was the Stage 2-8 root cause.
+_SECTOR_QUERY_BUDGET_S = 5.0
 _contratos_cache: dict[str, tuple[dict, float]] = {}
 _fornecedores_cache: dict[str, tuple[dict, float]] = {}
 _orgao_contratos_cache: dict[str, tuple[dict, float]] = {}
@@ -196,13 +201,15 @@ async def _fetch_sector_contracts(
         return resp.data or []
 
     try:
-        rows = await asyncio.wait_for(
+        rows = await _run_with_budget(
             asyncio.to_thread(_sync_query),
-            timeout=_SECTOR_QUERY_BUDGET_S,
+            budget=_SECTOR_QUERY_BUDGET_S,
+            phase="route",
+            source="contratos_publicos.sector_contracts",
         )
     except asyncio.TimeoutError:
         logger.warning(
-            "contratos_publicos sector query exceeded %.0fs budget for %s/%s",
+            "contratos_publicos sector query exceeded %.1fs budget for %s/%s",
             _SECTOR_QUERY_BUDGET_S, sector_id_clean, uf_upper,
         )
         return [], True
@@ -276,13 +283,15 @@ async def orgao_contratos_stats(cnpj: str):
         return resp.data or []
 
     try:
-        rows = await asyncio.wait_for(
+        rows = await _run_with_budget(
             asyncio.to_thread(_sync_query_orgao),
-            timeout=_SECTOR_QUERY_BUDGET_S,
+            budget=_SECTOR_QUERY_BUDGET_S,
+            phase="route",
+            source="contratos_publicos.orgao_contratos_stats",
         )
     except asyncio.TimeoutError:
         logger.warning(
-            "orgao_contratos query exceeded %.0fs budget for %s", _SECTOR_QUERY_BUDGET_S, cnpj_clean,
+            "orgao_contratos query exceeded %.1fs budget for %s", _SECTOR_QUERY_BUDGET_S, cnpj_clean,
         )
         partial = _build_orgao_unavailable(cnpj_clean)
         _set_cached(_orgao_contratos_cache, cache_key, partial, ttl=_NEGATIVE_CACHE_TTL_SECONDS)
