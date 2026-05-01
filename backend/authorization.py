@@ -12,6 +12,7 @@ import logging
 import os
 
 from log_sanitizer import mask_user_id
+from schemas.common import validate_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,21 @@ class ErrorCode:
 
 
 def get_admin_ids() -> set[str]:
-    """Get admin user IDs from environment variable (fallback/override)."""
+    """Get validated admin user IDs from environment variable (fallback/override).
+
+    Each ID is validated as UUID v4; invalid entries are logged and skipped.
+    """
     raw = os.getenv("ADMIN_USER_IDS", "")
-    return {uid.strip().lower() for uid in raw.split(",") if uid.strip()}
+    valid_ids: set[str] = set()
+    for uid in raw.split(","):
+        uid = uid.strip()
+        if not uid:
+            continue
+        try:
+            valid_ids.add(validate_uuid(uid, "admin_id"))
+        except ValueError as e:
+            logger.warning(f"Invalid admin ID in ADMIN_USER_IDS skipped: {e}")
+    return valid_ids
 
 
 async def check_user_roles(user_id: str) -> tuple[bool, bool]:
