@@ -31,6 +31,12 @@ SSE_MAX_CONNECTIONS = int(os.getenv("SSE_MAX_CONNECTIONS", "3"))
 SSE_RECONNECT_RATE_LIMIT = int(os.getenv("SSE_RECONNECT_RATE_LIMIT", "10"))
 SSE_RECONNECT_WINDOW_SECONDS = int(os.getenv("SSE_RECONNECT_WINDOW_SECONDS", "60"))
 
+# OBS-001: Tier-specific rate limits (bot vs human) — bucket isolation
+# prevents Googlebot/Bingbot crawl waves from consuming human-tier quota
+# (memory: project_backend_outage_2026_04_29_stage5).
+BOT_RATE_LIMIT_PER_MINUTE = int(os.getenv("BOT_RATE_LIMIT_PER_MINUTE", "10"))
+HUMAN_RATE_LIMIT_PER_MINUTE = int(os.getenv("HUMAN_RATE_LIMIT_PER_MINUTE", "60"))
+
 
 class RateLimiter:
     """Token bucket rate limiter using shared Redis pool + in-memory fallback.
@@ -114,6 +120,75 @@ class RateLimiter:
 
 # Global instance
 rate_limiter = RateLimiter()
+
+
+# ============================================================================
+# OBS-001: Tiered rate limiter (bot vs human bucket isolation)
+# ============================================================================
+
+
+async def check_rate_limit_tiered(
+    identifier: str,
+    user_agent: str | None,
+) -> tuple[bool, str, int]:
+    """Tiered rate limit with bot/human bucket isolation.
+
+    Classifies the caller's User-Agent and applies separate Redis buckets so
+    that bot traffic (Googlebot, Bingbot, etc.) cannot consume the quota of
+    human users.
+
+    Args:
+        identifier: Stable caller key (typically ``user_id`` for authenticated
+            requests or ``ip`` for anonymous traffic).
+        user_agent: Raw ``User-Agent`` header value (may be ``None``).
+
+    Returns:
+        ``(allowed, tier, retry_after_seconds)``. ``tier`` is ``"bot"`` or
+        ``"human"``. When ``allowed`` is ``False``, ``retry_after_seconds``
+        is at least 1.
+
+    Limits (env-overridable):
+        - bot tier:   ``BOT_RATE_LIMIT_PER_MINUTE`` (default 10/min)
+        - human tier: ``HUMAN_RATE_LIMIT_PER_MINUTE`` (default 60/min)
+
+    Bucket keys (Redis):
+        - ``rl:bot:{identifier}:{minute}``
+        - ``rl:human:{identifier}:{minute}``
+
+    Memory: project_backend_outage_2026_04_29_stage5 — Googlebot wave saturated
+    perfil/orgao/contratos publicos endpoints. Tier isolation prevents the
+    same shared-bucket failure mode.
+    """
+    # Local import keeps the bot-detection dependency optional / decoupled
+    # from import-time side effects.
+    from bot_detection import classify_tier
+
+    tier = classify_tier(user_agent)
+    max_per_min = (
+        BOT_RATE_LIMIT_PER_MINUTE if tier == "bot" else HUMAN_RATE_LIMIT_PER_MINUTE
+    )
+
+    minute_key = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M")
+    bucket_key = f"rl:{tier}:{identifier}:{minute_key}"
+
+    redis = await get_redis_pool()
+    if redis:
+        allowed, retry_after = await rate_limiter._check_redis(
+            redis, bucket_key, max_per_min
+        )
+    else:
+        allowed, retry_after = rate_limiter._check_memory(bucket_key, max_per_min)
+
+    # Prometheus counter — best-effort, never fails the request.
+    try:
+        from metrics import RATE_LIMIT_DECISIONS_TOTAL
+
+        decision = "allow" if allowed else "throttle"
+        RATE_LIMIT_DECISIONS_TOTAL.labels(tier=tier, decision=decision).inc()
+    except Exception:  # noqa: BLE001 — metrics are optional
+        pass
+
+    return allowed, tier, retry_after
 
 
 # ============================================================================

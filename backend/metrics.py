@@ -254,6 +254,13 @@ RATE_LIMIT_HITS = _create_counter(
     labelnames=["endpoint", "caller_type"],
 )
 
+# OBS-001: Tiered rate limit decisions (bot vs human, allow vs throttle)
+RATE_LIMIT_DECISIONS_TOTAL = _create_counter(
+    "smartlic_rate_limit_decisions_total",
+    "Rate limit decisions by tier (bot|human) and outcome (allow|throttle)",
+    labelnames=["tier", "decision"],
+)
+
 # STORY-2.11 (EPIC-TD-2026Q2 P0): LLM monthly budget metrics
 LLM_BUDGET_USD_MTD = _create_gauge(
     "smartlic_llm_budget_usd_mtd",
