@@ -33,6 +33,10 @@ _CACHE_TTL_SECONDS = 24 * 60 * 60  # 24h
 _NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
 # Hard request budget for fornecedor_profile (Googlebot-hit programmatic SEO route).
 _FORNECEDOR_PROFILE_BUDGET_S = 30.0
+# Budget for _fetch_sector_contracts + orgao_contratos_stats sync queries.
+# sync .execute() runs in asyncio.to_thread; wait_for caps wall-clock so the
+# Railway 120s proxy timeout never trips on these Googlebot-heavy routes.
+_SECTOR_QUERY_BUDGET_S = 10.0
 _contratos_cache: dict[str, tuple[dict, float]] = {}
 _fornecedores_cache: dict[str, tuple[dict, float]] = {}
 _orgao_contratos_cache: dict[str, tuple[dict, float]] = {}
@@ -161,16 +165,22 @@ def _set_cached(cache: dict, key: str, data: dict, ttl: float = _CACHE_TTL_SECON
 # Shared: fetch + filter contracts by sector keywords + UF
 # ---------------------------------------------------------------------------
 
-async def _fetch_sector_contracts(sector_id_clean: str, uf_upper: str) -> list[dict]:
+async def _fetch_sector_contracts(
+    sector_id_clean: str, uf_upper: str
+) -> tuple[list[dict], bool]:
     """Fetch contracts from pncp_supplier_contracts for a given UF,
-    then filter by sector keywords on objeto_contrato."""
+    then filter by sector keywords on objeto_contrato.
+
+    Returns (matched_rows, timed_out). timed_out=True when the query exceeded
+    _SECTOR_QUERY_BUDGET_S or failed — callers should cache the result under
+    _NEGATIVE_CACHE_TTL_SECONDS to allow recovery after a short window.
+    """
     sector = SECTORS[sector_id_clean]
     keywords_lower = {kw.lower() for kw in sector.keywords}
 
-    try:
+    def _sync_query() -> list[dict]:
         from supabase_client import get_supabase
         sb = get_supabase()
-
         resp = (
             sb.table("pncp_supplier_contracts")
             .select(
@@ -183,20 +193,49 @@ async def _fetch_sector_contracts(sector_id_clean: str, uf_upper: str) -> list[d
             .limit(5000)
             .execute()
         )
+        return resp.data or []
+
+    try:
+        rows = await asyncio.wait_for(
+            asyncio.to_thread(_sync_query),
+            timeout=_SECTOR_QUERY_BUDGET_S,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "contratos_publicos sector query exceeded %.0fs budget for %s/%s",
+            _SECTOR_QUERY_BUDGET_S, sector_id_clean, uf_upper,
+        )
+        return [], True
     except Exception as e:
         logger.error("contratos_publicos DB query failed for %s/%s: %s", sector_id_clean, uf_upper, e)
-        raise HTTPException(status_code=502, detail="Erro ao consultar o datalake de contratos")
+        return [], True
 
-    rows = resp.data or []
+    matched = [
+        row for row in rows
+        if any(kw in (row.get("objeto_contrato") or "").lower() for kw in keywords_lower)
+    ]
+    return matched, False
 
-    # Filter by sector keywords (substring match on objeto_contrato)
-    matched = []
-    for row in rows:
-        text = (row.get("objeto_contrato") or "").lower()
-        if any(kw in text for kw in keywords_lower):
-            matched.append(row)
 
-    return matched
+def _build_orgao_unavailable(cnpj: str) -> dict:
+    """Minimal partial response when orgao query times out.
+
+    Googlebot receives valid JSON (not 502) so the page stays indexed while DB
+    recovers. Cached under _NEGATIVE_CACHE_TTL_SECONDS (5min).
+    """
+    now = datetime.now(timezone.utc)
+    return {
+        "orgao_nome": cnpj,
+        "orgao_cnpj": cnpj,
+        "total_contracts": 0,
+        "total_value": 0.0,
+        "avg_value": 0.0,
+        "top_fornecedores": [],
+        "monthly_trend": [],
+        "sample_contracts": [],
+        "last_updated": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "aviso_legal": "Dados temporariamente indisponíveis. Tente novamente em alguns minutos.",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -219,10 +258,9 @@ async def orgao_contratos_stats(cnpj: str):
     if cached:
         return OrgaoContratosStatsResponse(**cached)
 
-    try:
+    def _sync_query_orgao() -> list[dict]:
         from supabase_client import get_supabase
         sb = get_supabase()
-
         resp = (
             sb.table("pncp_supplier_contracts")
             .select(
@@ -235,11 +273,26 @@ async def orgao_contratos_stats(cnpj: str):
             .limit(5000)
             .execute()
         )
+        return resp.data or []
+
+    try:
+        rows = await asyncio.wait_for(
+            asyncio.to_thread(_sync_query_orgao),
+            timeout=_SECTOR_QUERY_BUDGET_S,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "orgao_contratos query exceeded %.0fs budget for %s", _SECTOR_QUERY_BUDGET_S, cnpj_clean,
+        )
+        partial = _build_orgao_unavailable(cnpj_clean)
+        _set_cached(_orgao_contratos_cache, cache_key, partial, ttl=_NEGATIVE_CACHE_TTL_SECONDS)
+        return OrgaoContratosStatsResponse(**partial)
     except Exception as e:
         logger.error("orgao_contratos DB query failed for %s: %s", cnpj_clean, e)
-        raise HTTPException(status_code=502, detail="Erro ao consultar o datalake de contratos")
+        partial = _build_orgao_unavailable(cnpj_clean)
+        _set_cached(_orgao_contratos_cache, cache_key, partial, ttl=_NEGATIVE_CACHE_TTL_SECONDS)
+        return OrgaoContratosStatsResponse(**partial)
 
-    rows = resp.data or []
     if not rows:
         raise HTTPException(status_code=404, detail="Nenhum contrato encontrado para este orgao")
 
@@ -346,7 +399,7 @@ async def contratos_stats(setor: str, uf: str):
         return ContratosStatsResponse(**cached)
 
     sector = SECTORS[sector_id_clean]
-    matched = await _fetch_sector_contracts(sector_id_clean, uf_upper)
+    matched, _timed_out = await _fetch_sector_contracts(sector_id_clean, uf_upper)
 
     # Aggregations
     total_value = 0.0
@@ -444,7 +497,10 @@ async def contratos_stats(setor: str, uf: str):
         ),
     }
 
-    _set_cached(_contratos_cache, cache_key, response_data)
+    _set_cached(
+        _contratos_cache, cache_key, response_data,
+        ttl=_NEGATIVE_CACHE_TTL_SECONDS if _timed_out else _CACHE_TTL_SECONDS,
+    )
     return ContratosStatsResponse(**response_data)
 
 
@@ -472,7 +528,7 @@ async def fornecedores_stats(setor: str, uf: str):
         return FornecedoresStatsResponse(**cached)
 
     sector = SECTORS[sector_id_clean]
-    matched = await _fetch_sector_contracts(sector_id_clean, uf_upper)
+    matched, _timed_out = await _fetch_sector_contracts(sector_id_clean, uf_upper)
 
     # Aggregate by supplier
     forn_agg: dict[str, dict] = defaultdict(lambda: {"nome": "", "cnpj": "", "contratos": 0, "valor": 0.0})
@@ -521,7 +577,10 @@ async def fornecedores_stats(setor: str, uf: str):
         ),
     }
 
-    _set_cached(_fornecedores_cache, cache_key, response_data)
+    _set_cached(
+        _fornecedores_cache, cache_key, response_data,
+        ttl=_NEGATIVE_CACHE_TTL_SECONDS if _timed_out else _CACHE_TTL_SECONDS,
+    )
     return FornecedoresStatsResponse(**response_data)
 
 

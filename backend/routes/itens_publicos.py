@@ -11,6 +11,7 @@ Endpoints:
   GET /v1/sitemap/itens           — lista de codigos CATMAT para sitemap.xml
 """
 
+import asyncio
 import logging
 import re
 import statistics
@@ -38,6 +39,10 @@ _itens_sitemap_cache: dict[str, tuple[dict, float]] = {}
 _CATMAT_RE = re.compile(r"^\d{1,9}$")
 _HTTP_TIMEOUT = 5.0
 _CATMAT_API_BASE = "https://api.compras.dados.gov.br"
+# Budget for pncp_supplier_contracts query — sync .execute() runs in
+# asyncio.to_thread so the event loop stays unblocked; wait_for caps total
+# wall-clock. Stage 8 2026-04-30: bare .execute() wedged the event loop.
+_PRICE_QUERY_BUDGET_S = 10.0
 
 
 # ---------------------------------------------------------------------------
@@ -416,57 +421,61 @@ async def _fetch_price_data(nome_item: str) -> tuple[list[float], list[dict]]:
     """Busca contratos do PNCP que contenham o nome do item no objeto.
 
     Retorna (lista_de_valores, top_10_contratos_referencia).
+    Encapsula o .execute() síncrono em asyncio.to_thread para não bloquear
+    o event loop (vide Stage 8 outage 2026-04-30).
     """
-    # Usa as 2 primeiras palavras significativas (>=4 chars) para evitar ruido
     palavras = [p for p in nome_item.lower().split() if len(p) >= 4][:2]
     if not palavras:
         return [], []
 
-    from supabase_client import get_supabase
-    sb = get_supabase()
-
-    # Busca contratos com keyword match no objeto
-    valores: list[float] = []
-    contratos_ref: list[dict] = []
-
-    try:
-        # Busca por primeira palavra-chave (PostgREST ilike)
+    def _sync_fetch() -> list[dict]:
+        from supabase_client import get_supabase
+        sb = get_supabase()
         resp = (
             sb.table("pncp_supplier_contracts")
-            .select(
-                "valor_global,objeto_contrato,orgao_nome,data_assinatura,uf"
-            )
+            .select("valor_global,objeto_contrato,orgao_nome,data_assinatura,uf")
             .ilike("objeto_contrato", f"%{palavras[0]}%")
             .eq("is_active", True)
             .order("data_assinatura", desc=True)
             .limit(1000)
             .execute()
         )
-        rows = resp.data or []
+        return resp.data or []
 
-        # Filtra por segunda palavra se disponivel (reduz falsos positivos)
-        if len(palavras) >= 2:
-            rows = [
-                r for r in rows
-                if palavras[1] in (r.get("objeto_contrato") or "").lower()
-            ]
-
-        for row in rows:
-            v = _safe_float(row.get("valor_global"))
-            if v and v > 0.0:
-                valores.append(v)
-                if len(contratos_ref) < 10:
-                    obj = (row.get("objeto_contrato") or "").strip()
-                    contratos_ref.append({
-                        "objeto": obj[:200] if len(obj) > 200 else obj,
-                        "orgao": (row.get("orgao_nome") or "").strip() or "Nao informado",
-                        "valor": v,
-                        "data_assinatura": (row.get("data_assinatura") or "")[:10],
-                        "uf": (row.get("uf") or "").strip().upper(),
-                    })
-
+    try:
+        rows = await asyncio.wait_for(
+            asyncio.to_thread(_sync_fetch),
+            timeout=_PRICE_QUERY_BUDGET_S,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("[Itens] price_data query exceeded %.0fs budget for '%s'", _PRICE_QUERY_BUDGET_S, nome_item)
+        return [], []
     except Exception as e:
         logger.error("[Itens] price_data query falhou para '%s': %s", nome_item, e)
+        return [], []
+
+    # Filtra por segunda palavra se disponivel (reduz falsos positivos)
+    if len(palavras) >= 2:
+        rows = [
+            r for r in rows
+            if palavras[1] in (r.get("objeto_contrato") or "").lower()
+        ]
+
+    valores: list[float] = []
+    contratos_ref: list[dict] = []
+    for row in rows:
+        v = _safe_float(row.get("valor_global"))
+        if v and v > 0.0:
+            valores.append(v)
+            if len(contratos_ref) < 10:
+                obj = (row.get("objeto_contrato") or "").strip()
+                contratos_ref.append({
+                    "objeto": obj[:200] if len(obj) > 200 else obj,
+                    "orgao": (row.get("orgao_nome") or "").strip() or "Nao informado",
+                    "valor": v,
+                    "data_assinatura": (row.get("data_assinatura") or "")[:10],
+                    "uf": (row.get("uf") or "").strip().upper(),
+                })
 
     return valores, contratos_ref
 
