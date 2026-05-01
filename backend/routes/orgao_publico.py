@@ -5,6 +5,7 @@ from the local pncp_raw_bids datalake. Queries only local DB — no
 external API calls. Public (no auth). Cache: InMemory 24h TTL per CNPJ.
 """
 
+import asyncio
 import logging
 import re
 import time
@@ -14,6 +15,8 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+from pipeline.budget import _run_with_budget
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["orgao-publico"])
@@ -95,6 +98,14 @@ class OrgaoStatsResponse(BaseModel):
 _REDIS_CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
 _REDIS_CACHE_PREFIX = "orgao_stats:v1:"
 
+# RES-BE-015: Negative-cache TTL for DB saturation paths.
+# 5min keeps Googlebot retry storms from re-saturating the pool while a
+# successful crawl wave can refresh the cache normally.
+_NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
+# Per-query budget. MUST be < Supabase service_role ``statement_timeout=15s``
+# (FLOOR validated; memory feedback_pool_leak_caller_timeout_vs_sql_timeout).
+_ORGAO_QUERY_BUDGET_S = 5.0
+
 
 async def _redis_get(cnpj: str) -> Optional[dict]:
     try:
@@ -154,9 +165,15 @@ async def orgao_stats(cnpj: str):
         _set_cached(cnpj_clean, redis_cached)
         return OrgaoStatsResponse(**redis_cached)
 
-    data = await _build_orgao_stats(cnpj_clean)
-    _set_cached(cnpj_clean, data)
-    await _redis_set(cnpj_clean, data)
+    data, partial = await _build_orgao_stats(cnpj_clean)
+    if partial:
+        # RES-BE-015: cache the unavailable shape under a short TTL so a
+        # Googlebot retry storm does not re-saturate the pool, but the
+        # next non-degraded request can still refresh the cache.
+        _orgao_cache[cnpj_clean] = (data, time.time() - _CACHE_TTL_SECONDS + _NEGATIVE_CACHE_TTL_SECONDS)
+    else:
+        _set_cached(cnpj_clean, data)
+        await _redis_set(cnpj_clean, data)
     return OrgaoStatsResponse(**data)
 
 
@@ -201,9 +218,47 @@ def _extract_top_setores(rows: list[dict], top_n: int = 5) -> list[str]:
 # Build stats
 # ---------------------------------------------------------------------------
 
-async def _build_orgao_stats(cnpj: str) -> dict:
-    """Query pncp_raw_bids and aggregate stats for a single órgão."""
-    try:
+def _build_orgao_unavailable(cnpj: str) -> dict:
+    """Minimal partial response when DB saturates / times out.
+
+    Returns a payload that still validates against ``OrgaoStatsResponse`` so
+    Googlebot receives a valid 200 (cached for 5 min) instead of 502 — a 502
+    storm during the 2026-04-29 Stage 5 outage was the trigger that wedged
+    the worker. Caller marks the result with negative-cache TTL.
+    """
+    return {
+        "nome": "Órgão",
+        "cnpj": cnpj,
+        "esfera": "Não informado",
+        "uf": "",
+        "municipio": "Não informado",
+        "total_licitacoes": 0,
+        "licitacoes_30d": 0,
+        "licitacoes_90d": 0,
+        "licitacoes_365d": 0,
+        "valor_medio_estimado": 0.0,
+        "valor_total_estimado": 0.0,
+        "top_modalidades": [],
+        "top_setores": [],
+        "ultimas_licitacoes": [],
+        "top_fornecedores": [],
+        "total_contratos_24m": 0,
+        "valor_total_contratos_24m": 0.0,
+        "aviso_legal": (
+            "Dados temporariamente indisponíveis. Tente novamente em alguns minutos."
+        ),
+    }
+
+
+async def _build_orgao_stats(cnpj: str) -> tuple[dict, bool]:
+    """Query pncp_raw_bids and aggregate stats for a single órgão.
+
+    Returns ``(data, partial)`` where ``partial=True`` means the underlying
+    query exceeded ``_ORGAO_QUERY_BUDGET_S`` or failed; ``data`` is then a
+    valid-shape unavailable payload. Callers should cache partial responses
+    under ``_NEGATIVE_CACHE_TTL_SECONDS``.
+    """
+    def _sync_query() -> list[dict]:
         from supabase_client import get_supabase
 
         sb = get_supabase()
@@ -224,11 +279,25 @@ async def _build_orgao_stats(cnpj: str) -> dict:
             .limit(5000)
             .execute()
         )
+        return resp.data or []
+
+    try:
+        rows = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=_ORGAO_QUERY_BUDGET_S,
+            phase="route",
+            source="orgao_publico.orgao_stats",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "orgao_stats query exceeded %.1fs budget for %s — returning unavailable partial",
+            _ORGAO_QUERY_BUDGET_S, cnpj,
+        )
+        return _build_orgao_unavailable(cnpj), True
     except Exception as e:
         logger.error("orgao_stats DB query failed for %s: %s", cnpj, e)
-        raise HTTPException(status_code=502, detail="Erro ao consultar o datalake")
+        return _build_orgao_unavailable(cnpj), True
 
-    rows = resp.data or []
     if not rows:
         raise HTTPException(status_code=404, detail="Órgão não encontrado no datalake")
 
@@ -350,20 +419,21 @@ async def _build_orgao_stats(cnpj: str) -> dict:
             "Dados de fontes públicas: Portal Nacional de Contratações Públicas (PNCP). "
             "Atualização diária."
         ),
-    }
+    }, False
 
 
 async def _fetch_contracts_data(orgao_cnpj: str, limit: int = 10) -> dict:
     """Query pncp_supplier_contracts for top suppliers and aggregate contract stats.
 
     Returns dict with 'top_fornecedores', 'total_contratos_24m', 'valor_total_contratos_24m'.
-    Returns empty/zero gracefully when table is empty (during/before backfill).
+    Returns empty/zero gracefully when table is empty (during/before backfill) or
+    when the query exceeds ``_ORGAO_QUERY_BUDGET_S`` (RES-BE-015 negative cache).
     """
     result = {"top_fornecedores": [], "total_contratos_24m": 0, "valor_total_contratos_24m": 0.0}
-    try:
+
+    def _sync_query() -> list[dict]:
         from supabase_client import get_supabase
         sb = get_supabase()
-
         # Aggregate by supplier CNPJ — Supabase doesn't support GROUP BY directly,
         # so we fetch up to 2000 rows and aggregate in Python (table grows large post-backfill;
         # a proper RPC would be ideal but this is zero-infra and works for cache=24h).
@@ -375,8 +445,15 @@ async def _fetch_contracts_data(orgao_cnpj: str, limit: int = 10) -> dict:
             .limit(2000)
             .execute()
         )
+        return resp.data or []
 
-        rows = resp.data or []
+    try:
+        rows = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=_ORGAO_QUERY_BUDGET_S,
+            phase="route",
+            source="orgao_publico.contracts_data",
+        )
         if not rows:
             return result
 
@@ -418,6 +495,11 @@ async def _fetch_contracts_data(orgao_cnpj: str, limit: int = 10) -> dict:
             if t["valor"] > 0
         ]
 
+    except asyncio.TimeoutError:
+        logger.warning(
+            "contracts_data query exceeded %.1fs budget for %s",
+            _ORGAO_QUERY_BUDGET_S, orgao_cnpj,
+        )
     except Exception as exc:
         logger.warning("contracts_data query failed for %s: %s", orgao_cnpj, exc)
 

@@ -26,12 +26,19 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from metrics import OBSERVATORIO_BUDGET_EXCEEDED
+from pipeline.budget import _run_with_budget
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["observatorio"])
 
-# STORY-431 AC10: 15s hard budget per Supabase round-trip (current+prev month)
-_QUERY_BUDGET_S = 15.0
+# STORY-431 AC10 + RES-BE-015: hard budget per Supabase round-trip
+# (current+prev month). Tightened from 15.0s to 8.0s — the previous value
+# tied the budget at the Supabase service_role ``statement_timeout`` floor
+# (15s) which means the cancelled future cleanup ran on the event loop just
+# as the SQL was firing server-side. New floor is < statement_timeout so the
+# DB closes its side of the connection before Python tries to clean up
+# (memory feedback_pool_leak_caller_timeout_vs_sql_timeout).
+_QUERY_BUDGET_S = 8.0
 _CACHE_TTL_SECONDS = 24 * 60 * 60  # 24h on success
 # STORY-431 AC10: negative cache TTL on timeout/error — same pattern as PR #535 (sitemap)
 _NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
@@ -362,13 +369,19 @@ async def _generate_relatorio(mes: int, ano: int) -> dict:
     results: list[dict] = []
     prev_results: list[dict] = []
 
-    # STORY-431 AC10: hard 15s budget per Supabase round-trip with negative cache.
-    # Pattern from PR #535 (sitemap fix): wait_for + label-aware Counter + Sentry tag.
+    # STORY-431 AC10 + RES-BE-015: hard budget per Supabase round-trip with
+    # negative cache. ``_run_with_budget(asyncio.to_thread(...))`` increments
+    # ``smartlic_pipeline_budget_exceeded_total{phase=route,source=observatorio.*}``
+    # AND avoids the wait_for+to_thread pool leak (caller cancel does not stop
+    # the Python thread; the cancelled future cleanup ran inline on the event
+    # loop and was the Stage 2-8 freeze).
     if is_historical:
         try:
-            results = await asyncio.wait_for(
+            results = await _run_with_budget(
                 asyncio.to_thread(_query_historical_sync, data_inicial, data_final),
-                timeout=_QUERY_BUDGET_S,
+                budget=_QUERY_BUDGET_S,
+                phase="route",
+                source="observatorio.relatorio_historical",
             )
             logger.info(
                 "observatorio: historical query for %d/%d returned %d rows",
@@ -421,9 +434,11 @@ async def _generate_relatorio(mes: int, ano: int) -> dict:
     prev_is_historical = (today - date(prev_ano, prev_mes, 1)).days > 30
     if prev_is_historical:
         try:
-            prev_results = await asyncio.wait_for(
+            prev_results = await _run_with_budget(
                 asyncio.to_thread(_query_historical_sync, prev_inicial, prev_final),
-                timeout=_QUERY_BUDGET_S,
+                budget=_QUERY_BUDGET_S,
+                phase="route",
+                source="observatorio.relatorio_prev_month_historical",
             )
         except asyncio.TimeoutError:
             logger.warning(

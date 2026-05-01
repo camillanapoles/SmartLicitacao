@@ -23,13 +23,26 @@ from routes._sitemap_cache_headers import SITEMAP_CACHE_HEADERS
 from pydantic import BaseModel
 
 from metrics import record_sitemap_count
+from pipeline.budget import _run_with_budget
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["municipios-publicos"])
 
 _CACHE_TTL_SECONDS = 24 * 60 * 60  # 24h
+# RES-BE-015: short TTL for failure paths so Googlebot retry storms cannot
+# re-saturate the pool while a healthy crawl wave can refresh normally.
+_NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
 _municipio_profile_cache: dict[str, tuple[dict, float]] = {}
 _municipio_sitemap_cache: dict[str, tuple[dict, float]] = {}
+
+# RES-BE-015 budgets. Both MUST be < Supabase service_role
+# ``statement_timeout=15s`` (FLOOR validated; memory
+# feedback_pool_leak_caller_timeout_vs_sql_timeout).
+# AC3 of the story explicitly grants budget=8.0 for the bids query because
+# ``pncp_raw_bids`` filtered by uf+is_active without a covering index can be
+# slow on cold cache. Enriched entity lookup uses the standard 5s.
+_ENRICHED_QUERY_BUDGET_S = 5.0
+_BIDS_QUERY_BUDGET_S = 8.0
 
 # Seed: 200 municipios de maior relevancia B2G (capitais + polos regionais)
 # Formato: (slug, ibge_code, nome_display, uf, populacao_estimada)
@@ -362,14 +375,22 @@ async def municipio_profile(slug: str):
     nome = meta["nome"]
     uf = meta["uf"]
     populacao = meta["populacao"]
+    # RES-BE-015: track whether the bids query degraded (timeout/exception).
+    # When True, the cache entry uses _NEGATIVE_CACHE_TTL_SECONDS so the next
+    # crawl wave can refresh sooner instead of being stuck with an empty
+    # payload for 24h.
+    bids_query_degraded = False
 
-    from supabase_client import get_supabase
-    sb = get_supabase()
-
-    # Dados enriquecidos do IBGE (enriched_entities)
+    # Dados enriquecidos do IBGE (enriched_entities) — RES-BE-015: routed
+    # through ``_run_with_budget(asyncio.to_thread(...))`` so the sync
+    # supabase-py client never blocks the event loop and saturation is
+    # observable per route.
     pib_per_capita: Optional[float] = None
-    try:
-        enrich_resp = (
+
+    def _enriched_query_sync() -> list[dict]:
+        from supabase_client import get_supabase
+        sb = get_supabase()
+        resp = (
             sb.table("enriched_entities")
             .select("data")
             .eq("entity_type", "municipio")
@@ -377,10 +398,24 @@ async def municipio_profile(slug: str):
             .limit(1)
             .execute()
         )
-        if enrich_resp.data:
-            enrich_data = enrich_resp.data[0].get("data") or {}
+        return resp.data or []
+
+    try:
+        enriched_rows = await _run_with_budget(
+            asyncio.to_thread(_enriched_query_sync),
+            budget=_ENRICHED_QUERY_BUDGET_S,
+            phase="route",
+            source="municipios_publicos.enriched_entities",
+        )
+        if enriched_rows:
+            enrich_data = enriched_rows[0].get("data") or {}
             pib_per_capita = enrich_data.get("pib_per_capita")
             populacao = enrich_data.get("populacao") or populacao
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[Municipios] enriched_entities exceeded %.1fs budget for %s",
+            _ENRICHED_QUERY_BUDGET_S, ibge_code,
+        )
     except Exception as e:
         logger.warning(
             "[Municipios] enriched_entities falhou para %s (continuando sem enrichment): %s",
@@ -389,13 +424,21 @@ async def municipio_profile(slug: str):
 
     # Licitacoes abertas no datalake (pncp_raw_bids)
     # STORY-425: use correct column name `data_publicacao` (not `data_publicacao_pncp` — never existed)
-    # STORY-426: wrap in asyncio.wait_for to guard against statement_timeout (57014)
-    _BIDS_QUERY_TIMEOUT_S = float(os.getenv("MUNICIPIOS_BIDS_QUERY_TIMEOUT_S", "6.0"))
+    # RES-BE-015: replaced asyncio.wait_for(asyncio.to_thread(...)) with
+    # _run_with_budget so the cancelled future does not leak the Supabase
+    # connection until statement_timeout fires (memory
+    # feedback_pool_leak_caller_timeout_vs_sql_timeout — Stage 2-8 root cause).
+    # Budget=8s honours story AC3 (JOIN heavy). Env var override preserved
+    # for emergency tightening; defaults to the new budget.
+    _BIDS_QUERY_TIMEOUT_S = float(os.getenv("MUNICIPIOS_BIDS_QUERY_TIMEOUT_S", str(_BIDS_QUERY_BUDGET_S)))
     total_licitacoes = 0
     valor_total = 0.0
     licitacoes_recentes: list[dict] = []
-    try:
-        _query = (
+
+    def _bids_query_sync() -> list[dict]:
+        from supabase_client import get_supabase
+        sb = get_supabase()
+        resp = (
             sb.table("pncp_raw_bids")
             .select(
                 "objeto_compra,orgao_razao_social,valor_total_estimado,"
@@ -405,12 +448,17 @@ async def municipio_profile(slug: str):
             .eq("is_active", True)
             .order("data_publicacao", desc=True)
             .limit(500)
+            .execute()
         )
-        bids_resp = await asyncio.wait_for(
-            asyncio.to_thread(_query.execute),
-            timeout=_BIDS_QUERY_TIMEOUT_S,
+        return resp.data or []
+
+    try:
+        rows = await _run_with_budget(
+            asyncio.to_thread(_bids_query_sync),
+            budget=_BIDS_QUERY_TIMEOUT_S,
+            phase="route",
+            source="municipios_publicos.bids",
         )
-        rows = bids_resp.data or []
         total_licitacoes = len(rows)
         for row in rows:
             v = _safe_float(row.get("valor_total_estimado"))
@@ -428,7 +476,9 @@ async def municipio_profile(slug: str):
                 "modalidade": (row.get("modalidade_nome") or "").strip() or "Nao informado",
             })
     except asyncio.TimeoutError:
-        # STORY-426 AC2: degraded response on timeout — return empty bid lists, no 500
+        # STORY-426 AC2 + RES-BE-015: degraded response on timeout — return
+        # empty bid lists, no 500. Caller MUST cache under the negative TTL.
+        bids_query_degraded = True
         try:
             from metrics import SUPABASE_QUERY_TIMEOUT_TOTAL
             SUPABASE_QUERY_TIMEOUT_TOTAL.labels(endpoint="municipios_stats").inc()
@@ -440,6 +490,7 @@ async def municipio_profile(slug: str):
         )
         # total_licitacoes / valor_total / licitacoes_recentes keep their zero defaults
     except Exception as e:
+        bids_query_degraded = True
         logger.error("[Municipios] pncp_raw_bids query falhou para uf=%s: %s", uf, e)
 
     faq_items = _build_faq(nome, uf, total_licitacoes, populacao)
@@ -463,7 +514,16 @@ async def municipio_profile(slug: str):
         ),
     }
 
-    _set_cached(_municipio_profile_cache, cache_key, response_data)
+    if bids_query_degraded:
+        # RES-BE-015: persist with a "stale" timestamp so the existing TTL
+        # check (``time.time() - ts >= _CACHE_TTL_SECONDS``) treats this as
+        # expiring after _NEGATIVE_CACHE_TTL_SECONDS instead of 24h.
+        _municipio_profile_cache[cache_key] = (
+            response_data,
+            time.time() - _CACHE_TTL_SECONDS + _NEGATIVE_CACHE_TTL_SECONDS,
+        )
+    else:
+        _set_cached(_municipio_profile_cache, cache_key, response_data)
     return MunicipioProfileResponse(**response_data)
 
 
