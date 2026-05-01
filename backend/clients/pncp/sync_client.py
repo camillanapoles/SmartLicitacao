@@ -15,7 +15,7 @@ from config import (
     DEFAULT_MODALIDADES,
     MODALIDADES_EXCLUIDAS,
 )
-from exceptions import PNCPAPIError
+from exceptions import PNCPAPIError, PNCPRateLimitError
 from middleware import request_id_var
 
 from clients.pncp.retry import (
@@ -178,6 +178,8 @@ class PNCPClient:
         format_rotation = _get_format_rotation()
         format_idx = 0
 
+        last_was_rate_limit = False
+        last_retry_after = 60
         for attempt in range(self.config.max_retries + 1):
             try:
                 logger.debug(
@@ -192,13 +194,16 @@ class PNCPClient:
 
                 # Handle rate limiting specifically
                 if response.status_code == 429:
-                    retry_after = int(response.headers.get("Retry-After", 60))
+                    last_retry_after = int(response.headers.get("Retry-After", 60))
+                    last_was_rate_limit = True
                     logger.debug(
-                        f"Rate limited (429). Waiting {retry_after}s "
+                        f"Rate limited (429). Waiting {last_retry_after}s "
                         f"(Retry-After header)"
                     )
-                    time.sleep(retry_after)
+                    time.sleep(last_retry_after)
                     continue
+
+                last_was_rate_limit = False
 
                 # Success case
                 if response.status_code == 200:
@@ -361,7 +366,11 @@ class PNCPClient:
                     logger.error(error_msg)
                     raise PNCPAPIError(error_msg) from e
 
-        # Should never reach here, but just in case
+        if last_was_rate_limit:
+            raise PNCPRateLimitError(
+                f"Rate limit persists after {self.config.max_retries + 1} attempts",
+                retry_after=last_retry_after,
+            )
         raise PNCPAPIError("Unexpected: exhausted retries without raising exception")
 
     @staticmethod

@@ -10,7 +10,9 @@ class PNCPAPIError(Exception):
 class PNCPRateLimitError(PNCPAPIError):
     """Raised when API rate limit is exceeded (HTTP 429)."""
 
-    pass
+    def __init__(self, *args, retry_after: int = 60):
+        super().__init__(*args)
+        self.retry_after = retry_after
 
 
 class PNCPTimeoutError(PNCPAPIError):
