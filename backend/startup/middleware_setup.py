@@ -4,6 +4,7 @@ Extracted from main.py. Covers CORS, custom middleware, inline HTTP middlewares,
 and the conditional Prometheus /metrics mount.
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -13,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import get_cors_origins, METRICS_TOKEN
-from config.pipeline import REQUEST_SLOW_THRESHOLD_S
+from config.pipeline import REQUEST_SLOW_THRESHOLD_S, ROUTE_TIMEOUT_S
 from middleware import CorrelationIDMiddleware, SecurityHeadersMiddleware, DeprecationMiddleware, RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,16 @@ _ALLOWED_ROOT_PATHS = frozenset({
 })
 
 DOCS_ACCESS_TOKEN = os.getenv("DOCS_ACCESS_TOKEN", "")
+
+# RES-BE-016 AC4: Paths exempt from route-level asyncio timeout.
+# SSE / long-poll endpoints must not be timed out at middleware level.
+_ROUTE_TIMEOUT_EXEMPT_PREFIXES = (
+    "/buscar-progress/",   # SSE search progress stream
+    "/v1/search/",         # search result polling endpoints
+    "/health",             # Railway health probes
+    "/metrics",            # Prometheus scrape
+    "/webhooks/",          # Stripe webhooks (can take time to validate)
+)
 
 
 # DEBT-124: Paths exempt from shutdown drain (health probes must respond for LB to stop routing)
@@ -126,6 +137,55 @@ def setup_middleware(app: FastAPI) -> None:
     @app.middleware("http")
     async def _track_legacy_routes_mw(request: Request, call_next):
         return await track_legacy_routes(request, call_next)
+
+    # RES-BE-016 AC4: Route-level asyncio timeout — returns 503 before Railway kills at 120s.
+    # Frees the event loop for subsequent requests; underlying threads continue until
+    # Supabase statement_timeout=15s kills them. See: feedback_pool_leak_caller_timeout_vs_sql_timeout.
+    # Must be added before slow_request_detector so slow requests are still logged.
+    if ROUTE_TIMEOUT_S > 0:
+        @app.middleware("http")
+        async def route_timeout_middleware(request: Request, call_next):
+            """RES-BE-016 AC4: Return 503 if handler exceeds ROUTE_TIMEOUT_S seconds."""
+            path = request.url.path
+            accept = request.headers.get("accept", "")
+            if (
+                any(path.startswith(prefix) for prefix in _ROUTE_TIMEOUT_EXEMPT_PREFIXES)
+                or "text/event-stream" in accept
+            ):
+                return await call_next(request)
+
+            try:
+                return await asyncio.wait_for(call_next(request), timeout=ROUTE_TIMEOUT_S)
+            except asyncio.TimeoutError:
+                segments = path.strip("/").split("/")[:3]
+                route_label = "/" + "/".join(segments)
+                logger.error(
+                    "route_timeout: %s %s exceeded %.0fs — event loop freed, thread continues until statement_timeout",
+                    request.method, path, ROUTE_TIMEOUT_S,
+                    extra={"route_timeout_route": route_label, "route_timeout_s": ROUTE_TIMEOUT_S},
+                )
+                try:
+                    from metrics import ROUTE_TIMEOUT_TOTAL
+                    ROUTE_TIMEOUT_TOTAL.labels(route=route_label, method=request.method).inc()
+                except Exception:
+                    pass
+                try:
+                    import sentry_sdk
+                    sentry_sdk.capture_message(
+                        f"route_timeout: {request.method} {path} ({ROUTE_TIMEOUT_S:.0f}s)",
+                        level="error",
+                        fingerprint=["route_timeout", route_label],
+                    )
+                except Exception:
+                    pass
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": "Solicitação excedeu o tempo limite. Tente novamente em alguns instantes.",
+                        "timeout_s": ROUTE_TIMEOUT_S,
+                    },
+                    headers={"Retry-After": "5"},
+                )
 
     # DEBT-04 AC2: Slow request detection — log + Sentry when request exceeds threshold.
     # Must be outermost (added last) to cover total request time including all middleware.

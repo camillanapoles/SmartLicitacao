@@ -458,6 +458,15 @@ Metrics (Prometheus): `smartlic_pncp_max_page_size_changed_total`, `smartlic_pnc
 - Sync PNCPClient fallback wrapped in `asyncio.to_thread()` — never blocks event loop
 - Gunicorn keep-alive: 75s (> Railway proxy 60s) prevents intermittent 502s
 
+#### Runner History (CRIT-083 → CRIT-084 → RES-BE-016)
+- **CRIT-083:** Gunicorn prefork (os.fork) + `cryptography>=46` OpenSSL C bindings = SIGSEGV on POST requests (TLS handshake in forked child). GET worked; POST crashed.
+- **CRIT-084 (active):** Switched to `RUNNER=uvicorn` with `--workers` flag. uvicorn uses `multiprocessing.spawn()` not `os.fork()`, eliminating the SIGSEGV. Gunicorn config still present in `start.sh` but NOT active.
+- **RES-BE-016 AC4 (active):** Route-level asyncio timeout middleware at 60s (`ROUTE_TIMEOUT_S`). Returns 503 + Retry-After:5 before Railway's 120s proxy kill, freeing the event loop. **Underlying threads continue** until Supabase `statement_timeout=15s` kills the query — this is expected (asyncio.wait_for + Starlette's internal asyncio.shield means the route coroutine keeps running). SSE/search-polling/health/webhooks exempt via `_ROUTE_TIMEOUT_EXEMPT_PREFIXES`.
+- **AC1 (NOT executed):** Gunicorn staging validation requires `cryptography` to be fork-safe. `requirements.txt` explicitly marks it NOT fork-safe — skip AC1, AC4 is the correct path.
+- **Rollback:** Set `ROUTE_TIMEOUT_S=0` in Railway env to disable middleware without deploy.
+- **Re-validation cadence:** If `cryptography` drops its OpenSSL fork restriction in a future release (check release notes), re-run AC1 staging test before switching back to Gunicorn.
+- **Sentry alert:** `rate(smartlic_route_timeout_total[1h]) > 10` indicates routes not covered by `_run_with_budget` (budget module should catch these first).
+
 ### Time Budget Waterfall (STORY-4.4 TD-SYS-003)
 
 Defaults tightened in `backend/config/pncp.py` so the inner timeout always expires before Railway kills the request — leaving ~20s headroom for response serialization:

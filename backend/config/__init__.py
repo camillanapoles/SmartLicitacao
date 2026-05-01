@@ -187,4 +187,5 @@ from config.pipeline import (
     SUPPORT_SLA_ALERT_THRESHOLD_HOURS,  # noqa: F401
     GRACEFUL_SHUTDOWN_TIMEOUT,  # noqa: F401
     REQUEST_SLOW_THRESHOLD_S,  # noqa: F401
+    ROUTE_TIMEOUT_S,  # noqa: F401
 )

@@ -109,3 +109,11 @@ GRACEFUL_SHUTDOWN_TIMEOUT: int = int(os.getenv("GRACEFUL_SHUTDOWN_TIMEOUT", "30"
 # Set to 0 to disable detection.
 # ============================================
 REQUEST_SLOW_THRESHOLD_S: float = float(os.getenv("REQUEST_SLOW_THRESHOLD_S", "100"))
+
+# ============================================
+# RES-BE-016 AC4: Route-level asyncio timeout
+# Returns 503 when a route handler exceeds this budget (default 60s).
+# Frees the event loop for subsequent requests while underlying threads continue
+# until Supabase statement_timeout=15s kills them. Set to 0 to disable.
+# ============================================
+ROUTE_TIMEOUT_S: float = float(os.getenv("ROUTE_TIMEOUT_S", "60"))
