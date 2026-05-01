@@ -22,6 +22,7 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Response
 
+from pipeline.budget import _run_with_budget
 from routes._sitemap_cache_headers import SITEMAP_CACHE_HEADERS
 from pydantic import BaseModel
 
@@ -39,10 +40,15 @@ _itens_sitemap_cache: dict[str, tuple[dict, float]] = {}
 _CATMAT_RE = re.compile(r"^\d{1,9}$")
 _HTTP_TIMEOUT = 5.0
 _CATMAT_API_BASE = "https://api.compras.dados.gov.br"
-# Budget for pncp_supplier_contracts query — sync .execute() runs in
-# asyncio.to_thread so the event loop stays unblocked; wait_for caps total
-# wall-clock. Stage 8 2026-04-30: bare .execute() wedged the event loop.
-_PRICE_QUERY_BUDGET_S = 10.0
+# Budget for pncp_supplier_contracts query.
+# RES-BE-015: tightened from 10s -> 5s and routed through ``_run_with_budget``
+# so saturation is observable per route via
+# ``smartlic_pipeline_budget_exceeded_total{phase=route,source=...}``.
+# Budget MUST be < Supabase service_role ``statement_timeout=15s`` (FLOOR).
+# Caller-side ``wait_for`` alone leaves the thread holding the pool slot
+# until ``statement_timeout`` fires server-side — Stage 2-8 root cause
+# (memory feedback_pool_leak_caller_timeout_vs_sql_timeout).
+_PRICE_QUERY_BUDGET_S = 5.0
 
 
 # ---------------------------------------------------------------------------
@@ -443,12 +449,17 @@ async def _fetch_price_data(nome_item: str) -> tuple[list[float], list[dict]]:
         return resp.data or []
 
     try:
-        rows = await asyncio.wait_for(
+        rows = await _run_with_budget(
             asyncio.to_thread(_sync_fetch),
-            timeout=_PRICE_QUERY_BUDGET_S,
+            budget=_PRICE_QUERY_BUDGET_S,
+            phase="route",
+            source="itens_publicos.fetch_price_data",
         )
     except asyncio.TimeoutError:
-        logger.warning("[Itens] price_data query exceeded %.0fs budget for '%s'", _PRICE_QUERY_BUDGET_S, nome_item)
+        logger.warning(
+            "[Itens] price_data query exceeded %.1fs budget for '%s'",
+            _PRICE_QUERY_BUDGET_S, nome_item,
+        )
         return [], []
     except Exception as e:
         logger.error("[Itens] price_data query falhou para '%s': %s", nome_item, e)

@@ -36,11 +36,15 @@ _CACHE_TTL_SECONDS = 6 * 60 * 60
 # from re-saturating Supabase pool while letting the next crawl wave probe
 # again after a short window.
 _NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
-# Hard budget for a single contratos query. Sync .execute() runs in a
-# worker thread (asyncio.to_thread) so the event loop stays responsive
-# even when the query saturates; wait_for caps total wall-clock so the
-# Railway proxy 15s healthcheck timeout never trips.
-_CONTRATOS_QUERY_BUDGET_S = 10.0
+# Hard budget for a single contratos query. RES-BE-015: tightened from 10s
+# to 5s and routed through ``pipeline.budget._run_with_budget`` so the
+# Prometheus counter ``smartlic_pipeline_budget_exceeded_total`` discriminates
+# saturation per endpoint. Budget MUST be < Supabase service_role
+# ``statement_timeout`` (15s, FLOOR) so the SQL still fires server-side and
+# closes the connection — caller-side cancel via ``wait_for`` alone leaves
+# the thread holding the pool slot until ``statement_timeout`` (the 2026-04-27
+# Stage 2 root cause). See memory ``feedback_pool_leak_caller_timeout_vs_sql_timeout``.
+_CONTRATOS_QUERY_BUDGET_S = 5.0
 _blog_cache: dict[str, tuple[dict, float, float]] = {}  # (data, stored_at, ttl_seconds)
 
 # All 27 Brazilian UFs
@@ -953,6 +957,7 @@ async def _compute_contratos_stats(
     *,
     uf: Optional[str] = None,
     municipio_pattern: Optional[str] = None,
+    source: str = "blog_stats.contratos",
 ) -> tuple[dict, bool]:
     """Query pncp_supplier_contracts and aggregate.
 
@@ -961,27 +966,36 @@ async def _compute_contratos_stats(
     fallback shape. Callers should cache the partial response under a
     shorter TTL (``_NEGATIVE_CACHE_TTL_SECONDS``) so Googlebot retry storms
     don't keep hitting the slow query path.
+
+    RES-BE-015: routed through ``_run_with_budget`` so every saturation event
+    increments ``smartlic_pipeline_budget_exceeded_total{phase,source}`` —
+    callers pass a granular ``source`` label so Prometheus can pinpoint which
+    endpoint family is wedging.
     """
+    from pipeline.budget import _run_with_budget
+
     try:
-        rows = await asyncio.wait_for(
+        rows = await _run_with_budget(
             asyncio.to_thread(
                 _query_contratos_sync,
                 uf=uf,
                 municipio_pattern=municipio_pattern,
             ),
-            timeout=_CONTRATOS_QUERY_BUDGET_S,
+            budget=_CONTRATOS_QUERY_BUDGET_S,
+            phase="route",
+            source=source,
         )
     except asyncio.TimeoutError:
         logger.warning(
-            "contratos query exceeded %.0fs budget (sector=%s uf=%s municipio=%s)",
-            _CONTRATOS_QUERY_BUDGET_S,
+            "contratos query exceeded %.1fs budget (source=%s sector=%s uf=%s municipio=%s)",
+            _CONTRATOS_QUERY_BUDGET_S, source,
             sector.id if sector else None, uf, municipio_pattern,
         )
         return _empty_contratos_stats(), True
     except Exception as e:
         logger.error(
-            "contratos DB query failed (sector=%s uf=%s municipio=%s): %s",
-            sector.id if sector else None, uf, municipio_pattern, e,
+            "contratos DB query failed (source=%s sector=%s uf=%s municipio=%s): %s",
+            source, sector.id if sector else None, uf, municipio_pattern, e,
         )
         return _empty_contratos_stats(), True
 
@@ -1117,7 +1131,10 @@ async def get_contratos_setor_stats(setor_id: str):
     if cached:
         return ContratosSetorStats(**cached)
 
-    base, partial = await _compute_contratos_stats(sector)
+    base, partial = await _compute_contratos_stats(
+        sector,
+        source="blog_stats.contratos_setor",
+    )
     data = {"sector_id": sector.id, "sector_name": sector.name, **base}
     _cache_set(cache_key, data, ttl=_NEGATIVE_CACHE_TTL_SECONDS if partial else _CACHE_TTL_SECONDS)
     return ContratosSetorStats(**data)
@@ -1141,7 +1158,11 @@ async def get_contratos_setor_uf_stats(setor_id: str, uf: str):
     if cached:
         return ContratosSetorUfStats(**cached)
 
-    base, partial = await _compute_contratos_stats(sector, uf=uf)
+    base, partial = await _compute_contratos_stats(
+        sector,
+        uf=uf,
+        source="blog_stats.contratos_setor_uf",
+    )
     # Drop by_uf (always single UF in this scope — keeps payload lean)
     base.pop("by_uf", None)
     data = {
@@ -1181,7 +1202,11 @@ async def get_contratos_cidade_stats(cidade: str):
     )
 
     # Filter by UF first (indexed) + ilike on municipio (free-text)
-    base, partial = await _compute_contratos_stats(uf=uf, municipio_pattern=municipio_display)
+    base, partial = await _compute_contratos_stats(
+        uf=uf,
+        municipio_pattern=municipio_display,
+        source="blog_stats.contratos_cidade",
+    )
     base.pop("by_uf", None)
     data = {
         "cidade": municipio_display,
@@ -1220,7 +1245,12 @@ async def get_contratos_cidade_setor_stats(cidade: str, setor_id: str):
         or cidade.replace("-", " ").title()
     )
 
-    base, partial = await _compute_contratos_stats(sector, uf=uf, municipio_pattern=municipio_display)
+    base, partial = await _compute_contratos_stats(
+        sector,
+        uf=uf,
+        municipio_pattern=municipio_display,
+        source="blog_stats.contratos_cidade_setor",
+    )
     base.pop("by_uf", None)
     data = {
         "cidade": municipio_display,
