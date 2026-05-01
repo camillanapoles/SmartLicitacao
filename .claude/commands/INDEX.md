@@ -58,6 +58,14 @@ All commands listed below activate their corresponding agent with full persona a
 /bidiq feature      → Complete feature squad (backend + frontend)
 ```
 
+### Founder Operating System
+
+| Command | File | Purpose |
+|---------|------|---------|
+| `/next` | `.claude/commands/next.md` | Daily throughput executor — 1 degrau, 30min cap, cash/retention/safety only |
+| `/chief` | `.claude/commands/chief.md` | Incident & tactical decision protocol — P0/P1, empirical discriminators, outcome log |
+| `/chief-weekly` | `.claude/commands/chief-weekly.md` | Strategic review & growth lever audit — 1×/semana |
+
 ### Governance & Automation
 
 | Command | File | Purpose |
