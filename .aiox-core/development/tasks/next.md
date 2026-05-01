@@ -65,11 +65,56 @@ pre-conditions:
     blocker: false
     validação: Check .aiox/session-state.json exists
     error_message: "No session history. Using project context only."
+
+  - [ ] Claims directory accessible (optional)
+    tipo: pre-condition
+    blocker: false
+    validação: Check .aiox/claims/ can be read/written
+    error_message: "Cannot access .aiox/claims/. Running without parallel-session claim registry."
 ```
 
 ---
 
 ## Implementation Steps
+
+### Step 0: Session Init & Load Claims
+
+Before doing anything else, set up session identity and load the parallel-session claim registry.
+
+```bash
+# Derive a stable SESSION_ID for this terminal session
+SESSION_ID="$(date +%s)-$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 4 2>/dev/null || echo 'xxxx')"
+
+# Ensure claims directory exists
+mkdir -p .aiox/claims
+
+# Prune stale claims (TTL expired)
+# For each .aiox/claims/*.yaml:
+#   Parse claimed_at and ttl_seconds
+#   If (now - claimed_at) > ttl_seconds → delete file
+NOW=$(date -u +%s)
+for claim_file in .aiox/claims/*.yaml; do
+  [ -f "$claim_file" ] || continue
+  claimed_at_iso=$(grep 'claimed_at:' "$claim_file" | awk '{print $2}' | tr -d '"')
+  ttl=$(grep 'ttl_seconds:' "$claim_file" | awk '{print $2}')
+  claimed_at_epoch=$(date -d "$claimed_at_iso" +%s 2>/dev/null || echo 0)
+  if [ $((NOW - claimed_at_epoch)) -gt "${ttl:-1800}" ]; then
+    rm -f "$claim_file"
+  fi
+done
+
+# Load CLAIMED_STORIES: collect story_path from all remaining claim files
+CLAIMED_STORIES=()
+for claim_file in .aiox/claims/*.yaml; do
+  [ -f "$claim_file" ] || continue
+  story_path=$(grep 'story_path:' "$claim_file" | awk '{print $2}' | tr -d '"')
+  [ -n "$story_path" ] && CLAIMED_STORIES+=("$story_path")
+done
+```
+
+If `.aiox/claims/` is not accessible, continue without the registry — non-blocking.
+
+---
 
 ### Step 1: Check Help Flag
 ```javascript
@@ -87,7 +132,8 @@ const engine = new SuggestionEngine();
 // Build context from multiple sources
 const context = await engine.buildContext({
   storyOverride: args.story,    // Explicit story path (optional)
-  autoDetect: true              // Auto-detect from session/git
+  autoDetect: true,             // Auto-detect from session/git
+  excludeStories: CLAIMED_STORIES, // Stories claimed by other parallel sessions
 });
 ```
 
@@ -120,6 +166,30 @@ const result = await engine.suggestNext(context);
 //     ...
 //   ]
 // }
+
+// Filter out suggestions targeting stories already claimed by other sessions
+const extractStoryPath = (args) => {
+  // Match anything that looks like a docs/stories/... path in the args string
+  const match = String(args || '').match(/(docs\/stories\/[^\s]+\.story\.md)/);
+  return match ? match[1] : null;
+};
+
+result.suggestions = result.suggestions.filter(suggestion => {
+  const storyPathInArgs = extractStoryPath(suggestion.args);
+  if (!storyPathInArgs) return true; // Non-story suggestions always pass through
+  return !CLAIMED_STORIES.includes(storyPathInArgs);
+});
+
+// If all suggestions were filtered, add a notice
+if (result.suggestions.length === 0 && CLAIMED_STORIES.length > 0) {
+  result.suggestions = [{
+    command: '*next --all',
+    args: '',
+    description: `All available stories are claimed by ${CLAIMED_STORIES.length} parallel session(s). Try *next --all to see claimed items or wait for a session to release.`,
+    confidence: 0.5,
+    priority: 1,
+  }];
+}
 ```
 
 ### Step 5: Format Output
@@ -142,8 +212,48 @@ formatter.displaySuggestions({
   currentState: runtimeNext.state,
   confidence: runtimeNext.confidence,
   suggestions: displaySuggestions,
+  parallelSessionsInfo: CLAIMED_STORIES.length > 0
+    ? `🔒 ${CLAIMED_STORIES.length} story(s) in use by other sessions (excluded from suggestions)`
+    : null,
 });
 ```
+
+---
+
+### Step 5b: Register Claim
+
+After displaying suggestions, register a claim so parallel sessions know this session is working on a specific story.
+
+```javascript
+// Determine which story this session is working on
+const ACTIVE_STORY =
+  extractStoryPath(displaySuggestions[0]?.args) || // top suggestion has story path
+  context.storyPath ||                              // auto-detected current story
+  args.story ||                                     // explicitly passed --story
+  null;
+
+if (ACTIVE_STORY) {
+  // Derive slug: basename without extension, lowercase, non-alphanum → dash
+  const storySlug = path.basename(ACTIVE_STORY, '.story.md')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const claimContent = [
+    `session_id: "${SESSION_ID}"`,
+    `story_path: "${ACTIVE_STORY}"`,
+    `claimed_at: "${new Date().toISOString()}"`,
+    `ttl_seconds: 1800`,
+  ].join('\n');
+
+  // Write claim file (overwrite if this session re-runs *next on same story)
+  fs.writeFileSync(`.aiox/claims/${storySlug}.yaml`, claimContent + '\n');
+
+  console.log(`🔒 Story claimed for this session: ${ACTIVE_STORY}`);
+}
+```
+
+**Non-blocking:** If claim write fails (permissions, disk), emit a warning and continue.
 
 ---
 
@@ -192,6 +302,22 @@ Next steps:
 3. `*pre-push-quality-gate` - Final quality checks
 
 Type a number to execute, or press Enter to continue manually.
+🔒 Story claimed for this session: docs/stories/v4.0.4/sprint-10/story-wis-3.md
+```
+
+### Standard Output (with parallel sessions active)
+```
+🧭 Workflow: story_development
+📍 State: in_development (confidence: 92%)
+🔒 2 story(s) in use by other sessions (excluded from suggestions)
+
+Next steps:
+1. `*review-qa docs/stories/v4.0.4/sprint-11/story-wis-4.md` - Run QA review
+2. `*run-tests` - Execute test suite manually
+3. `*pre-push-quality-gate` - Final quality checks
+
+Type a number to execute, or press Enter to continue manually.
+🔒 Story claimed for this session: docs/stories/v4.0.4/sprint-11/story-wis-4.md
 ```
 
 ### Low Confidence Output
@@ -236,6 +362,17 @@ post-conditions:
     tipo: post-condition
     blocker: true
     validação: Verify console output matches expected format
+
+  - [ ] Claim written when active story detected
+    tipo: post-condition
+    blocker: false
+    validação: Check .aiox/claims/{story-slug}.yaml exists and has valid YAML
+    error_message: "Claim write failed — parallel sessions will not see this session's active story"
+
+  - [ ] Stale claims pruned
+    tipo: post-condition
+    blocker: false
+    validação: No .aiox/claims/*.yaml files with expired TTL remain
 ```
 
 ---
@@ -309,8 +446,9 @@ optimizations:
 
 ```yaml
 story: WIS-3
-version: 1.0.0
+version: 1.1.0
 created: 2025-12-25
+updated: 2026-05-01
 author: "@dev (Dex)"
 dependencies:
   modules:
@@ -322,4 +460,5 @@ tags:
   - suggestions
   - navigation
   - context-aware
+  - parallel-sessions
 ```

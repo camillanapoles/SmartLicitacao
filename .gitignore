@@ -423,6 +423,8 @@ nul
 # AIOX Local (AIOX)
 .aiox-core/local/
 .aiox/install-log.txt
+.aiox/claims/
+.aiox/locks/
 scripts/.accent_cache.json
 
 # Synapse knowledge-graph runtime artifacts (agent metrics/sessions)
