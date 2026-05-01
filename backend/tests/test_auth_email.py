@@ -53,9 +53,36 @@ class TestResendConfirmation:
 
     @patch("supabase_client.get_supabase")
     def test_resend_rate_limited_within_60s(self, mock_get_supabase, client):
-        """Second resend within 60s should be blocked (429)."""
-        mock_supabase = MagicMock()
-        mock_get_supabase.return_value = mock_supabase
+        """Second resend within 60s should be blocked (429).
+
+        CONV-INST-003: Cooldown is now DB-backed. We simulate the sequence by:
+        1st call: DB returns no row → allowed; record inserted.
+        2nd call: DB returns a row 5s ago → still within 60s → 429.
+        """
+        import datetime as dt
+
+        five_secs_ago = (
+            dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=5)
+        ).isoformat()
+
+        call_count = [0]
+
+        def mock_execute():
+            mock_result = MagicMock()
+            if call_count[0] == 0:
+                # First cooldown check: no rows (first resend allowed)
+                mock_result.data = []
+            else:
+                # Subsequent checks: row exists (within cooldown)
+                mock_result.data = [{"created_at": five_secs_ago}]
+            call_count[0] += 1
+            return mock_result
+
+        mock_sb = MagicMock()
+        mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.side_effect = mock_execute
+        mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock()
+        mock_sb.auth.resend.return_value = None
+        mock_get_supabase.return_value = mock_sb
 
         # First request succeeds
         client.post(
@@ -93,11 +120,35 @@ class TestResendConfirmation:
 
     @patch("supabase_client.get_supabase")
     def test_resend_case_insensitive(self, mock_get_supabase, client):
-        """Rate limiting should be case-insensitive."""
-        mock_supabase = MagicMock()
-        mock_get_supabase.return_value = mock_supabase
+        """Rate limiting should be case-insensitive.
 
-        # First request with lowercase
+        CONV-INST-003: DB-backed cooldown normalizes to lowercase.
+        Simulate: first call no rows, second call finds recent row.
+        """
+        import datetime as dt
+
+        five_secs_ago = (
+            dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=5)
+        ).isoformat()
+
+        call_count = [0]
+
+        def mock_execute():
+            mock_result = MagicMock()
+            if call_count[0] == 0:
+                mock_result.data = []
+            else:
+                mock_result.data = [{"created_at": five_secs_ago}]
+            call_count[0] += 1
+            return mock_result
+
+        mock_sb = MagicMock()
+        mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.side_effect = mock_execute
+        mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock()
+        mock_sb.auth.resend.return_value = None
+        mock_get_supabase.return_value = mock_sb
+
+        # First request with mixed case
         client.post(
             "/v1/auth/resend-confirmation",
             json={"email": "Test@Example.COM"}

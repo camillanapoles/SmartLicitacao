@@ -1,4 +1,9 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useAnalytics } from "../../../hooks/useAnalytics";
+import { EmailDeadEndModal } from "./EmailDeadEndModal";
 
 interface SignupSuccessProps {
   email: string;
@@ -7,7 +12,17 @@ interface SignupSuccessProps {
   isResending: boolean;
   onResend: () => void;
   onChangeEmail: () => void;
+  /** Timestamp (ms) when setSuccess(true) was called — used for timeout calculation. */
+  signupStartedAt: number;
+  /** Rollout branch from page.tsx state — included in email_verification_pending event. */
+  rolloutBranch?: string | null;
+  /** Shared ref so page.tsx polling increments and SignupSuccess reads. */
+  pollingIterationsRef?: React.MutableRefObject<number>;
+  /** Shared ref updated by page.tsx handleResend — used in timeout event payload. */
+  lastResendAtRef?: React.MutableRefObject<number | null>;
 }
+
+const TIMEOUT_5MIN_MS = 5 * 60 * 1000;
 
 export function SignupSuccess({
   email,
@@ -16,9 +31,84 @@ export function SignupSuccess({
   isResending,
   onResend,
   onChangeEmail,
+  signupStartedAt,
+  rolloutBranch,
+  pollingIterationsRef,
+  lastResendAtRef,
 }: SignupSuccessProps) {
+  const { trackEvent } = useAnalytics();
+  const pendingFiredRef = useRef(false);
+  const timeoutFiredRef = useRef(false);
+  const [showDeadEndModal, setShowDeadEndModal] = useState(false);
+  const emailDomain = email.split("@")[1] ?? "";
+
+  // AC1: Fire email_verification_pending ONCE on mount.
+  // useRef gate prevents double-fire in React StrictMode.
+  // LGPD: only email_domain is logged, never full email.
+  useEffect(() => {
+    if (pendingFiredRef.current) return;
+    pendingFiredRef.current = true;
+    trackEvent("email_verification_pending", {
+      email_domain: emailDomain,
+      rollout_branch: rolloutBranch ?? "unknown",
+      signup_method: "email", // Google OAuth goes through /auth/callback — never reaches this screen
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // AC3: After 5min without confirmation, fire timeout event + show dead-end modal.
+  useEffect(() => {
+    if (isConfirmed || timeoutFiredRef.current) return;
+
+    const elapsed = Date.now() - signupStartedAt;
+    const remainingMs = TIMEOUT_5MIN_MS - elapsed;
+    if (remainingMs <= 0) {
+      // Already past 5min (e.g. component remounted) — fire immediately
+      if (!timeoutFiredRef.current) {
+        timeoutFiredRef.current = true;
+        const lastResendMs = lastResendAtRef?.current
+          ? Date.now() - lastResendAtRef.current
+          : null;
+        trackEvent("email_verification_timeout", {
+          email_domain: emailDomain,
+          polling_iterations: pollingIterationsRef?.current ?? 0,
+          last_resend_attempt_ms_ago: lastResendMs,
+        });
+        setShowDeadEndModal(true);
+      }
+      return;
+    }
+
+    const timerId = setTimeout(() => {
+      if (isConfirmed || timeoutFiredRef.current) return;
+      timeoutFiredRef.current = true;
+
+      const lastResendMs = lastResendAtRef?.current
+        ? Date.now() - lastResendAtRef.current
+        : null;
+
+      trackEvent("email_verification_timeout", {
+        email_domain: emailDomain,
+        polling_iterations: pollingIterationsRef?.current ?? 0,
+        last_resend_attempt_ms_ago: lastResendMs,
+      });
+
+      setShowDeadEndModal(true);
+    }, remainingMs);
+
+    return () => clearTimeout(timerId);
+  }, [isConfirmed]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-canvas">
+      {showDeadEndModal && (
+        <EmailDeadEndModal
+          onClose={() => setShowDeadEndModal(false)}
+          onResend={onResend}
+          isResending={isResending}
+          countdown={countdown}
+        />
+      )}
+
       <div className="w-full max-w-md p-8 bg-surface-0 rounded-card shadow-lg text-center">
         {/* AC10: Confirmed transition */}
         {isConfirmed ? (

@@ -1750,9 +1750,9 @@ export interface paths {
          * Resend Confirmation
          * @description Resend signup confirmation email with 60s rate limiting.
          *
+         *     CONV-INST-003: Cooldown persisted in Supabase user_email_actions table.
+         *     In-memory _resend_timestamps used as fallback when DB is unavailable.
          *     MED-SEC-001: Rate limited to 3 req/10min per IP to prevent trial multi-account abuse.
-         *     AC4: Calls Supabase auth.resend({ type: 'signup', email }).
-         *     AC1-AC6: Frontend uses this with countdown timer.
          */
         post: operations["resend_confirmation_v1_auth_resend_confirmation_post"];
         delete?: never;
@@ -1801,6 +1801,8 @@ export interface paths {
          *
          *     AC8: Returns { confirmed: boolean, user_id?: string }.
          *     AC7/AC9: Frontend polls this every 5s for auto-redirect.
+         *     CONV-INST-003 AC6: Emits Mixpanel email_verification_completed server-side
+         *     on first confirmation (idempotent via user_email_actions table).
          */
         get: operations["auth_status_v1_auth_status_get"];
         put?: never;

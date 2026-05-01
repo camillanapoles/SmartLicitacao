@@ -14221,7 +14221,7 @@
     },
     "/v1/auth/resend-confirmation": {
       "post": {
-        "description": "Resend signup confirmation email with 60s rate limiting.\n\nMED-SEC-001: Rate limited to 3 req/10min per IP to prevent trial multi-account abuse.\nAC4: Calls Supabase auth.resend({ type: 'signup', email }).\nAC1-AC6: Frontend uses this with countdown timer.",
+        "description": "Resend signup confirmation email with 60s rate limiting.\n\nCONV-INST-003: Cooldown persisted in Supabase user_email_actions table.\nIn-memory _resend_timestamps used as fallback when DB is unavailable.\nMED-SEC-001: Rate limited to 3 req/10min per IP to prevent trial multi-account abuse.",
         "operationId": "resend_confirmation_v1_auth_resend_confirmation_post",
         "requestBody": {
           "content": {
@@ -14305,7 +14305,7 @@
     },
     "/v1/auth/status": {
       "get": {
-        "description": "Check if a signup email has been confirmed.\n\nAC8: Returns { confirmed: boolean, user_id?: string }.\nAC7/AC9: Frontend polls this every 5s for auto-redirect.",
+        "description": "Check if a signup email has been confirmed.\n\nAC8: Returns { confirmed: boolean, user_id?: string }.\nAC7/AC9: Frontend polls this every 5s for auto-redirect.\nCONV-INST-003 AC6: Emits Mixpanel email_verification_completed server-side\non first confirmation (idempotent via user_email_actions table).",
         "operationId": "auth_status_v1_auth_status_get",
         "parameters": [
           {
