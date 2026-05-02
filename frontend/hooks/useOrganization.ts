@@ -16,7 +16,7 @@ export interface OrgMember {
   user_id: string | null;
   email: string;
   name: string | null;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "member" | "viewer";
   status: "accepted" | "pending";
   joined_at: string | null;
   invited_at: string;
@@ -52,6 +52,12 @@ const fetchOrgWithAuth = async (token: string): Promise<Organization | null> => 
   });
 
   if (!detailRes.ok) {
+    if (detailRes.status === 403) {
+      throw new FetchError(
+        "Acesso negado: sua função não permite ver os detalhes da organização.",
+        403
+      );
+    }
     const data = await detailRes.json().catch(() => ({}));
     throw new FetchError(
       data.message || "Erro ao carregar detalhes da organização",

@@ -16,6 +16,22 @@ from auth import require_auth
 # The organization service does a top-level `from supabase_client import get_supabase`,
 # so the correct patch target is the name bound inside that module.
 _ORG_SVC_GET_SUPABASE = "services.organization_service.get_supabase"
+# The org_auth dependency also imports get_supabase at module level.
+_ORG_AUTH_GET_SUPABASE = "dependencies.org_auth.get_supabase"
+
+
+def _mock_org_auth_sb(role: str | None):
+    """Mock for dependencies.org_auth.get_supabase — role query returns given role or empty."""
+    mock_sb = MagicMock()
+    mock_table = MagicMock()
+    mock_result = MagicMock()
+    mock_result.data = [{"role": role}] if role else []
+    mock_table.select.return_value = mock_table
+    mock_table.eq.return_value = mock_table
+    mock_table.limit.return_value = mock_table
+    mock_table.execute.return_value = mock_result
+    mock_sb.table.return_value = mock_table
+    return mock_sb
 
 
 @pytest.fixture(autouse=True)
@@ -186,7 +202,10 @@ class TestGetOrganization:
 
             mock_table.execute.side_effect = execute_side
 
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            with (
+                patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("owner")),
+                patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb),
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get("/v1/organizations/org-abc")
@@ -201,19 +220,16 @@ class TestGetOrganization:
 
     @pytest.mark.asyncio
     async def test_get_organization_not_member(self, mock_user):
-        """GET /v1/organizations/{id} for non-member returns 404."""
+        """GET /v1/organizations/{id} for non-member returns 403 (dependency gate)."""
         app.dependency_overrides[require_auth] = lambda: mock_user
         try:
-            mock_sb, mock_table, mock_result = _mock_supabase()
-            # membership check returns empty — not a member
-            mock_result.data = []
-
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            # Dependency fires first: empty membership → 403 before service runs.
+            with patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb(None)):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get("/v1/organizations/org-xyz")
 
-            assert response.status_code == 404
+            assert response.status_code == 403
         finally:
             app.dependency_overrides.clear()
 
@@ -264,7 +280,10 @@ class TestInviteMember:
 
             mock_table.execute.side_effect = execute_side
 
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            with (
+                patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("owner")),
+                patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb),
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
@@ -278,20 +297,11 @@ class TestInviteMember:
 
     @pytest.mark.asyncio
     async def test_invite_member_not_admin(self, mock_user):
-        """Non-admin member cannot invite others — returns 403."""
+        """Non-owner member cannot invite others — 403 from require_org_role dependency."""
         app.dependency_overrides[require_auth] = lambda: mock_user
         try:
-            mock_sb, mock_table, _ = _mock_supabase()
-
-            def execute_side():
-                r = MagicMock()
-                # inviter role check — plain member (not owner/admin)
-                r.data = [{"role": "member"}]
-                return r
-
-            mock_table.execute.side_effect = execute_side
-
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            # Dependency gate: "member" rank < OWNER → 403 before service runs.
+            with patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("member")):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
@@ -331,7 +341,10 @@ class TestInviteMember:
 
             mock_table.execute.side_effect = execute_side
 
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            with (
+                patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("owner")),
+                patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb),
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
@@ -410,7 +423,10 @@ class TestRemoveMember:
 
             mock_table.execute.side_effect = execute_side
 
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            with (
+                patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("owner")),
+                patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb),
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.delete(
@@ -424,7 +440,7 @@ class TestRemoveMember:
 
     @pytest.mark.asyncio
     async def test_remove_owner_fails(self, mock_user):
-        """Attempting to remove the org owner returns 403."""
+        """Attempting to remove the org owner returns 403 (service-level guard)."""
         app.dependency_overrides[require_auth] = lambda: mock_user
         try:
             mock_sb, mock_table, _ = _mock_supabase()
@@ -444,7 +460,10 @@ class TestRemoveMember:
 
             mock_table.execute.side_effect = execute_side
 
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            with (
+                patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("owner")),
+                patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb),
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.delete(
@@ -654,38 +673,26 @@ class TestMemberIsolation:
 
     @pytest.mark.asyncio
     async def test_member_cannot_see_other_org_data(self, mock_member):
-        """Non-member user receives 404 when accessing an org they don't belong to."""
+        """Non-member user receives 403 when accessing an org they don't belong to."""
         app.dependency_overrides[require_auth] = lambda: mock_member
         try:
-            mock_sb, mock_table, mock_result = _mock_supabase()
-            # Membership check returns empty — mock_member is not in org-xyz
-            mock_result.data = []
-
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            # require_org_role(MEMBER) fires first: empty membership → 403.
+            with patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb(None)):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get("/v1/organizations/org-xyz")
 
-            assert response.status_code == 404
+            assert response.status_code == 403
         finally:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_plain_member_cannot_access_dashboard(self, mock_member):
-        """Plain member (not owner/admin) gets 403 on org dashboard."""
+        """Plain member gets 403 on org dashboard from require_org_role(OWNER)."""
         app.dependency_overrides[require_auth] = lambda: mock_member
         try:
-            mock_sb, mock_table, _ = _mock_supabase()
-
-            def execute_side():
-                r = MagicMock()
-                # dashboard role check — user is plain member
-                r.data = [{"role": "member"}]
-                return r
-
-            mock_table.execute.side_effect = execute_side
-
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            # Dependency gate: "member" rank < OWNER → 403 before service runs.
+            with patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("member")):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get("/v1/organizations/org-abc/dashboard")
@@ -696,19 +703,10 @@ class TestMemberIsolation:
 
     @pytest.mark.asyncio
     async def test_plain_member_cannot_invite(self, mock_member):
-        """Plain member cannot invite others (403)."""
+        """Plain member cannot invite others — 403 from require_org_role(OWNER)."""
         app.dependency_overrides[require_auth] = lambda: mock_member
         try:
-            mock_sb, mock_table, _ = _mock_supabase()
-
-            def execute_side():
-                r = MagicMock()
-                r.data = [{"role": "member"}]
-                return r
-
-            mock_table.execute.side_effect = execute_side
-
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            with patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("member")):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
@@ -722,19 +720,10 @@ class TestMemberIsolation:
 
     @pytest.mark.asyncio
     async def test_plain_member_cannot_remove_others(self, mock_member):
-        """Plain member cannot remove other members (403)."""
+        """Plain member cannot remove other members — 403 from require_org_role(OWNER)."""
         app.dependency_overrides[require_auth] = lambda: mock_member
         try:
-            mock_sb, mock_table, _ = _mock_supabase()
-
-            def execute_side():
-                r = MagicMock()
-                r.data = [{"role": "member"}]
-                return r
-
-            mock_table.execute.side_effect = execute_side
-
-            with patch(_ORG_SVC_GET_SUPABASE, return_value=mock_sb):
+            with patch(_ORG_AUTH_GET_SUPABASE, return_value=_mock_org_auth_sb("member")):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.delete(

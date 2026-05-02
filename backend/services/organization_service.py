@@ -97,8 +97,8 @@ async def invite_member(org_id: str, inviter_id: str, email: str) -> dict:
         .limit(1)
         .execute()
     )
-    if not inviter.data or inviter.data[0]["role"] not in ("owner", "admin"):
-        raise PermissionError("Apenas owner ou admin podem convidar membros")
+    if not inviter.data or inviter.data[0]["role"] != "owner":
+        raise PermissionError("Apenas owner pode convidar membros")
 
     # Check member count vs max
     org = (
@@ -198,8 +198,8 @@ async def remove_member(org_id: str, remover_id: str, target_user_id: str) -> di
         .limit(1)
         .execute()
     )
-    if not remover.data or remover.data[0]["role"] not in ("owner", "admin"):
-        raise PermissionError("Apenas owner ou admin podem remover membros")
+    if not remover.data or remover.data[0]["role"] != "owner":
+        raise PermissionError("Apenas owner pode remover membros")
 
     # Check target role (cannot remove owner)
     target = (
@@ -238,8 +238,8 @@ async def get_org_dashboard(org_id: str, user_id: str) -> dict:
         .limit(1)
         .execute()
     )
-    if not member.data or member.data[0]["role"] not in ("owner", "admin"):
-        raise PermissionError("Apenas owner ou admin podem ver o dashboard")
+    if not member.data or member.data[0]["role"] != "owner":
+        raise PermissionError("Apenas owner pode ver o dashboard")
 
     # Get all member IDs
     members = (
@@ -286,8 +286,8 @@ async def update_org_logo(org_id: str, user_id: str, logo_url: str) -> dict:
         .limit(1)
         .execute()
     )
-    if not member.data or member.data[0]["role"] not in ("owner", "admin"):
-        raise PermissionError("Apenas owner ou admin podem alterar o logo")
+    if not member.data or member.data[0]["role"] != "owner":
+        raise PermissionError("Apenas owner pode alterar o logo")
 
     sb.table("organizations").update({"logo_url": logo_url}).eq("id", org_id).execute()
 

@@ -15,7 +15,7 @@ interface OrgMember {
   user_id: string | null;
   email: string;
   name: string | null;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "member" | "viewer";
   status: "accepted" | "pending";
   joined_at: string | null;
   invited_at: string;
@@ -32,21 +32,21 @@ interface Organization {
 interface OrgRef {
   id: string;
   name: string;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "member" | "viewer";
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Proprietário",
-  admin: "Admin",
   member: "Membro",
+  viewer: "Visualizador",
 };
 
 const ROLE_COLORS: Record<string, string> = {
   owner: "bg-[var(--brand-blue-subtle)] text-[var(--brand-blue)]",
-  admin: "bg-[var(--success-subtle)] text-[var(--success)]",
   member: "bg-[var(--surface-1)] text-[var(--ink-secondary)]",
+  viewer: "bg-[var(--warning-subtle)] text-[var(--warning)]",
 };
 
 function formatDate(iso: string): string {
@@ -245,7 +245,7 @@ export default function EquipePage() {
   const myMember = org.members.find(
     (m) => m.email.toLowerCase() === myEmail.toLowerCase(),
   );
-  const isOwnerOrAdmin = myMember?.role === "owner" || myMember?.role === "admin";
+  const isOwnerOrAdmin = myMember?.role === "owner";
 
   return (
     <>
