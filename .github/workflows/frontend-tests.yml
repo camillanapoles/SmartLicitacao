@@ -58,6 +58,36 @@ jobs:
           cd frontend
           npx tsc --noEmit --pretty
 
+      # SEO-PROG-008 AC5: gate against incomplete BACKEND_URL fallback chains.
+      # Antipattern: `process.env.BACKEND_URL || 'http://localhost:8000'` (sem
+      # NEXT_PUBLIC_BACKEND_URL fallback). All call sites must use the helper
+      # `getBackendUrl()` from `frontend/lib/backend-url.ts` or include the full
+      # 3-way chain. Memory ref: feedback_build_hammers_backend_cascade.
+      - name: Lint BACKEND_URL fallback chain (SEO-PROG-008)
+        run: |
+          cd frontend
+          # Check only files changed by this PR to avoid blocking on pre-existing
+          # debt in main. Full sweep is tracked under SEO-PROG-008 remaining work.
+          changed_files=$(git diff origin/main...HEAD --name-only --diff-filter=ACM \
+            | grep -E '\.(ts|tsx)$' \
+            | grep -E '^frontend/(app|lib)/' \
+            | sed 's|^frontend/||' \
+            | grep -v '^lib/backend-url\.ts$' || true)
+          if [ -z "$changed_files" ]; then
+            echo "✅ No TS/TSX files changed — BACKEND_URL chain audit skipped"
+            exit 0
+          fi
+          # Find changed files with incomplete chain (missing NEXT_PUBLIC_BACKEND_URL).
+          violations=$(echo "$changed_files" \
+            | xargs -I{} grep -lE "process\.env\.BACKEND_URL\s*\|\|\s*'http://localhost" {} 2>/dev/null \
+            | xargs -I{} grep -L "NEXT_PUBLIC_BACKEND_URL" {} 2>/dev/null || true)
+          if [ -n "$violations" ]; then
+            echo "ERROR: incomplete BACKEND_URL fallback chain detected in changed files. Use getBackendUrl() from lib/backend-url.ts:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "✅ BACKEND_URL chain audit clean"
+
       - name: Run tests (exit code 0 required)
         run: |
           cd frontend

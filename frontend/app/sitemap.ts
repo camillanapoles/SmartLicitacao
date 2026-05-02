@@ -9,6 +9,7 @@ import { GLOSSARY_TERMS } from '@/lib/glossary-terms';
 import { getAllAuthorSlugs } from '@/lib/authors';
 import { getAllQuestionSlugs } from '@/lib/questions';
 import { getAllMasterclassTemas } from '@/lib/masterclasses';
+import { getBackendUrl } from '@/lib/backend-url';
 
 // STORY-SEO-001 AC3: Observable fetch wrapper. Replaces the silent `catch { return []; }`
 // pattern that hid ECONNREFUSED / DNS / 5xx errors at build time — which is exactly how
@@ -23,7 +24,7 @@ async function fetchSitemapJson<T>(
   extract: (data: unknown) => T,
   label: string,
 ): Promise<T | null> {
-  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+  const backendUrl = getBackendUrl();
   const url = `${backendUrl}${endpoint}`;
   const startedAt = Date.now();
   let outcome: 'success' | 'http_error' | 'timeout' | 'empty_data' = 'success';

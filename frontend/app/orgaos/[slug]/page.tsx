@@ -4,8 +4,9 @@ import ContentPageLayout from '../../components/ContentPageLayout';
 import OrgaoPerfilClient from './OrgaoPerfilClient';
 import { LeadCapture } from '@/components/LeadCapture';
 import { fetchWithBudget } from '@/lib/safe-fetch';
+import { getBackendUrl } from '@/lib/backend-url';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = getBackendUrl();
 
 interface LicitacaoRecente {
   objeto_compra: string;

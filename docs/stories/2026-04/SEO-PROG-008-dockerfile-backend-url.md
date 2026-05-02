@@ -3,7 +3,7 @@
 **Priority:** P0
 **Effort:** S (0.5-1 dia)
 **Squad:** @devops + @dev
-**Status:** Ready
+**Status:** Done
 **Epic:** [EPIC-SEO-PROG-2026-Q2](EPIC-SEO-PROG-2026-Q2.md)
 **Sprint:** Sprint 1 (29/abr–05/mai)
 **Sprint Window:** 2026-04-29 → 2026-05-05
@@ -314,3 +314,16 @@ export function getBackendUrl(): string {
 |---|---|---|---|
 | 2026-04-27 | 1.0 | Story criada — defense-in-depth pós STORY-SEO-020 (BACKEND_URL ARG já existe) | @sm (River) |
 | 2026-04-27 | 1.1 | PO validation: GO (10/10). Defense-in-depth bem documentado, não over-engineering. Status Draft→Ready. | @po (Pax) |
+| 2026-04-29 | 1.2 | **Stage 7 wedge ground + sm-briefing-100pct refresh**. **Trigger:** sm-briefing-100pct.md §3.3.4. **Ground:** Stage 7 reinforce — Disc 1 user-suggested AT BUILD TIME INVIABILIZED durante outage. Cobertura build-time PERMANECE escopo desta story; AT RUNTIME variant deferida para `OPS-DEVOPS-001` (não-overlap). AC reforced: build-time assertion + chain fallback + CI grep gate como defense-in-depth. **Cross-ref:** OPS-DEVOPS-001 (runtime internal hostname `bidiq-backend.railway.internal`). | @sm (River) |
+| 2026-04-29 | 1.3 | v1.2 refresh validation: GO (10/10). Stage 7 reinforce Disc 1 build-time inviabilizado é fato confirmado. Não-overlap OPS-DEVOPS-001 explícito. Status mantém Ready. | @po (Pax) |
+| 2026-04-29 | 1.4 | **Implementado Wave 2 — zany-kurzweil session.** AC2 (Dockerfile assertion) já feito linhas 138-153 (skip — pre-existing). AC1+AC3-AC6 done: helper `frontend/lib/backend-url.ts::getBackendUrl()` chain `BACKEND_URL \|\| NEXT_PUBLIC_BACKEND_URL \|\| 'http://localhost:8000'`. Refactor 4 callsites P0 (cnpj/[cnpj], orgaos/[slug], itens/[catmat] x2, sitemap.ts). CI grep gate em `.github/workflows/frontend-tests.yml` rejeita antipattern `process.env.BACKEND_URL \|\| 'http://localhost'` sem NEXT_PUBLIC fallback. Tests 5 cases em `__tests__/lib/backend-url.test.ts`. Status: Ready → Done. | @dev (James) |
+
+## File List
+
+- `frontend/lib/backend-url.ts` (NEW) — `getBackendUrl()` helper chain (AC4)
+- `frontend/__tests__/lib/backend-url.test.ts` (NEW) — 5 test cases (AC6)
+- `frontend/app/sitemap.ts` (refactor linha 26) — usa helper, mantém chain (AC3)
+- `frontend/app/cnpj/[cnpj]/page.tsx` (refactor linha 7) — usa helper (AC3)
+- `frontend/app/orgaos/[slug]/page.tsx` (refactor linha 7) — usa helper (AC3)
+- `frontend/app/itens/[catmat]/page.tsx` (refactor linhas 47, 62) — usa helper em fetchProfile + generateStaticParams (AC3)
+- `.github/workflows/frontend-tests.yml` (add step "Lint BACKEND_URL fallback chain") — CI grep gate (AC5)
