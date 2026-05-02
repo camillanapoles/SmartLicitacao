@@ -305,18 +305,18 @@ export default async function ComplianceCnpjPage({ params }: Props) {
           {/* CTA */}
           <section className="mt-4 bg-blue-50 rounded-lg p-6 text-center">
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Monitore licitações com fornecedores qualificados
+              Verifique qualquer fornecedor antes de contratar
             </h2>
             <p className="text-gray-600 mb-4">
-              O SmartLic verifica a situação de fornecedores nos principais cadastros
-              governamentais e filtra as oportunidades mais seguras para sua empresa.
+              O SmartLic consulta CEIS, CNEP e mais 4 cadastros automaticamente em cada edital — você descobre fornecedores inidôneos antes de assinar contrato.
             </p>
             <Link
-              href="/signup"
+              href={`/signup?ref=compliance&cnpj=${cnpj}`}
               className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Teste grátis por 14 dias
+              Verificar meus fornecedores grátis →
             </Link>
+            <p className="mt-2 text-sm text-gray-500">14 dias, sem cartão</p>
           </section>
 
           {/* Aviso legal */}
