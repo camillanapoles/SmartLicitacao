@@ -13,8 +13,11 @@ see `docs/runbooks/stripe-coupons.md`.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+
+from pipeline.budget import _run_with_budget
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -153,13 +156,21 @@ async def founding_checkout(
             detail="Este email já possui conta SmartLic. Faça login para gerenciar sua assinatura.",
         )
 
-    bp_result = (
-        sb.table("plan_billing_periods")
-        .select("stripe_price_id")
-        .eq("plan_id", FOUNDING_PLAN_ID)
-        .eq("billing_period", FOUNDING_BILLING_PERIOD)
-        .limit(1)
-        .execute()
+    def _fetch_price_id():
+        return (
+            sb.table("plan_billing_periods")
+            .select("stripe_price_id")
+            .eq("plan_id", FOUNDING_PLAN_ID)
+            .eq("billing_period", FOUNDING_BILLING_PERIOD)
+            .limit(1)
+            .execute()
+        )
+
+    bp_result = await _run_with_budget(
+        asyncio.to_thread(_fetch_price_id),
+        budget=5.0,
+        phase="route",
+        source="founding.checkout",
     )
     stripe_price_id = (bp_result.data[0] or {}).get("stripe_price_id") if bp_result.data else None
     if not stripe_price_id:
@@ -179,7 +190,15 @@ async def founding_checkout(
         "user_agent": request.headers.get("user-agent", "")[:500],
     }
 
-    lead_insert = sb.table("founding_leads").insert(lead_row).execute()
+    def _insert_lead():
+        return sb.table("founding_leads").insert(lead_row).execute()
+
+    lead_insert = await _run_with_budget(
+        asyncio.to_thread(_insert_lead),
+        budget=5.0,
+        phase="route",
+        source="founding.checkout.insert_lead",
+    )
     lead_record = (lead_insert.data or [{}])[0]
     lead_id = lead_record.get("id")
     if not lead_id:
@@ -225,9 +244,22 @@ async def founding_checkout(
         )
 
     try:
-        sb.table("founding_leads").update({
-            "checkout_session_id": session.id,
-        }).eq("id", lead_id).execute()
+        _session_id = session.id
+
+        def _update_session_id():
+            return (
+                sb.table("founding_leads")
+                .update({"checkout_session_id": _session_id})
+                .eq("id", lead_id)
+                .execute()
+            )
+
+        await _run_with_budget(
+            asyncio.to_thread(_update_session_id),
+            budget=5.0,
+            phase="route",
+            source="founding.checkout.update_session_id",
+        )
     except Exception as e:
         logger.warning(f"founding: failed to persist session_id — lead_id={lead_id} err={e}")
 

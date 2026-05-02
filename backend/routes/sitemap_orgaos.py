@@ -11,6 +11,8 @@ Implementation layers:
 
 import asyncio
 import logging
+
+from pipeline.budget import _run_with_budget
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -74,9 +76,11 @@ async def sitemap_orgaos(response: Response):
         return SitemapOrgaosResponse(**cached)
 
     try:
-        data = await asyncio.wait_for(
+        data = await _run_with_budget(
             asyncio.to_thread(_fetch_top_orgaos),
-            timeout=_BUDGET_S,
+            budget=_BUDGET_S,
+            phase="route",
+            source="sitemap_orgaos.sitemap_orgaos",
         )
         _set_cached("orgaos", data, ttl=_CACHE_TTL_SECONDS)
     except asyncio.TimeoutError:
@@ -220,9 +224,11 @@ async def sitemap_contratos_orgao_indexable(response: Response):
         del _contratos_orgao_cache[key]
 
     try:
-        data = await asyncio.wait_for(
+        data = await _run_with_budget(
             asyncio.to_thread(_fetch_contratos_orgao_indexable),
-            timeout=_BUDGET_S,
+            budget=_BUDGET_S,
+            phase="route",
+            source="sitemap_orgaos.sitemap_contratos_orgao_indexable",
         )
         _contratos_orgao_cache[key] = (data, time.time(), _CACHE_TTL_SECONDS)
     except asyncio.TimeoutError:

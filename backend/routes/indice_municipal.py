@@ -7,8 +7,11 @@ Público. Cache: InMemory 1h TTL.
 CORS: Access-Control-Allow-Origin: * (link bait embeddável).
 """
 
+import asyncio
 import logging
 import re
+
+from pipeline.budget import _run_with_budget
 import time
 import unicodedata
 from typing import Optional
@@ -255,15 +258,24 @@ async def get_municipio(
     try:
         from supabase_client import get_supabase
         sb = get_supabase()
-        resp = (
-            sb.table("indice_municipal")
-            .select("*")
-            .eq("uf", uf)
-            .eq("periodo", periodo)
-            .ilike("municipio_nome", f"%{municipio_part.replace('-', '%')}%")
-            .order("score_total", desc=True)
-            .limit(1)
-            .execute()
+
+        def _sync_query():
+            return (
+                sb.table("indice_municipal")
+                .select("*")
+                .eq("uf", uf)
+                .eq("periodo", periodo)
+                .ilike("municipio_nome", f"%{municipio_part.replace('-', '%')}%")
+                .order("score_total", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+        resp = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=5.0,
+            phase="route",
+            source="indice_municipal.get_indice_municipio",
         )
         rows = resp.data or []
     except Exception as e:

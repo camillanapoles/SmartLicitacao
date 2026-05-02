@@ -12,6 +12,8 @@ Layers de implementacao (/sitemap/cnpjs):
 
 import asyncio
 import logging
+
+from pipeline.budget import _run_with_budget
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -114,9 +116,11 @@ async def sitemap_cnpjs(response: Response):
         return SitemapCnpjsResponse(**cached)
 
     try:
-        data = await asyncio.wait_for(
+        data = await _run_with_budget(
             asyncio.to_thread(_fetch_top_cnpjs),
-            timeout=_BUDGET_S,
+            budget=_BUDGET_S,
+            phase="route",
+            source="sitemap_cnpjs.sitemap_cnpjs",
         )
         _set_cached("cnpjs", data, ttl=_CACHE_TTL_SECONDS)
     except asyncio.TimeoutError:
@@ -276,9 +280,11 @@ async def sitemap_fornecedores_cnpj(response: Response):
         return SitemapFornecedoresCnpjResponse(**cached)
 
     try:
-        data = await asyncio.wait_for(
+        data = await _run_with_budget(
             asyncio.to_thread(_fetch_top_fornecedores_cnpjs),
-            timeout=_BUDGET_S,
+            budget=_BUDGET_S,
+            phase="route",
+            source="sitemap_cnpjs.sitemap_fornecedores_cnpj",
         )
         _set_fornecedores_cached("fornecedores_cnpj", data, ttl=_CACHE_TTL_SECONDS)
     except asyncio.TimeoutError:
