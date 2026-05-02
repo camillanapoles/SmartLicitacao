@@ -12,6 +12,7 @@ Disallow: /buscar
 Disallow: /pipeline
 Disallow: /historico
 Disallow: /mensagens
+Allow: /alertas-publicos
 Disallow: /alertas
 Disallow: /onboarding
 Disallow: /recuperar-senha
