@@ -81,7 +81,7 @@ class TestHealthReady:
         mock_response = MagicMock()
         mock_response.data = [{"id": "test"}]
         return patch(
-            "supabase_client.sb_execute",
+            "supabase_client.sb_execute_direct",
             new_callable=AsyncMock,
             return_value=mock_response,
         ), patch("supabase_client.get_supabase", return_value=mock_sb)
@@ -91,7 +91,7 @@ class TestHealthReady:
         mock_sb = MagicMock()
         mock_sb.table.return_value.select.return_value.limit.return_value = MagicMock()
         return patch(
-            "supabase_client.sb_execute",
+            "supabase_client.sb_execute_direct",
             new_callable=AsyncMock,
             side_effect=ConnectionError(error),
         ), patch("supabase_client.get_supabase", return_value=mock_sb)
@@ -216,9 +216,9 @@ class TestHealthReadyTimeouts:
         assert _READINESS_REDIS_TIMEOUT_S == 2.0
 
     def test_supabase_timeout_constant(self):
-        """AC3: Supabase timeout is 3s."""
+        """AC3: Supabase timeout is 5s (increased from 3s to reduce false-503 under bot load)."""
         from routes.health_core import _READINESS_SUPABASE_TIMEOUT_S
-        assert _READINESS_SUPABASE_TIMEOUT_S == 3.0
+        assert _READINESS_SUPABASE_TIMEOUT_S == 5.0
 
     def test_ready_503_on_redis_timeout(self):
         """AC3/AC7: Redis timeout produces 503 with 'timeout' error."""
@@ -235,7 +235,7 @@ class TestHealthReadyTimeouts:
             mock_resp = MagicMock()
             mock_resp.data = [{"id": "x"}]
             with (
-                patch("supabase_client.sb_execute", new_callable=AsyncMock, return_value=mock_resp),
+                patch("supabase_client.sb_execute_direct", new_callable=AsyncMock, return_value=mock_resp),
                 patch("supabase_client.get_supabase", return_value=mock_sb),
             ):
                 from main import app
@@ -260,7 +260,7 @@ class TestHealthReadyTimeouts:
             patch("startup.state.startup_time", time.monotonic()),
             patch("routes.health_core._READINESS_SUPABASE_TIMEOUT_S", 0.01),
             patch("redis_pool.get_redis_pool", new_callable=AsyncMock, return_value=mock_redis),
-            patch("supabase_client.sb_execute", new_callable=AsyncMock, side_effect=slow_supabase),
+            patch("supabase_client.sb_execute_direct", new_callable=AsyncMock, side_effect=slow_supabase),
             patch("supabase_client.get_supabase", return_value=mock_sb),
         ):
             from main import app
@@ -291,7 +291,7 @@ class TestHealthReadyResponseBody:
         with (
             patch("startup.state.startup_time", time.monotonic()),
             patch("redis_pool.get_redis_pool", new_callable=AsyncMock, return_value=mock_redis),
-            patch("supabase_client.sb_execute", new_callable=AsyncMock, return_value=mock_resp),
+            patch("supabase_client.sb_execute_direct", new_callable=AsyncMock, return_value=mock_resp),
             patch("supabase_client.get_supabase", return_value=mock_sb),
         ):
             from main import app
