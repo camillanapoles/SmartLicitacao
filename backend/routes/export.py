@@ -7,6 +7,8 @@ asyncio.to_thread) with a 10-second timeout.
 
 import asyncio
 import logging
+
+from pipeline.budget import _run_with_budget
 import re
 import unicodedata
 from typing import Optional
@@ -77,9 +79,11 @@ async def export_edital_pdf(
     try:
         from pdf_generator_edital import generate_edital_pdf
 
-        pdf_bytes = await asyncio.wait_for(
+        pdf_bytes = await _run_with_budget(
             asyncio.to_thread(generate_edital_pdf, bid_data, plan_type),
-            timeout=10.0,
+            budget=10.0,
+            phase="route",
+            source="export.export_edital_pdf",
         )
     except asyncio.TimeoutError:
         logger.warning(

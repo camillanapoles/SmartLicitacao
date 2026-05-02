@@ -1,9 +1,13 @@
 """S14: SEO metrics API for admin dashboard."""
 
+import asyncio
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from typing import Optional
-import logging
+
+from pipeline.budget import _run_with_budget
 
 from auth import require_auth
 from admin import require_admin
@@ -40,12 +44,15 @@ async def get_seo_metrics(
         from supabase_client import get_supabase
 
         supabase = get_supabase()
-        response = (
-            supabase.table("seo_metrics")
-            .select("*")
-            .order("date", desc=True)
-            .limit(days)
-            .execute()
+
+        def _sync_query():
+            return supabase.table("seo_metrics").select("*").order("date", desc=True).limit(days).execute()
+
+        response = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=5.0,
+            phase="route",
+            source="seo_admin.get_seo_metrics",
         )
         rows = response.data or []
 

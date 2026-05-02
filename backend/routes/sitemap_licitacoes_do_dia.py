@@ -11,6 +11,8 @@ TTL 1h (dia corrente muda durante o dia).
 
 import asyncio
 import logging
+
+from pipeline.budget import _run_with_budget
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -80,9 +82,11 @@ async def sitemap_licitacoes_do_dia_indexable(response: Response):
         return SitemapLicitacoesDoDiaResponse(**cached)
 
     try:
-        data = await asyncio.wait_for(
+        data = await _run_with_budget(
             asyncio.to_thread(_fetch_indexable_dates),
-            timeout=_BUDGET_S,
+            budget=_BUDGET_S,
+            phase="route",
+            source="sitemap_licitacoes_do_dia.sitemap_licitacoes_do_dia_indexable",
         )
         _set_cached("dates", data, ttl=_CACHE_TTL_SECONDS)
     except asyncio.TimeoutError:

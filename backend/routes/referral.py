@@ -8,9 +8,12 @@ Endpoints:
                              is being referred via a code.
 """
 
+import asyncio
 import logging
 import secrets
 import string
+
+from pipeline.budget import _run_with_budget
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -155,12 +158,20 @@ async def get_referral_code(user: dict = Depends(require_auth)):
     user_id = user["id"]
 
     # Check if a code already exists before we decide to send welcome email
-    pre_existing = (
-        sb.table("referrals")
-        .select("code")
-        .eq("referrer_user_id", user_id)
-        .limit(1)
-        .execute()
+    def _check_existing():
+        return (
+            sb.table("referrals")
+            .select("code")
+            .eq("referrer_user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+
+    pre_existing = await _run_with_budget(
+        asyncio.to_thread(_check_existing),
+        budget=5.0,
+        phase="route",
+        source="referral.get_referral_code",
     )
     had_code = bool(getattr(pre_existing, "data", None))
 
@@ -198,11 +209,19 @@ async def get_referral_stats(user: dict = Depends(require_auth)):
         raise HTTPException(status_code=500, detail="Erro ao obter estatísticas.")
 
     try:
-        rows = (
-            sb.table("referrals")
-            .select("status")
-            .eq("referrer_user_id", user_id)
-            .execute()
+        def _fetch_stats():
+            return (
+                sb.table("referrals")
+                .select("status")
+                .eq("referrer_user_id", user_id)
+                .execute()
+            )
+
+        rows = await _run_with_budget(
+            asyncio.to_thread(_fetch_stats),
+            budget=5.0,
+            phase="route",
+            source="referral.get_referral_stats",
         )
         data = getattr(rows, "data", []) or []
     except Exception:
@@ -247,12 +266,20 @@ async def redeem_referral(
         raise HTTPException(status_code=403, detail="Identidade inválida.")
 
     try:
-        match = (
-            sb.table("referrals")
-            .select("id, referrer_user_id, status, referred_user_id")
-            .eq("code", code)
-            .limit(1)
-            .execute()
+        def _lookup_code():
+            return (
+                sb.table("referrals")
+                .select("id, referrer_user_id, status, referred_user_id")
+                .eq("code", code)
+                .limit(1)
+                .execute()
+            )
+
+        match = await _run_with_budget(
+            asyncio.to_thread(_lookup_code),
+            budget=5.0,
+            phase="route",
+            source="referral.redeem_referral",
         )
     except Exception:
         logger.exception("Referral lookup failed for code redeem")
@@ -272,12 +299,23 @@ async def redeem_referral(
         return ReferralRedeemResponse(status="already_redeemed")
 
     try:
-        sb.table("referrals").update(
-            {
-                "referred_user_id": body.referred_user_id,
-                "status": "signed_up",
-            }
-        ).eq("id", row["id"]).execute()
+        _row_id = row["id"]
+        _referred_uid = body.referred_user_id
+
+        def _update_status():
+            return (
+                sb.table("referrals")
+                .update({"referred_user_id": _referred_uid, "status": "signed_up"})
+                .eq("id", _row_id)
+                .execute()
+            )
+
+        await _run_with_budget(
+            asyncio.to_thread(_update_status),
+            budget=5.0,
+            phase="route",
+            source="referral.redeem_referral.update",
+        )
     except Exception:
         logger.exception("Failed to mark referral as signed_up")
         raise HTTPException(status_code=500, detail="Erro ao registrar indicação.")

@@ -9,8 +9,11 @@ Endpoints:
 Cache: InMemory 1h TTL.
 """
 
+import asyncio
 import logging
 import time
+
+from pipeline.budget import _run_with_budget
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -162,7 +165,16 @@ async def get_bids_by_ids(
     # Query supabase directly for exact pncp_id matches
     try:
         sb = get_supabase()
-        result = sb.table("pncp_raw_bids").select("*").in_("pncp_id", id_list).execute()
+
+        def _sync_query():
+            return sb.table("pncp_raw_bids").select("*").in_("pncp_id", id_list).execute()
+
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=5.0,
+            phase="route",
+            source="comparador.comparador_bids",
+        )
         rows = result.data or []
     except Exception as e:
         logger.warning("Failed to query pncp_raw_bids for ids=%s: %s", id_list, e)

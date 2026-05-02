@@ -3,8 +3,11 @@
 Public (no auth) endpoint that stores email + context for lead nurturing.
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
+
+from pipeline.budget import _run_with_budget
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -35,17 +38,23 @@ async def capture_lead(req: LeadCaptureRequest):
     try:
         from supabase_client import get_supabase
         sb = get_supabase()
+        lead_row = {
+            "email": req.email.lower().strip(),
+            "source": req.source,
+            "setor": req.setor,
+            "uf": req.uf.upper() if req.uf else None,
+            "captured_at": req.captured_at or datetime.now(timezone.utc).isoformat(),
+        }
 
-        sb.table("leads").upsert(
-            {
-                "email": req.email.lower().strip(),
-                "source": req.source,
-                "setor": req.setor,
-                "uf": req.uf.upper() if req.uf else None,
-                "captured_at": req.captured_at or datetime.now(timezone.utc).isoformat(),
-            },
-            on_conflict="email,source",
-        ).execute()
+        def _sync_upsert():
+            return sb.table("leads").upsert(lead_row, on_conflict="email,source").execute()
+
+        await _run_with_budget(
+            asyncio.to_thread(_sync_upsert),
+            budget=5.0,
+            phase="route",
+            source="lead_capture.capture_lead",
+        )
     except Exception as e:
         # Fail-open: don't block UX if DB is down
         logger.warning("Failed to store lead: %s", e)

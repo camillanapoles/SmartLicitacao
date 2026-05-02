@@ -10,8 +10,11 @@ This endpoint provides comprehensive plan information including:
 Data source: `plans` table in database (via SYS-M04 infrastructure)
 """
 
+import asyncio
 import logging
 from typing import List, Dict, Any
+
+from pipeline.budget import _run_with_budget
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -77,14 +80,22 @@ async def get_plans_with_capabilities(db=Depends(get_db)):
 
     try:
         # Fetch all active plans from database
-        result = (
-            db.table("plans")
-            .select(
-                "id, name, description, price_brl, duration_days, max_searches, is_active"
+        def _sync_query():
+            return (
+                db.table("plans")
+                .select(
+                    "id, name, description, price_brl, duration_days, max_searches, is_active"
+                )
+                .eq("is_active", True)
+                .order("price_brl")
+                .execute()
             )
-            .eq("is_active", True)
-            .order("price_brl")
-            .execute()
+
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=5.0,
+            phase="route",
+            source="plans.get_plans_with_capabilities",
         )
 
         if not result.data:

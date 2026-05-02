@@ -10,8 +10,11 @@ Email delivery is best-effort — if Resend fails, the lead is still captured
 and `email_queued=False` is returned so the frontend can surface a retry hint.
 """
 
+import asyncio
 import hashlib
 import logging
+
+from pipeline.budget import _run_with_budget
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
@@ -97,9 +100,15 @@ async def request_relatorio(payload: RelatorioRequest, request: Request):
     }
 
     try:
-        supabase.table("report_leads").upsert(
-            row, on_conflict="email,source"
-        ).execute()
+        def _sync_upsert():
+            return supabase.table("report_leads").upsert(row, on_conflict="email,source").execute()
+
+        await _run_with_budget(
+            asyncio.to_thread(_sync_upsert),
+            budget=5.0,
+            phase="route",
+            source="relatorio.request_relatorio",
+        )
     except Exception:
         logger.exception(
             "report_lead_db_error email_domain=%s", _email_domain(payload.email)
