@@ -19,7 +19,7 @@ router = APIRouter(tags=["health-core"])
 
 # HARDEN-016 AC3: Individual dependency timeouts
 _READINESS_REDIS_TIMEOUT_S = 2.0
-_READINESS_SUPABASE_TIMEOUT_S = 3.0
+_READINESS_SUPABASE_TIMEOUT_S = 5.0  # increased from 3s to reduce false-503 under bot-driven pool saturation
 
 
 def _inc_health_failure(check: str) -> None:
@@ -83,9 +83,9 @@ async def health_ready(response: Response):
     # Supabase check
     sb_start = time.monotonic()
     try:
-        from supabase_client import get_supabase, sb_execute
+        from supabase_client import get_supabase, sb_execute_direct
         sb = get_supabase()
-        await asyncio.wait_for(sb_execute(sb.table("profiles").select("id").limit(1)), timeout=_READINESS_SUPABASE_TIMEOUT_S)
+        await asyncio.wait_for(sb_execute_direct(sb.table("profiles").select("id").limit(1)), timeout=_READINESS_SUPABASE_TIMEOUT_S)
         checks["supabase"] = {"status": "up", "latency_ms": round((time.monotonic() - sb_start) * 1000)}
     except asyncio.TimeoutError:
         checks["supabase"] = {"status": "down", "error": "timeout", "latency_ms": round((time.monotonic() - sb_start) * 1000)}
