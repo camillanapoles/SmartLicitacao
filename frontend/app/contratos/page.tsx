@@ -7,13 +7,13 @@ import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Contratos Publicos por Setor e Estado — SmartLic',
+  title: 'Contratos Públicos por Setor e Estado — SmartLic',
   description:
-    'Consulte contratos publicos do governo por setor e estado. Dados do PNCP atualizados diariamente. Transparencia em gastos publicos.',
+    'Consulte contratos públicos do governo por setor e estado. Dados do PNCP atualizados diariamente. Transparência em gastos públicos.',
   alternates: { canonical: buildCanonical('/contratos') },
   openGraph: {
-    title: 'Contratos Publicos por Setor e Estado',
-    description: 'Transparencia em gastos publicos — dados do PNCP atualizados diariamente.',
+    title: 'Contratos Públicos por Setor e Estado',
+    description: 'Transparência em gastos públicos — dados do PNCP atualizados diariamente.',
     type: 'website',
     locale: 'pt_BR',
   },
@@ -23,14 +23,14 @@ export const metadata: Metadata = {
 export default function ContratosHubPage() {
   const breadcrumbs = [
     { name: 'SmartLic', url: '/' },
-    { name: 'Contratos Publicos', url: '/contratos' },
+    { name: 'Contratos Públicos', url: '/contratos' },
   ];
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: 'Contratos Publicos por Setor e Estado',
-    description: 'Diretorio de contratos publicos do governo brasileiro por setor e estado.',
+    name: 'Contratos Públicos por Setor e Estado',
+    description: 'Diretório de contratos públicos do governo brasileiro por setor e estado.',
     url: 'https://smartlic.tech/contratos',
     provider: { '@type': 'Organization', name: 'SmartLic', url: 'https://smartlic.tech' },
     breadcrumb: {
@@ -69,11 +69,11 @@ export default function ContratosHubPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Contratos Publicos por Setor e Estado
+            Contratos Públicos por Setor e Estado
           </h1>
           <p className="text-lg text-gray-600 mb-8">
             Consulte quanto o governo gasta por setor em cada estado. Dados do Portal Nacional de
-            Contratacoes Publicas (PNCP), atualizados diariamente.
+            Contratações Públicas (PNCP), atualizados diariamente.
           </p>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -101,22 +101,22 @@ export default function ContratosHubPage() {
 
           {/* Internal linking */}
           <div className="mt-12 border-t border-gray-200 pt-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Explore tambem</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Explore também</h2>
             <div className="flex flex-wrap gap-3">
               <Link href="/fornecedores" className="text-blue-600 hover:underline">
                 Fornecedores do Governo
               </Link>
               <Link href="/dados" className="text-blue-600 hover:underline">
-                Dados Publicos Agregados
+                Dados Públicos Agregados
               </Link>
               <Link href="/alertas-publicos" className="text-blue-600 hover:underline">
-                Alertas de Licitacoes
+                Alertas de Licitações
               </Link>
               <Link href="/orgaos" className="text-blue-600 hover:underline">
-                Orgaos Compradores
+                Órgãos Compradores
               </Link>
               <Link href="/licitacoes" className="text-blue-600 hover:underline">
-                Licitacoes por Setor
+                Licitações por Setor
               </Link>
             </div>
           </div>

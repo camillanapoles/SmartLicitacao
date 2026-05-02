@@ -94,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'website',
       locale: 'pt_BR',
       images: [{
-        url: `/api/og?title=${encodeURIComponent(stats.orgao_nome + ' — Contratos Publicos')}`,
+        url: `/api/og?title=${encodeURIComponent(stats.orgao_nome + ' — Contratos Públicos')}`,
         width: 1200,
         height: 630,
       }],
@@ -126,7 +126,7 @@ export default async function OrgaoContratosPage({ params }: Props) {
   const datasetSchema = {
     '@context': 'https://schema.org',
     '@type': 'Dataset',
-    name: `Contratos Publicos — ${stats.orgao_nome}`,
+    name: `Contratos Públicos — ${stats.orgao_nome}`,
     description: `Historico de contratos firmados por ${stats.orgao_nome} (CNPJ ${stats.orgao_cnpj})`,
     creator: { '@type': 'Organization', name: 'SmartLic', url: 'https://smartlic.tech' },
     license: 'https://dados.gov.br/dados/conteudo/sobre-dados-abertos',
@@ -286,7 +286,7 @@ export default async function OrgaoContratosPage({ params }: Props) {
                 Fornecedores
               </Link>
               <Link href="/dados" className="p-3 rounded-lg border border-[var(--border)] text-sm text-brand-blue hover:bg-surface-1 transition-colors text-center">
-                Dados Publicos
+                Dados Públicos
               </Link>
             </div>
           </section>

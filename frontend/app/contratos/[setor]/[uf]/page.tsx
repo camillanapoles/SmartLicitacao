@@ -84,12 +84,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `Contratos Publicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} ${year} — SmartLic`,
+    title: `Contratos Públicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} ${year} — SmartLic`,
     description,
     alternates: { canonical: buildCanonical(`/contratos/${setor}/${uf}`) }, // AC6
     openGraph: {
-      title: `Contratos Publicos: ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
-      description: `Transparencia em gastos publicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
+      title: `Contratos Públicos: ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
+      description: `Transparência em gastos públicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
       type: 'website',
       locale: 'pt_BR',
     },
@@ -119,7 +119,7 @@ export default async function ContratosSetorUfPage({ params }: Props) {
 
   const breadcrumbs = [
     { name: 'SmartLic', url: '/' },
-    { name: 'Contratos Publicos', url: '/contratos' },
+    { name: 'Contratos Públicos', url: '/contratos' },
     { name: sector.name, url: `/contratos/${setor}/${uf}` },
     { name: ufName, url: `/contratos/${setor}/${uf}` },
   ];
@@ -129,25 +129,25 @@ export default async function ContratosSetorUfPage({ params }: Props) {
       question: `Quanto o governo de ${ufName} gasta em ${sector.name}?`,
       answer: data
         ? `Nos contratos registrados no PNCP, ${ufName} tem ${data.total_contracts} contratos de ${sector.name} com valor total de ${formatBRL(data.total_value)}.`
-        : `Consulte os dados atualizados nesta pagina para ver os contratos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}.`,
+        : `Consulte os dados atualizados nesta página para ver os contratos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}.`,
     },
     {
-      question: `Quais orgaos de ${ufName} mais contratam ${sector.name}?`,
+      question: `Quais órgãos de ${ufName} mais contratam ${sector.name}?`,
       answer: data && data.top_orgaos.length > 0
-        ? `Os maiores compradores sao: ${data.top_orgaos.slice(0, 3).map((o) => o.nome).join(', ')}.`
-        : `Veja a lista completa de orgaos compradores nesta pagina.`,
+        ? `Os maiores compradores são: ${data.top_orgaos.slice(0, 3).map((o) => o.nome).join(', ')}.`
+        : `Veja a lista completa de órgãos compradores nesta página.`,
     },
     ...(totalEditais > 0
       ? [
           {
-            question: `Ha editais abertos de ${sector.name} em ${ufName} agora?`,
-            answer: `Sim, ha ${totalEditais} ${totalEditais === 1 ? 'edital aberto' : 'editais abertos'} de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} nos ultimos 30 dias. Acesse o SmartLic para ver todos com detalhes de valor e prazos.`,
+            question: `Há editais abertos de ${sector.name} em ${ufName} agora?`,
+            answer: `Sim, há ${totalEditais} ${totalEditais === 1 ? 'edital aberto' : 'editais abertos'} de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} nos últimos 30 dias. Acesse o SmartLic para ver todos com detalhes de valor e prazos.`,
           },
         ]
       : []),
     {
-      question: `Como consultar contratos publicos de ${sector.name}?`,
-      answer: `O SmartLic agrega dados do PNCP e permite consultar contratos por setor e estado. Os dados sao atualizados diariamente.`,
+      question: `Como consultar contratos públicos de ${sector.name}?`,
+      answer: `O SmartLic agrega dados do PNCP e permite consultar contratos por setor e estado. Os dados são atualizados diariamente.`,
     },
   ];
 
@@ -155,8 +155,8 @@ export default async function ContratosSetorUfPage({ params }: Props) {
     {
       '@context': 'https://schema.org',
       '@type': 'Dataset',
-      name: `Contratos Publicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
-      description: `Dados de contratos publicos do setor ${sector.name} ${getUfPrep(ufUpper)} ${ufName}, Brasil.`,
+      name: `Contratos Públicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
+      description: `Dados de contratos públicos do setor ${sector.name} ${getUfPrep(ufUpper)} ${ufName}, Brasil.`,
       url: `https://smartlic.tech/contratos/${setor}/${uf}`,
       temporalCoverage: `${year - 2}/${year}`,
       spatialCoverage: { '@type': 'Place', name: ufName },
@@ -212,11 +212,11 @@ export default async function ContratosSetorUfPage({ params }: Props) {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Contratos Publicos de {sector.name} {getUfPrep(ufUpper)} {ufName}
+            Contratos Públicos de {sector.name} {getUfPrep(ufUpper)} {ufName}
           </h1>
           <p className="text-gray-500 text-sm mb-6">
             {data?.last_updated ? getFreshnessLabel(data.last_updated) : 'Dados do PNCP'}
-            {' · Fonte: Portal Nacional de Contratacoes Publicas'}
+            {' · Fonte: Portal Nacional de Contratações Públicas'}
           </p>
 
           {/* AC4: empty state apenas quando AMBOS os datasets estão zerados */}
@@ -226,7 +226,7 @@ export default async function ContratosSetorUfPage({ params }: Props) {
                 Nenhum contrato de {sector.name} encontrado {getUfPrep(ufUpper)} {ufName} no periodo consultado.
               </p>
               <p className="text-sm text-gray-400 mt-2">
-                Os dados sao indexados diariamente do PNCP. Volte em breve.
+                Os dados são indexados diariamente do PNCP. Volte em breve.
               </p>
             </div>
           ) : (
@@ -245,7 +245,7 @@ export default async function ContratosSetorUfPage({ params }: Props) {
                       <p className="text-2xl font-bold text-green-700">{formatBRL(data.total_value)}</p>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm border p-5">
-                      <p className="text-sm text-gray-500">Valor Medio</p>
+                      <p className="text-sm text-gray-500">Valor Médio</p>
                       <p className="text-2xl font-bold text-gray-900">{formatBRL(data.avg_value)}</p>
                     </div>
                   </div>
@@ -253,12 +253,12 @@ export default async function ContratosSetorUfPage({ params }: Props) {
                   {/* Top Orgaos */}
                   {data.top_orgaos.length > 0 && (
                     <section className="mb-8">
-                      <h2 className="text-xl font-semibold text-gray-900 mb-3">Principais Orgaos Compradores</h2>
+                      <h2 className="text-xl font-semibold text-gray-900 mb-3">Principais Órgãos Compradores</h2>
                       <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 text-gray-600">
                             <tr>
-                              <th className="text-left px-4 py-3">Orgao</th>
+                              <th className="text-left px-4 py-3">Órgão</th>
                               <th className="text-right px-4 py-3">Contratos</th>
                               <th className="text-right px-4 py-3">Valor Total</th>
                             </tr>
@@ -321,7 +321,7 @@ export default async function ContratosSetorUfPage({ params }: Props) {
                           <div key={i} className="bg-white rounded-lg shadow-sm border p-4">
                             <p className="font-medium text-gray-900 text-sm">{c.objeto}</p>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-                              <span>Orgao: {c.orgao}</span>
+                              <span>Órgão: {c.orgao}</span>
                               <span>Fornecedor: {c.fornecedor}</span>
                               {c.valor && <span className="text-green-700">{formatBRL(c.valor)}</span>}
                               <span>{c.data_assinatura}</span>
@@ -335,12 +335,12 @@ export default async function ContratosSetorUfPage({ params }: Props) {
                   {/* Monthly Trend */}
                   {data.monthly_trend.some((m) => m.count > 0) && (
                     <section className="mb-8">
-                      <h2 className="text-xl font-semibold text-gray-900 mb-3">Evolucao Mensal</h2>
+                      <h2 className="text-xl font-semibold text-gray-900 mb-3">Evolução Mensal</h2>
                       <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 text-gray-600">
                             <tr>
-                              <th className="text-left px-4 py-3">Mes</th>
+                              <th className="text-left px-4 py-3">Mês</th>
                               <th className="text-right px-4 py-3">Contratos</th>
                               <th className="text-right px-4 py-3">Valor</th>
                             </tr>
@@ -387,10 +387,10 @@ export default async function ContratosSetorUfPage({ params }: Props) {
                       )}
                     </div>
                     <Link
-                      href="/buscar"
+                      href={`/signup?ref=contratos-mid&setor=${setor}&uf=${uf}`}
                       className="inline-block px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-sm"
                     >
-                      Ver todos no SmartLic →
+                      Ver todos os editais de {sector.name} em {ufName} →
                     </Link>
                   </div>
                 </section>
@@ -413,7 +413,7 @@ export default async function ContratosSetorUfPage({ params }: Props) {
 
           {/* Internal Linking */}
           <section className="border-t border-gray-200 pt-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Paginas Relacionadas</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Páginas Relacionadas</h2>
             <div className="flex flex-wrap gap-3 text-sm">
               <Link href={`/fornecedores/${setor}/${uf}`} className="text-blue-600 hover:underline">
                 Fornecedores de {sector.name} {getUfPrep(ufUpper)} {ufName}
@@ -422,7 +422,7 @@ export default async function ContratosSetorUfPage({ params }: Props) {
                 Alertas de {sector.name} {getUfPrep(ufUpper)} {ufName}
               </Link>
               <Link href={`/blog/licitacoes/${setor}/${uf}`} className="text-blue-600 hover:underline">
-                Licitacoes de {sector.name} {getUfPrep(ufUpper)} {ufName}
+                Licitações de {sector.name} {getUfPrep(ufUpper)} {ufName}
               </Link>
               <Link href="/contratos" className="text-blue-600 hover:underline">
                 Todos os Setores
@@ -439,14 +439,14 @@ export default async function ContratosSetorUfPage({ params }: Props) {
               Receba alertas quando novos contratos forem publicados no PNCP.
             </p>
             <Link
-              href="/signup"
+              href="/signup?ref=contratos-bot"
               className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Teste gratis por 14 dias
+              Testar 14 dias grátis →
             </Link>
           </section>
 
-          <p className="text-xs text-gray-400 mt-8">{data?.aviso_legal || 'Dados do PNCP. Atualizacao diaria.'}</p>
+          <p className="text-xs text-gray-400 mt-8">{data?.aviso_legal || 'Dados do PNCP. Atualização diária.'}</p>
         </div>
       </main>
       <Footer />

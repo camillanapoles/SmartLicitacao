@@ -292,7 +292,7 @@ export default async function FornecedoresSetorUfPage({ params }: Props) {
 
           {/* Internal Linking */}
           <section className="border-t border-gray-200 pt-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Paginas Relacionadas</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Páginas Relacionadas</h2>
             <div className="flex flex-wrap gap-3 text-sm">
               <Link href={`/contratos/${setor}/${uf}`} className="text-blue-600 hover:underline">
                 Contratos de {sector.name} {getUfPrep(ufUpper)} {ufName}
@@ -301,7 +301,7 @@ export default async function FornecedoresSetorUfPage({ params }: Props) {
                 Alertas de {sector.name} {getUfPrep(ufUpper)} {ufName}
               </Link>
               <Link href={`/blog/licitacoes/${setor}/${uf}`} className="text-blue-600 hover:underline">
-                Licitacoes de {sector.name} {getUfPrep(ufUpper)} {ufName}
+                Licitações de {sector.name} {getUfPrep(ufUpper)} {ufName}
               </Link>
               <Link href="/fornecedores" className="text-blue-600 hover:underline">
                 Todos os Setores
@@ -312,7 +312,7 @@ export default async function FornecedoresSetorUfPage({ params }: Props) {
           {/* Lead Capture */}
           <section className="mt-12 bg-blue-50 rounded-lg p-6 text-center">
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Encontre licitacoes de {sector.name} {getUfPrep(ufUpper)} {ufName}
+              Encontre licitações de {sector.name} {getUfPrep(ufUpper)} {ufName}
             </h2>
             <p className="text-gray-600 mb-4">
               O SmartLic monitora editais e contratos do PNCP automaticamente.
@@ -321,11 +321,11 @@ export default async function FornecedoresSetorUfPage({ params }: Props) {
               href="/signup"
               className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Teste gratis por 14 dias
+              Testar 14 dias grátis →
             </Link>
           </section>
 
-          <p className="text-xs text-gray-400 mt-8">{data?.aviso_legal || 'Dados do PNCP. Atualizacao diaria.'}</p>
+          <p className="text-xs text-gray-400 mt-8">{data?.aviso_legal || 'Dados do PNCP. Atualização diária.'}</p>
         </div>
       </main>
       <Footer />

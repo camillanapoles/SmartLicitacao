@@ -357,12 +357,12 @@ export default async function FornecedorCnpjPage({ params }: Props) {
             </div>
           </section>
 
-          {/* Paginas Relacionadas */}
+          {/* Páginas Relacionadas */}
           <section className="border-t border-gray-200 pt-8 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Paginas Relacionadas</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Páginas Relacionadas</h2>
             <div className="flex flex-wrap gap-3 text-sm">
               <Link href={`/cnpj/${cnpj}`} className="text-blue-600 hover:underline">
-                Licitacoes deste CNPJ
+                Licitações deste CNPJ
               </Link>
               <Link href="/fornecedores" className="text-blue-600 hover:underline">
                 Todos os Fornecedores
@@ -385,14 +385,14 @@ export default async function FornecedorCnpjPage({ params }: Props) {
               Monitore editais do setor de {profile.razao_social}
             </h2>
             <p className="text-gray-600 mb-4">
-              O SmartLic rastreia licitacoes abertas do PNCP e avisa quando surgem
+              O SmartLic rastreia licitações abertas do PNCP e avisa quando surgem
               oportunidades relevantes para sua empresa.
             </p>
             <Link
               href="/signup"
               className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Teste gratis por 14 dias
+              Testar 14 dias grátis →
             </Link>
           </section>
 

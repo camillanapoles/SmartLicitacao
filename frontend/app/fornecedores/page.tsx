@@ -101,19 +101,19 @@ export default function FornecedoresHubPage() {
 
           {/* Internal linking */}
           <div className="mt-12 border-t border-gray-200 pt-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Explore tambem</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Explore também</h2>
             <div className="flex flex-wrap gap-3">
               <Link href="/contratos" className="text-blue-600 hover:underline">
-                Contratos Publicos
+                Contratos Públicos
               </Link>
               <Link href="/dados" className="text-blue-600 hover:underline">
-                Dados Publicos Agregados
+                Dados Públicos Agregados
               </Link>
               <Link href="/alertas-publicos" className="text-blue-600 hover:underline">
-                Alertas de Licitacoes
+                Alertas de Licitações
               </Link>
               <Link href="/orgaos" className="text-blue-600 hover:underline">
-                Orgaos Compradores
+                Órgãos Compradores
               </Link>
               <Link href="/cnpj" className="text-blue-600 hover:underline">
                 Consulta CNPJ B2G
