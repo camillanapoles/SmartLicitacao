@@ -269,11 +269,12 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
                 Receba alertas de novos editais e analise oportunidades em tempo real.
               </p>
               <Link
-                href="/cadastro"
+                href={`/signup?ref=indice-municipal&uf=${uf}&municipio=${municipioSlug}`}
                 className="inline-block bg-blue-600 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Trial 14 dias grátis →
+                Ver editais abertos em {municipioTitulo} →
               </Link>
+              <p className="text-xs text-blue-600 mt-2">14 dias grátis, sem cartão de crédito.</p>
             </div>
           </>
         )}

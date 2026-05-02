@@ -3,7 +3,7 @@
 **Priority:** P0
 **Effort:** M (2-3 dias)
 **Squad:** @devops + @dev
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-RES-BE-2026-Q2](EPIC-RES-BE-2026-Q2.md)
 **Sprint:** Sprint 1 (2026-04-29 → 2026-05-05) — bloqueador de RES-BE-002, RES-BE-004, RES-BE-005..008
 **Dependências bloqueadoras:** Nenhuma (foundation)
@@ -263,3 +263,4 @@ Nenhuma — story pronta para implementação.
 |---|---|---|---|
 | 2026-04-27 | 1.0 | Story criada a partir do plano de auditoria pós-P0 | @sm (River) |
 | 2026-04-27 | 1.1 | PO validation: GO (10/10). Story pronta para Sprint 1, foundation epic. Status: Draft → Ready. | @po (Pax) |
+| 2026-05-02 | 1.2 | Status Ready → InReview (correção: Done foi prematuro — `.claude/rules/story-lifecycle.md` exige @qa PASS antes de Done). Script `backend/scripts/audit_execute_without_budget.py` (437 LOC) entregue + workflow `.github/workflows/audit-execute-without-budget.yml` ativo (PR #600 escopo `--all-routes` 67 arquivos) + sticky PR comments + GH annotations + tests. Audit atual rodando em main reporta zero violations. Escopo expandido vs spec original (cobre 67 routes, não apenas baseline 54 unprotected). **DoD pendentes para @qa retroactive gate:** (a) `docs/runbooks/audit-execute-budget.md` AUSENTE — criar ou waivar formalmente (script é self-documented via `--help` + workflow YAML inline); (b) AC6 Grafana panel storage histórico permanece TODO (não bloqueante MVP — formalizar waiver). | @dev (Dex) |

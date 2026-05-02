@@ -1,0 +1,120 @@
+# RES-BE-013: env vars ESPERADAS em produção (taxativa)
+#
+# Vars em prod fora desta lista geram WARNING (não falha CI). Vars listadas em
+# prod-env-blocklist.txt SEMPRE falham CI, independente desta lista.
+#
+# Formato:
+#   - uma var por linha
+#   - sufixo `*` é wildcard
+#   - exact match (case-sensitive)
+#
+# Adicionar entrada aqui requer PR review por @devops.
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+DATABASE_URL
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_ANON_KEY
+SUPABASE_JWT_SECRET
+SUPABASE_ACCESS_TOKEN
+SUPABASE_PROJECT_REF
+SUPABASE_DB_URL
+
+# ─── Redis ────────────────────────────────────────────────────────────────────
+REDIS_URL
+REDIS_PRIVATE_URL
+REDIS_PUBLIC_URL
+REDISHOST
+REDISPASSWORD
+REDISPORT
+REDISUSER
+
+# ─── External APIs ────────────────────────────────────────────────────────────
+OPENAI_API_KEY
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PUBLISHABLE_KEY
+RESEND_API_KEY
+RESEND_WEBHOOK_SECRET
+SENTRY_DSN
+SENTRY_AUTH_TOKEN
+MIXPANEL_TOKEN
+NEXT_PUBLIC_MIXPANEL_TOKEN
+NEXT_PUBLIC_CLARITY_PROJECT_ID
+GOOGLE_*
+BRASILAPI_*
+
+# ─── Resilience feature flags (epic EPIC-RES-BE-2026-Q2) ──────────────────────
+ENABLE_BUDGET_WRAP
+ENABLE_NEGATIVE_CACHE
+ENABLE_BULKHEAD
+ENABLE_CIRCUIT_BREAKER
+CB_FAILURE_THRESHOLD
+CB_COOLDOWN_SECONDS
+BULKHEAD_DEFAULT_MAX
+NEGATIVE_CACHE_DEFAULT_TTL
+ROUTE_TIMEOUT_S
+
+# ─── Existing feature flags ───────────────────────────────────────────────────
+DATALAKE_ENABLED
+DATALAKE_QUERY_ENABLED
+LLM_ZERO_MATCH_ENABLED
+LLM_ARBITER_ENABLED
+LLM_FALLBACK_PENDING_ENABLED
+VIABILITY_ASSESSMENT_ENABLED
+SYNONYM_MATCHING_ENABLED
+SEARCH_ASYNC_ENABLED
+
+# ─── Pipeline tunables ────────────────────────────────────────────────────────
+PIPELINE_TIMEOUT
+CONSOLIDATION_TIMEOUT
+PNCP_TIMEOUT_PER_SOURCE
+PNCP_TIMEOUT_PER_UF
+PNCP_BATCH_SIZE
+PNCP_BATCH_DELAY_S
+PNCP_CANARY_INTERVAL_S
+PNCP_CANARY_FAIL_THRESHOLD
+SUBSCRIPTION_GRACE_DAYS
+TRIAL_PAYWALL_MAX_PIPELINE
+ADMIN_USER_IDS
+
+# ─── Process / runtime ────────────────────────────────────────────────────────
+PROCESS_TYPE
+WEB_CONCURRENCY
+GUNICORN_TIMEOUT
+GUNICORN_KEEPALIVE
+RUNNER
+PORT
+PYTHONUNBUFFERED
+PYTHONPATH
+TZ
+
+# ─── CORS / runtime ───────────────────────────────────────────────────────────
+CORS_ORIGINS
+ENVIRONMENT
+APP_VERSION
+APP_ENV
+
+# ─── Railway-injected (always present) ────────────────────────────────────────
+RAILWAY_*
+
+# ─── Frontend (Next.js public + private) ──────────────────────────────────────
+NEXT_PUBLIC_*
+BACKEND_URL
+NEXTAUTH_*
+NEXT_*
+
+# ─── Stripe price/product IDs ─────────────────────────────────────────────────
+STRIPE_PRICE_*
+STRIPE_PRODUCT_*
+
+# ─── OAuth ────────────────────────────────────────────────────────────────────
+GOOGLE_OAUTH_CLIENT_ID
+GOOGLE_OAUTH_CLIENT_SECRET
+OAUTH_FERNET_KEY
+
+# ─── Misc / observability ─────────────────────────────────────────────────────
+LOG_LEVEL
+OTEL_*
+PROMETHEUS_*
+SEED_*

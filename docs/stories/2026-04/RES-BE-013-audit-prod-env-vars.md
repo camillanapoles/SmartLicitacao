@@ -3,7 +3,7 @@
 **Priority:** P0
 **Effort:** S (1 dia)
 **Squad:** @devops + @dev
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-RES-BE-2026-Q2](EPIC-RES-BE-2026-Q2.md)
 **Sprint:** Sprint 1 (2026-04-29 → 2026-05-05)
 **Dependências bloqueadoras:** Nenhuma (foundation)
@@ -350,3 +350,4 @@ Nenhuma.
 |---|---|---|---|
 | 2026-04-27 | 1.0 | Story criada — operacionaliza memory `feedback_audit_env_vars_after_incident` em CI gate | @sm (River) |
 | 2026-04-27 | 1.1 | PO validation: GO (10/10). Memory promovida a CI gate, allow-list inclui flags do epic. Status: Draft → Ready. | @po (Pax) |
+| 2026-05-02 | 1.2 | Status Ready → InReview. Implementação entregue: `.github/audit/prod-env-blocklist.txt` + `prod-env-allowlist.txt` (cobertura ~80 entradas allowlist incluindo flags resilience), `.github/scripts/audit_prod_env.py` (Python stdlib, 8 unit tests passing local), `.github/workflows/audit-prod-env.yml` (PR triggers script tests; daily 14:00 UTC + workflow_dispatch rodam audit live), `docs/runbooks/audit-prod-env.md`, CLAUDE.md seção "Resilience CI Gates". **Desvios vs spec original:** (1) implementação Python ao invés de bash — testabilidade + portabilidade superiores; (2) workflow standalone ao invés de job em deploy.yml — escolha pragmática para que emergency deploys (incident response) não sejam bloqueados por env audit; gate é detection+alert, não enforcement; (3) Sentry alerting AC5 deferido — daily cron já gera GH Actions notification, Sentry capture pode ser adicionado em RES-BE-013b se necessário; (4) baseline validação AC8 será feita em PR review @devops via `gh workflow run audit-prod-env.yml`. | @dev (Dex) |

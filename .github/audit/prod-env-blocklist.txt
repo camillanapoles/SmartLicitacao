@@ -1,0 +1,31 @@
+# RES-BE-013: env vars NUNCA permitidas em produção
+#
+# Origem: incidente P0 2026-04-27 Stage 2 — PYTHONASYNCIODEBUG=1 descoberto em
+# bidiq-backend prod sem rastreabilidade. Memory `feedback_audit_env_vars_after_incident`.
+#
+# Formato:
+#   - uma var por linha
+#   - linhas começando com `#` são comentários
+#   - sufixo `*` é wildcard (ex.: TRACE_* casa TRACE_FOO, TRACE_BAR)
+#   - matching é exact (case-sensitive) exceto wildcard
+#
+# Adicionar entrada aqui requer PR review por @architect + @devops.
+
+# Python debug flags — serializa execução assíncrona, amplifica saturação
+PYTHONASYNCIODEBUG
+PYTHONVERBOSE
+PYTHON_VERBOSE
+PYTHONDEVMODE
+PYTHONDONTWRITEBYTECODE
+
+# Generic dev/debug flags
+DEBUG
+DEV_MODE
+DEVELOPMENT
+FASTAPI_DEBUG
+
+# Tracing/profiling flags — overhead em prod
+TRACE_*
+PROFILE_*
+PYDEVD_*
+PY_SPY_*

@@ -3,7 +3,7 @@
 **Priority:** P0
 **Effort:** M (3 dias)
 **Squad:** @dev + @architect
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-RES-BE-2026-Q2](EPIC-RES-BE-2026-Q2.md)
 **Sprint:** Sprint 1 (2026-04-29 → 2026-05-05) — bloqueador de SEO-PROG-001..005 (rotas SSR→ISR exigem backend protegido)
 **Dependências bloqueadoras:** [RES-BE-001](RES-BE-001-audit-execute-without-budget.md) (gate CI deve estar ativo para validar não-regressão)
@@ -290,3 +290,4 @@ Nenhuma — story pronta para implementação.
 |---|---|---|---|
 | 2026-04-27 | 1.0 | Story criada — top-5 rotas anti-reincidência P0 | @sm (River) |
 | 2026-04-27 | 1.1 | PO validation: GO (10/10). Hotfix Sprint 1 cirúrgico, feature flag de rollback. Status: Draft → Ready. | @po (Pax) |
+| 2026-05-02 | 1.2 | Status Ready → InReview (correção: Done foi prematuro — `.claude/rules/story-lifecycle.md` exige @qa PASS antes de Done). Wraps shipped via RES-BE-015/018a sweeps: PR #589 (mfa.py 10 callsites), PR #600/#603 (sweep `--all-routes` 19 callsites residuais — referral, founding, conta, sitemap_*, plus longtail SEO routes). Pattern entregue diverge de spec original (`_run_with_budget` direto ao invés de helper `_maybe_wrap` com flag) — escolha @dev/@architect: feature flag dispensada porque pattern é safe-by-default + rollback granular via revert. Audit RES-BE-001 confirma zero violations residuais em main. Métrica `smartlic_pipeline_budget_exceeded_total{phase="route"}` ativa. **DoD pendentes para @qa retroactive gate:** (a) AC4 feature flag `ENABLE_BUDGET_WRAP` formalmente waivada (pattern direto sem flag); (b) AC8 smoke test sintético — confirmar se cobertura existe via PRs #588/#600/#603 ou criar test dedicado; (c) RES-BE-017 defer empírico (Sentry decay 100%) confirma indiretamente que wrap funcionou em produção. | @dev (Dex) |

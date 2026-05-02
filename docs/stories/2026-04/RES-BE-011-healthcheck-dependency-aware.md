@@ -3,7 +3,7 @@
 **Priority:** P0
 **Effort:** S (1 dia)
 **Squad:** @dev + @architect
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-RES-BE-2026-Q2](EPIC-RES-BE-2026-Q2.md)
 **Sprint:** Sprint 1 (2026-04-29 → 2026-05-05)
 **Dependências bloqueadoras:** Nenhuma (foundation)
@@ -274,3 +274,4 @@ Railway envia healthcheck a cada ~30s (configurable). Se 3 falhas consecutivas, 
 |---|---|---|---|
 | 2026-04-27 | 1.0 | Story criada — separação live/ready healthcheck | @sm (River) |
 | 2026-04-27 | 1.1 | PO validation: GO (9/10). Required fix: @data-engineer decidir tabela para probe Supabase antes de Phase 3. Status: Draft → Ready. | @po (Pax) |
+| 2026-05-02 | 1.2 | Status Ready → InReview (correção: Done foi prematuro — `.claude/rules/story-lifecycle.md` exige @qa PASS antes de Done). `/health/live` + `/health/ready` entregues em `backend/routes/health_core.py` via HARDEN-016 (initial impl) + MON-FN-005/PR #602 (Supabase probe via `sb_execute_direct` + 5s timeout). Tests em `backend/tests/test_health_ready.py` cobrem AC1-AC4. Railway `healthcheckPath = "/health/live"` (railway.toml:27) — escolha pragmática @architect: usar `live` (não `ready`) como probe primário evita re-deploy loop sob blip Supabase em hobby plan single-instance. `/health/ready` permanece exposto para observability + diagnostics. Decisão @data-engineer (PO required fix): probe usa `sb_execute_direct` query leve em tabela existente — sem migration nova. **DoD pendentes para @qa retroactive gate:** (a) `docs/runbooks/healthcheck.md` AUSENTE — criar ou waivar (railway.toml + health_core.py inline docstrings cobrem operação); (b) `CHANGELOG.md` deprecation note `/health` legado pendente; (c) AC5 métricas Prometheus gauge+histogram — verificar se HARDEN-016 implementou ou se está delivered via outro caminho. | @dev (Dex) |

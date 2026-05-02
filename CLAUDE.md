@@ -582,3 +582,14 @@ Three-layer defense against unapplied migrations (prevents CRIT-039/CRIT-045 rec
 3. **Auto-Apply on Deploy** (`deploy.yml`) — After backend deploys, runs `supabase db push --include-all` automatically. Sends `NOTIFY pgrst, 'reload schema'` for immediate PostgREST cache refresh. Verifies no PGRST205 errors via smoke test. If push fails, marks deploy as DEGRADED (does not rollback).
 
 **Required Secrets:** `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_URL` (for NOTIFY pgrst)
+
+## Resilience CI Gates (EPIC-RES-BE-2026-Q2)
+
+Determinístic gates derived from the 2026-04-27 → 2026-04-30 outage cycle (Stages 2–8). Each gate operationalises a specific incident memory as a system check.
+
+| Gate | Workflow | Origem | Failure mode |
+|---|---|---|---|
+| `.execute()` without `_run_with_budget` | `audit-execute-without-budget.yml` (RES-BE-001/015) | Stage 2-8 wedge (sync `.execute()` in async route) | Hard fail on PR; sticky comment + inline annotations |
+| Railway prod env vars drift | `audit-prod-env.yml` (RES-BE-013) | Stage 2 — `PYTHONASYNCIODEBUG=1` in prod with no PR trail (memory `feedback_audit_env_vars_after_incident`) | Daily cron + manual dispatch; advisory only — see `docs/runbooks/audit-prod-env.md` |
+
+Both gates accept decremental baselines: shrinking the violation set is always allowed; growing it fails the gate. Adding entries to `prod-env-blocklist.txt` requires `@architect` + `@devops` review.

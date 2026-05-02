@@ -141,3 +141,73 @@ Para qualquer mudança em código:
 3. Atualize tests correspondentes
 4. Verifique migration paired (.down.sql) se schema change
 5. Regen `frontend/app/api-types.generated.ts` se mudou response_model
+
+---
+
+## Stories Status — Refresh 2026-05-01 a 2026-05-02
+
+### EPIC-RES-BE-2026-Q2 (Operational Reliability)
+
+| Story | Descrição | Status | PR |
+|-------|-----------|--------|-----|
+| RES-BE-015 | `_run_with_budget` sweep em 15 rotas long-tail SEO (escopo expandido 2026-05-01: 11 → 15 rotas + 4 f6b7acb2 callsites + audit script + CI gate + load test) | InReview | #603/#600 |
+| RES-BE-016 | CRIT-084 fix: sync helper calls wrapped em async handlers; route-level asyncio timeout middleware 60s→503 (AC4) | InProgress | #588 + commits |
+| RES-BE-017 | Pool leak mitigation: `asyncio.wait_for` + `asyncio.to_thread` cleanup — Sprint 2, bloqueado por RES-BE-015+016 soak | Ready | — |
+| RES-BE-018a | MFA bare `.execute()` wrapping | Done | #589 |
+
+### EPIC-SEO-PROG-2026-Q2 (Programmatic SEO)
+
+| Story | Descrição | Status | PR/Commit |
+|-------|-----------|--------|-----------|
+| SEO-016 | GSC sub-sitemap cache-control: `s-maxage=86400` via next.config.js (SYS-019) + `baa481f8` middleware.ts | Done | baa481f8 + SYS-019 |
+| SEO-026 | robots.txt RFC 9309 prefix-match fix — libera `/alertas-publicos/*` para indexação | Done | #595 |
+| SEO-PROG-007 | `robots.ts` dynamic route handler (substitui static `robots.txt`) | Done | #546 |
+| SEO-PROG-008 | `getBackendUrl` helper + chain audit + CI gate BACKEND_URL scope-limited | Done | 591b6174 |
+| CTR-OPT-001 | Rewrite title/meta dos 6 top blog posts GSC (taxa CTR GSC) | Done | #622 |
+
+### EPIC-CONV-DIAG-2026-04-30 (Conversão SEO → Trial) ← Novo
+
+| Story | Descrição | Status |
+|-------|-----------|--------|
+| CONV-CTA-001 | CTA trial contextual em páginas `/contratos/[setor]/[uf]` e orgão | InReview |
+| CONV-CTA-002 | Audit e CTA em templates programáticos W2 (gated: CONV-CTA-001 7-14d + bounce/CTR discriminador) | Draft (NO-GO gated) |
+| CONV-INST-001 | Mixpanel: page-load + traffic source + UTM tracking em páginas SEO | InReview |
+| CONV-INST-002 | Mixpanel: signup form lifecycle events (field focus, submit, error, success) | InReview |
+| CONV-INST-003 | Email confirmation lifecycle events (sent, opened, clicked, expired, re-sent) | InReview |
+| CONV-INST-005 | MS Clarity: trial onboarding tagging (heatmaps + session recording por step) | Ready |
+
+### Outros PRs 2026-05-01/02
+
+| Story/Fix | Descrição | Status | PR/Commit |
+|-----------|-----------|--------|-----------|
+| MON-FN-005 | `/health/ready` usa `sb_execute_direct` (5s timeout) + Mixpanel startup assertion | InReview | #602 |
+| SEN-BE-002 | Strip `top_result_*` columns de `search_sessions` queries (migration unapplied corrigida) | Done | #591 |
+| TD-BE-014 | `PNCPRateLimitError` carrega `retry_after`; levantado em exhaustion 429 | Done | #592 |
+| DEBT-OBS-001 | `is_historical` boundary: usa last-day of month (não 30d-from-start) | Done | 047e0a6b |
+| Security | UUID v4 validation em `authorization.get_admin_ids` | Done | 7cf341ed |
+
+### Arquivos de código impactados (2026-05-01/02)
+
+| Arquivo | Mudança | Story |
+|---------|---------|-------|
+| `backend/routes/blog_stats.py` | `_run_with_budget(5s)` + negative cache | RES-BE-015 |
+| `backend/routes/contratos_publicos.py` | `_run_with_budget` + refactor f6b7acb2 waitfor→budget | RES-BE-015 |
+| `backend/routes/empresa_publica.py` | `_run_with_budget(5s)` + negative cache | RES-BE-015 |
+| `backend/routes/orgao_publico.py` | `_run_with_budget(5s)` + negative cache | RES-BE-015 |
+| `backend/routes/observatorio.py` | `_run_with_budget(5s)` + negative cache | RES-BE-015 |
+| `backend/routes/dados_publicos.py` | `_run_with_budget(5s)` | RES-BE-015 |
+| `backend/routes/municipios_publicos.py` | `_run_with_budget(8s, maior por query volume)` | RES-BE-015 |
+| `backend/routes/itens_publicos.py` | `_run_with_budget(5s)` | RES-BE-015 |
+| `backend/routes/compliance_publicos.py` | `_run_with_budget(5s)` | RES-BE-015 |
+| `backend/routes/alertas_publicos.py` | `_run_with_budget(5s)` | RES-BE-015 |
+| `backend/routes/sectors_public.py` | `_run_with_budget(5s)` | RES-BE-015 |
+| `backend/middleware/route_timeout.py` | Route-level asyncio timeout 60s → 503 (AC4 RES-BE-016) | RES-BE-016 |
+| `backend/health.py` + `health_core.py` | `sb_execute_direct` (5s) em `/health/ready`; Mixpanel startup assertion | MON-FN-005 |
+| `backend/authorization.py` | UUID v4 validation em `get_admin_ids` | security |
+| `backend/routes/observatorio.py` | `is_historical` last-day boundary fix | DEBT-OBS-001 |
+| `frontend/next.config.js` (SYS-019) | `headers()` com `source: '/sitemap/:path*'` → `s-maxage=86400` | SEO-016 |
+| `frontend/app/robots.ts` | Dynamic route handler | SEO-PROG-007 |
+| `frontend/lib/getBackendUrl.ts` | Helper chain: env → internal hostname → fallback | SEO-PROG-008 |
+| `backend/pncp_client.py` | `PNCPRateLimitError` com `retry_after` | TD-BE-014 |
+| `backend/scripts/audit_execute_without_budget.py` | Audit script CI gate | RES-BE-015 |
+| `.github/workflows/audit-execute-without-budget.yml` | CI gate: zero violations mandatório | RES-BE-015 |
