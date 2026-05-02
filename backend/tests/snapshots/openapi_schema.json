@@ -11654,6 +11654,31 @@
         ]
       }
     },
+    "/v1/admin/memory-snapshot": {
+      "get": {
+        "description": "Return current process memory snapshot for leak investigation.\n\nMaster/admin only. Snapshots are NOT persisted (PII risk + size).\nCaller is responsible for capturing 10\u00d7 over 24h to build baseline.",
+        "operationId": "memory_snapshot_v1_admin_memory_snapshot_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Memory Snapshot",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/v1/admin/partners": {
       "get": {
         "description": "AC10: List all partners. Admin only.",
