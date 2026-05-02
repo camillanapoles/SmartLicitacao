@@ -908,7 +908,7 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
     slug: 'licitacoes-engenharia-2026',
     title: 'Engenharia e Licitações 2026: 4 Critérios de Viabilidade',
     description:
-      'Modalidades, habilitação técnica e faixas de valor para obras em 2026. Descubra quais editais de engenharia justificam o custo de proposta.',
+      '2.400+ licitações de engenharia abertas em 2026 no PNCP. Filtre por UF, valor e modalidade. Configure alertas e teste grátis por 14 dias.',
     category: 'Guias',
     tags: ['engenharia', 'construção civil', 'licitações 2026', 'guia setorial'],
     publishDate: '2026-04-04',
@@ -1127,7 +1127,7 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
     slug: 'pncp-guia-completo-empresas',
     title: 'PNCP 2026: Ache Editais do Seu Setor em 5 Minutos',
     description:
-      'Filtre licitações por setor, estado e valor direto no PNCP — sem navegar em menus confusos. 5 passos para achar o que importa. Atualizado 2026.',
+      'Acesse 1,5M+ licitações do PNCP em tempo real. Filtre por setor, UF e valor estimado. Teste grátis por 14 dias — sem cartão.',
     category: 'Guias',
     tags: ['PNCP', 'portal de contratações', 'busca de editais', 'monitoramento'],
     publishDate: '2026-04-04',
@@ -1859,7 +1859,7 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
     slug: 'como-consultar-contratos-publicos-pncp',
     title: 'PNCP 2026: Consulte Contratos por CNPJ em 3 Cliques',
     description:
-      'Filtre contratos por empresa, órgão, setor e estado em 3 cliques diretos. Descubra fornecedores do governo — e prospecte clientes B2G com dados reais.',
+      'Consulte contratos públicos do PNCP por CNPJ, órgão ou setor. Histórico de 400 dias. Grátis para testar — sem cadastro de cartão.',
     category: 'Guias',
     tags: ['contratos públicos', 'PNCP', 'consultar contratos', 'fornecedores', 'inteligência de mercado'],
     publishDate: '2026-04-08',
@@ -2055,7 +2055,7 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
     slug: 'subcontratacao-licitacoes-regras-lei-14133',
     title: 'Subcontratação em Licitações 2026: As 3 Regras da Lei 14.133',
     description:
-      'Art. 122 da Lei 14.133 define limites percentuais e responsabilidade solidária. Veja como PMEs entram como subcontratadas legalmente em 2026.',
+      'Lei 14.133 permite subcontratação de até 30% em licitações. Veja as regras completas e monitore editais com subcontratação grátis.',
     category: 'Guias',
     tags: [
       'subcontratação',

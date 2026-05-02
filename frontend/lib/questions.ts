@@ -437,7 +437,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: [],
     relatedArticles: [],
     metaDescription:
-      'Confira os prazos mínimos de publicação de edital na Lei 14.133/2021: 8 dias (pregão), 15-25 dias (concorrência) e mais.',
+      'Prazo mínimo de edital: 8 dias úteis (pregão) a 25 dias úteis (concorrência) — Lei 14.133/2021, art. 55. Consulte editais abertos agora — grátis.',
   },
   {
     slug: 'vigencia-contrato-administrativo',
