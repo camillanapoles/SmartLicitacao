@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — SEO
+- **Meta descriptions CTR (#641)** — 5 páginas GSC P0 (>200 impressões, CTR <1%) reescritas com copy data-driven: número real + benefício + CTA implícito, 120–155 chars. Afeta `/blog/pncp-guia-completo-empresas`, `/blog/licitacoes-engenharia-2026`, `/blog/como-consultar-contratos-publicos-pncp`, `/blog/subcontratacao-licitacoes-regras-lei-14133`, `/perguntas/prazo-publicacao-edital`.
+
 ### Added — SEO
 - **`app/robots.ts` dynamic route handler (SEO-PROG-007)** — substitui `public/robots.txt` estático por handler env-aware (Next.js 16 Metadata API). Production: Allow `/` + Disallow paths privados (path-exact trailing-slash para evitar prefix-match RFC 9309 §2.2.2). Preview/staging: block-all. AC6: `/alertas/` path-exact desbloqueia 464 páginas GSC previamente bloqueadas.
 - Google-Extended explícito em `Allow: /` para SGE/AI Overviews eligibility.
