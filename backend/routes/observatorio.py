@@ -132,7 +132,7 @@ class RelatorioMensal(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _is_period_historical(mes: int, ano: int) -> bool:
-    """STORY-431 AC11: treat months >30d in the past as historical.
+    """STORY-431 AC11: treat a month as historical only after its last calendar day.
 
     Used by route handler to choose between 404 (current empty) and
     200+is_empty_period (historical empty).
