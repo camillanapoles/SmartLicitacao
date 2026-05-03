@@ -36,6 +36,8 @@ interface UseSearchSSEHandlerParams {
   // UX-435: clear live-fetch banner on SSE terminal event
   setLiveFetchInProgress: (v: boolean) => void;
   liveFetchSearchIdRef: React.MutableRefObject<string | null>;
+  // AC4: first-analysis auto flow detection
+  isAutoAnalysis?: boolean;
 }
 
 export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
@@ -47,10 +49,16 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
     setRetryCountdown, setRetryMessage, setRetryExhausted, retryTimerRef,
     handleExcelFailureRef, excelFailCountRef, excelToastFiredRef,
     setLiveFetchInProgress, liveFetchSearchIdRef,
+    isAutoAnalysis = false,
   } = params;
 
   const { refresh: refreshQuota } = useQuota();
   const { trackEvent } = useAnalytics();
+
+  // AC4: useRef flag to prevent double-fire of first_analysis events
+  const firstAnalysisFiredRef = useRef(false);
+  // AC4: capture start time for time_total_ms
+  const firstAnalysisStartRef = useRef<number | null>(null);
 
   // F-01 AC21: Handle background job completion via SSE
   // GTM-ARCH-001 AC3/AC4: Also handles search_complete from async Worker
@@ -58,6 +66,11 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
     // CRIT-SSE-FIX AC2: Track terminal SSE events so finally block knows when SSE is done
     if (['complete', 'error', 'degraded', 'search_complete'].includes(event.stage)) {
       sseTerminalReceivedRef.current = true;
+    }
+
+    // AC4: capture first-analysis start time on first non-terminal event
+    if (isAutoAnalysis && firstAnalysisStartRef.current === null && !firstAnalysisFiredRef.current) {
+      firstAnalysisStartRef.current = Date.now();
     }
 
     // UX-435 AC1: Clear live-fetch banner when SSE terminal event arrives for
@@ -114,6 +127,22 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
               search_mode: searchMode,
               async_mode: true,
             });
+
+            // AC4: first-analysis completed event (auto=true flow, fired once)
+            if (isAutoAnalysis && !firstAnalysisFiredRef.current) {
+              firstAnalysisFiredRef.current = true;
+              const startTs = firstAnalysisStartRef.current ?? Date.now();
+              const viabilityHighCount = fetchedData.licitacoes?.filter(
+                (l) => (l as { viability_score?: number }).viability_score != null &&
+                  (l as { viability_score: number }).viability_score >= 0.7
+              ).length ?? 0;
+              trackEvent('first_analysis_completed', {
+                search_id: sid,
+                results_count: fetchedData.total_filtrado || 0,
+                time_total_ms: Date.now() - startTs,
+                viability_high_count: viabilityHighCount,
+              });
+            }
           }
         } catch (e) {
           console.warn('[ARCH-001] Error fetching async search results:', e);
@@ -125,6 +154,22 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
           setSearchId(null);
         }
       }
+    } else if (event.stage === 'search_complete' && !event.detail.has_results) {
+      // AC4: first-analysis empty (auto=true flow, no results)
+      if (isAutoAnalysis && !firstAnalysisFiredRef.current) {
+        firstAnalysisFiredRef.current = true;
+        const startTs = firstAnalysisStartRef.current ?? Date.now();
+        const sid = event.detail.search_id || asyncSearchIdRef.current || searchId;
+        trackEvent('first_analysis_empty', {
+          search_id: sid,
+          time_total_ms: Date.now() - startTs,
+        });
+      }
+      setAsyncSearchActive(false);
+      asyncSearchActiveRef.current = false;
+      asyncSearchIdRef.current = null;
+      setLoading(false);
+      setSearchId(null);
     } else if (event.stage === 'llm_ready' && event.detail.resumo) {
       // AC3: AI summary arrived — clear timeout and update silently
       if (llmTimeoutRef.current) {
@@ -224,6 +269,16 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
       }
     } else if (event.stage === 'error' && asyncSearchActiveRef.current) {
       // GTM-ARCH-001: Worker error during async search
+      // AC4: first-analysis failed event (auto=true flow, fired once)
+      if (isAutoAnalysis && !firstAnalysisFiredRef.current) {
+        firstAnalysisFiredRef.current = true;
+        const startTs = firstAnalysisStartRef.current ?? Date.now();
+        trackEvent('first_analysis_failed', {
+          search_id: searchId,
+          error_code: event.detail.error_code || null,
+          time_total_ms: Date.now() - startTs,
+        });
+      }
       setAsyncSearchActive(false);
       asyncSearchActiveRef.current = false;
       asyncSearchIdRef.current = null;
@@ -247,6 +302,7 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
     setRetryCountdown, setRetryMessage, setRetryExhausted, retryTimerRef,
     handleExcelFailureRef, excelFailCountRef, excelToastFiredRef,
     setLiveFetchInProgress, liveFetchSearchIdRef,
+    isAutoAnalysis,
   ]);
 
   return { handleSseEvent };

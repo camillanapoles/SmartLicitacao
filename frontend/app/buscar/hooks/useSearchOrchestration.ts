@@ -153,7 +153,8 @@ export function useSearchOrchestration() {
   // ── Search Core ─────────────────────────────────────────────────────
   const clearResultRef = useRef<() => void>(() => {});
   const filters = useSearchFilters(() => clearResultRef.current());
-  const search = useSearch(filters);
+  // AC4: pass auto-analysis flag so SSE handler fires first_analysis_* Mixpanel events
+  const search = useSearch({ ...filters, isAutoAnalysis: isAutoSearch });
   clearResultRef.current = () => search.setResult(null);
 
   // ── SSE / Backend Status / Progress ─────────────────────────────────

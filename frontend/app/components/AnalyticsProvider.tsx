@@ -185,6 +185,12 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
       claritySet('plan_type', planId);
       claritySet('is_trial', String(isTrial));
       claritySet('user_segment', isTrial ? 'trial' : 'paid');
+      // AC6: trial_days_remaining — admin users have no trial_expires_at, skip gracefully
+      const trialExpiresAt = profileData.trial_expires_at as string | null | undefined;
+      if (trialExpiresAt) {
+        const daysRemaining = Math.floor((Date.parse(trialExpiresAt) - Date.now()) / 86400000);
+        claritySet('trial_days_remaining', String(daysRemaining));
+      }
     }
 
     clarityIdentifiedRef.current = true;

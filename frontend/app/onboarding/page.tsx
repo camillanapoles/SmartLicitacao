@@ -8,6 +8,7 @@ import { useAuth } from "../components/AuthProvider";
 import { toast } from "sonner";
 import { safeSetItem } from "../../lib/storage";
 import { useAnalytics } from "../../hooks/useAnalytics";
+import { useClarity } from "../../hooks/useClarity";
 import { getDaysInTrial } from "../../lib/analytics-helpers";
 import {
   onboardingStep1Schema,
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { user, session, loading: authLoading } = useAuth();
   const { trackEvent } = useAnalytics();
+  const { clarityEvent, claritySet } = useClarity();
   const [currentStep, setCurrentStep] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -174,6 +176,9 @@ export default function OnboardingPage() {
         // Zero-churn P1 §6.1: Detect trial expired (403)
         if (analysisRes.status === 403) {
           setAnalysisError("trial_expired");
+          // AC5: track trial_expired denial
+          trackEvent('onboarding_first_analysis_denied', { reason: 'trial_expired' });
+          clarityEvent('first_analysis_trial_expired');
           setIsAnalyzing(false);
           return;
         }
@@ -185,15 +190,38 @@ export default function OnboardingPage() {
 
       const { search_id } = await analysisRes.json();
 
+      // AC2: Fire trial_started after first-analysis 2xx
+      clarityEvent('trial_started');
+      claritySet('trial_started_at', new Date().toISOString());
+
+      // AC3: Fire first_analysis_dispatched with search_id
+      clarityEvent('first_analysis_dispatched');
+      claritySet('first_analysis_search_id', search_id);
+
       // 3. Redirect to search with auto flag
       toast.success("Perfil salvo! Analisando suas oportunidades...");
       router.push(`/buscar?auto=true&search_id=${search_id}`);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
+        // AC5: timeout error tracking
         setAnalysisError("timeout");
+        trackEvent('onboarding_first_analysis_timeout', { timeout_ms: 30000 });
+        clarityEvent('first_analysis_timeout');
       } else {
         toast.error("Erro ao configurar perfil. Tente novamente.");
         setAnalysisError("generic");
+        // AC5: generic error tracking with hashed message
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        let errorHash = '';
+        try {
+          const encoded = new TextEncoder().encode(errorMessage);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+          errorHash = Array.from(new Uint8Array(hashBuffer)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch {
+          errorHash = errorMessage.length.toString(16);
+        }
+        trackEvent('onboarding_first_analysis_error', { error_message_hash: errorHash });
+        clarityEvent('first_analysis_error');
       }
       setIsAnalyzing(false);
     } finally {
@@ -219,6 +247,7 @@ export default function OnboardingPage() {
         objetivo_principal: data.objetivo_principal,
         days_in_trial: getDaysInTrial(user?.created_at),
       });
+      claritySet('onboarding_step', '1/3');
       setCurrentStep(1);
     } else if (currentStep === 1) {
       // Trigger zod validation for step 2
@@ -235,6 +264,7 @@ export default function OnboardingPage() {
         faixa_valor_max: data.faixa_valor_max,
         days_in_trial: getDaysInTrial(user?.created_at),
       });
+      claritySet('onboarding_step', '2/3');
       setCurrentStep(2);
     } else {
       trackEvent('onboarding_step_completed', {
@@ -242,6 +272,7 @@ export default function OnboardingPage() {
         total_steps: 3,
         days_in_trial: getDaysInTrial(user?.created_at),
       });
+      claritySet('onboarding_step', '3/3');
       submitAndAnalyze();
     }
   };

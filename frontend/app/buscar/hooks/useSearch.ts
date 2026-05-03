@@ -68,6 +68,8 @@ interface UseSearchParams {
   setValorMax: (v: number | null) => void;
   setEsferas: (e: Esfera[]) => void;
   setMunicipios: (m: Municipio[]) => void;
+  // AC4: first-analysis auto flow flag
+  isAutoAnalysis?: boolean;
 }
 
 /**
@@ -243,6 +245,7 @@ export function useSearch(filters: UseSearchParams): UseSearchReturn {
     excelToastFiredRef,
     setLiveFetchInProgress: execution.setLiveFetchInProgress,
     liveFetchSearchIdRef: execution.liveFetchSearchIdRef,
+    isAutoAnalysis: filters.isAutoAnalysis,
   });
 
   // ── 5. SSE connection ──
