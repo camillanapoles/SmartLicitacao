@@ -7,6 +7,9 @@
 
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
+export const revalidate = 86400;
 
 interface PageProps {
   params: Promise<{ 'municipio-uf': string }>;
@@ -79,7 +82,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         },
       ] : [],
     },
-    robots: { index: true },
+    robots: data ? { index: true } : { index: false, follow: false },
   };
 }
 
@@ -92,6 +95,7 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
   const municipioTitulo = deslugify(municipioSlug);
 
   const data = await fetchMunicipio(slug, periodo);
+  if (!data) notFound();
 
   const score = data?.score_total != null ? Number(data.score_total) : null;
   const scoreColor =
@@ -177,24 +181,7 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
           Período: {periodo} · Fonte: PNCP via SmartLic
         </p>
 
-        {!data && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-            <p className="text-yellow-800 font-medium">Dados não disponíveis</p>
-            <p className="text-yellow-700 text-sm mt-1">
-              {municipioTitulo} não possui editais suficientes no PNCP para este período (mínimo
-              10).
-            </p>
-            <Link
-              href="/indice-municipal"
-              className="text-blue-600 hover:underline mt-3 block text-sm"
-            >
-              ← Ver ranking completo
-            </Link>
-          </div>
-        )}
-
-        {data && (
-          <>
+        <>
             {/* Score principal */}
             <div className="bg-white border rounded-xl p-6 mb-6 flex items-center gap-6 shadow-sm">
               <div className="text-center">
@@ -276,8 +263,7 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
               </Link>
               <p className="text-xs text-blue-600 mt-2">14 dias grátis, sem cartão de crédito.</p>
             </div>
-          </>
-        )}
+        </>
 
         <div className="mt-8 text-xs text-gray-400 border-t pt-4">
           Dados derivados do PNCP (Portal Nacional de Contratações Públicas). Licença{' '}
@@ -292,6 +278,9 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
           — cite: SmartLic Índice Municipal.
           <Link href="/indice-municipal" className="ml-4 hover:underline">
             ← Voltar ao ranking
+          </Link>
+          <Link href={`/municipios/${slug}`} className="ml-4 hover:underline">
+            Ver perfil completo de {municipioTitulo}
           </Link>
         </div>
       </main>
