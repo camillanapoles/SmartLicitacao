@@ -4,6 +4,25 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
 
+class TraceMallocEntry(BaseModel):
+    """Single tracemalloc allocation entry."""
+    filename: str
+    lineno: int
+    size_kb: float
+    count: int
+
+
+class MemorySnapshot(BaseModel):
+    """Response for GET /admin/memory-snapshot (SEN-BE-010 AC0)."""
+    rss_bytes: Optional[int] = None
+    rss_mb: Optional[float] = None
+    tracemalloc_enabled: bool = False
+    tracemalloc_top_25: List[TraceMallocEntry] = []
+    asyncio_tasks_pending: int = 0
+    gc_objects_count: int = 0
+    redis_pool_size: Optional[int] = None
+
+
 class AdminUsersListResponse(BaseModel):
     """Response for GET /admin/users."""
     users: List[Dict[str, Any]]

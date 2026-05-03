@@ -78,6 +78,11 @@ sentry-sdk[fastapi]==2.52.0
 # Prometheus metrics exporter (GTM-RESILIENCE-E03)
 prometheus_client>=0.20.0
 
+# SEN-BE-010 + ADR-MEMORY-BUDGET: process memory introspection (RSS gauge in
+# health.py + lifespan.py:140-144 sample loop + admin/memory-snapshot endpoint).
+# Already optional fallback in health.py:922. Promote to required.
+psutil>=5.9.0
+
 # Product analytics (paywall_hit, trial_started, signup_completed, ...).
 # MIXPANEL_TOKEN é required em prod startup (PR #530 MON-FN-005), mas a
 # lib estava ausente do requirements até esta sessão (goofy-llama

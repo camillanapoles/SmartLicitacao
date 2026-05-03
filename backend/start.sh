@@ -22,10 +22,15 @@ case "$PROCESS_TYPE" in
 
     if [ "$RUNNER" = "uvicorn" ]; then
       WORKERS="${WEB_CONCURRENCY:-2}"
+      # SEN-BE-010 + ADR-MEMORY-BUDGET: time-based rotation (Component A) — workers
+      # exit + restart after N requests so memory leaks don't accumulate. Uvicorn
+      # respects --limit-max-requests like gunicorn --max-requests.
+      LIMIT_MAX_REQUESTS="${GUNICORN_MAX_REQUESTS:-10000}"
       echo "Starting web process (uvicorn spawn-based workers=${WORKERS})..."
       echo "  CRIT-083: spawn() avoids os.fork() — eliminates cryptography/OpenSSL SIGSEGV."
       echo "  Cross-worker SSE: Redis Streams (STORY-276). Graceful timeout: 120s."
       echo "  host=0.0.0.0, port=${PORT:-8000}, workers=${WORKERS}, keep-alive=${GUNICORN_KEEP_ALIVE:-75}s"
+      echo "  ADR-MEMORY-BUDGET rotation: limit_max_requests=${LIMIT_MAX_REQUESTS}"
 
       exec uvicorn main:app \
         --host "0.0.0.0" \
@@ -33,6 +38,7 @@ case "$PROCESS_TYPE" in
         --log-level "${UVICORN_LOG_LEVEL:-info}" \
         --timeout-keep-alive "${GUNICORN_KEEP_ALIVE:-75}" \
         --workers "${WORKERS}" \
+        --limit-max-requests "${LIMIT_MAX_REQUESTS}" \
         --timeout-graceful-shutdown 120
     fi
 
@@ -59,8 +65,13 @@ case "$PROCESS_TYPE" in
     # DEBT-124: Align gunicorn graceful_timeout with GRACEFUL_SHUTDOWN_TIMEOUT (default 30s)
     # DEBT-04 AC1: GUNICORN_TIMEOUT=110 (< Railway 120s) to ensure workers abort before Railway kills the connection.
     GUNICORN_GRACEFUL_TIMEOUT="${GUNICORN_GRACEFUL_TIMEOUT:-${GRACEFUL_SHUTDOWN_TIMEOUT:-30}}"
+    # SEN-BE-010 + ADR-MEMORY-BUDGET Component A: time-based rotation 10k/1k jitter
+    # (was 1000/50 — too tight for sustained traffic + amplified leak detection).
+    # Memory `feedback_pool_leak_caller_timeout_vs_sql_timeout` 5.5GB Stage 4-7.
+    GUNICORN_MAX_REQUESTS_DEFAULT=10000
+    GUNICORN_MAX_REQUESTS_JITTER_DEFAULT=1000
     echo "  timeout=${GUNICORN_TIMEOUT:-110}s, workers=${WEB_CONCURRENCY:-2}, graceful=${GUNICORN_GRACEFUL_TIMEOUT}s, keep-alive=${GUNICORN_KEEP_ALIVE:-75}s"
-    echo "  max-requests=${GUNICORN_MAX_REQUESTS:-1000}, jitter=${GUNICORN_MAX_REQUESTS_JITTER:-50}"
+    echo "  ADR-MEMORY-BUDGET: max-requests=${GUNICORN_MAX_REQUESTS:-$GUNICORN_MAX_REQUESTS_DEFAULT}, jitter=${GUNICORN_MAX_REQUESTS_JITTER:-$GUNICORN_MAX_REQUESTS_JITTER_DEFAULT}"
 
     exec gunicorn main:app \
       -k uvicorn.workers.UvicornWorker \
@@ -69,8 +80,8 @@ case "$PROCESS_TYPE" in
       --timeout "${GUNICORN_TIMEOUT:-110}" \
       --graceful-timeout "${GUNICORN_GRACEFUL_TIMEOUT}" \
       --keep-alive "${GUNICORN_KEEP_ALIVE:-75}" \
-      --max-requests "${GUNICORN_MAX_REQUESTS:-1000}" \
-      --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-50}" \
+      --max-requests "${GUNICORN_MAX_REQUESTS:-$GUNICORN_MAX_REQUESTS_DEFAULT}" \
+      --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER:-$GUNICORN_MAX_REQUESTS_JITTER_DEFAULT}" \
       -c gunicorn_conf.py \
       $PRELOAD_FLAG
     ;;

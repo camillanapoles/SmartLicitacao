@@ -204,6 +204,16 @@ async def lifespan(app_instance: FastAPI):
                 mem["rss_mb"], mem["vms_mb"], mem["peak_rss_mb"])
     update_memory_metrics()
 
+    # SEN-BE-010 AC0: tracemalloc opt-in via env var (10% overhead — disabled
+    # in prod default; enable on demand for memory leak investigation).
+    # Memory `feedback_pool_leak_caller_timeout_vs_sql_timeout` documents 5.5GB
+    # RSS sustained Stage 4-7. Tripwire active until 2026-05-06.
+    if os.getenv("TRACEMALLOC_ENABLED", "false").lower() == "true":
+        import tracemalloc
+        tracemalloc.start(25)
+        logger.info("SEN-BE-010: tracemalloc.start(25) — opt-in profiling active. "
+                    "Snapshot via GET /v1/admin/memory-snapshot (master-only).")
+
     # Thread pool for asyncio.to_thread()
     import concurrent.futures
     _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=20, thread_name_prefix="smartlic-io-")
