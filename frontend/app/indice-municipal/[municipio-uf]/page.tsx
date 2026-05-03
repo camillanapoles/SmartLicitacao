@@ -36,16 +36,13 @@ function deslugify(slug: string): string {
 
 async function fetchMunicipio(slug: string, periodo: string) {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-  try {
-    const res = await fetch(
-      `${backendUrl}/v1/indice-municipal/${slug}?periodo=${periodo}`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) }
-    );
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+  const res = await fetch(
+    `${backendUrl}/v1/indice-municipal/${slug}?periodo=${periodo}`,
+    { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) }
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`fetchMunicipio failed: ${res.status}`);
+  return res.json();
 }
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
@@ -56,7 +53,12 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const municipioSlug = extractMunicipioSlug(slug);
   const municipioTitulo = deslugify(municipioSlug);
 
-  const data = await fetchMunicipio(slug, periodo);
+  let data = null;
+  let genuineNotFound = false;
+  try {
+    data = await fetchMunicipio(slug, periodo);
+    if (data === null) genuineNotFound = true;
+  } catch { /* transient backend error: keep page indexable */ }
   const score = data?.score_total != null ? Number(data.score_total) : null;
   const scoreText = score != null ? ` Score ${score.toFixed(1)} de 100.` : '';
 
@@ -82,7 +84,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         },
       ] : [],
     },
-    robots: data ? { index: true } : { index: false, follow: true },
+    robots: genuineNotFound ? { index: false, follow: false } : { index: true },
   };
 }
 
