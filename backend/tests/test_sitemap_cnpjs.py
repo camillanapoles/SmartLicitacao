@@ -201,3 +201,103 @@ class TestSitemapCnpjs:
         resp = client.get("/v1/sitemap/cnpjs")
         data = resp.json()
         assert data["total"] <= 5000
+
+
+# ---------------------------------------------------------------------------
+# Tests for /v1/sitemap/fornecedores-cnpj
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def _clear_fornecedores_cache():
+    from routes.sitemap_cnpjs import _fornecedores_sitemap_cache
+    _fornecedores_sitemap_cache.clear()
+    yield
+    _fornecedores_sitemap_cache.clear()
+
+
+class TestSitemapFornecedoresCnpj:
+    """Tests for /v1/sitemap/fornecedores-cnpj."""
+
+    @patch("supabase_client.get_supabase")
+    def test_dedup_same_cnpj_multiple_contracts(self, mock_get_sb, client, _clear_fornecedores_cache):
+        """Same ni_fornecedor in multiple rows → single entry in response (no duplicates)."""
+        rows = [
+            {"ni_fornecedor": "11111111111111"},
+            {"ni_fornecedor": "11111111111111"},
+            {"ni_fornecedor": "11111111111111"},
+            {"ni_fornecedor": "22222222222222"},
+        ]
+        mock_get_sb.return_value = _mock_supabase_with_data(rows)
+
+        resp = client.get("/v1/sitemap/fornecedores-cnpj")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 2
+        assert len(data["cnpjs"]) == 2
+        assert len(set(data["cnpjs"])) == 2, "Response contains duplicate CNPJs"
+
+    @patch("supabase_client.get_supabase")
+    def test_sorted_by_contract_count(self, mock_get_sb, client, _clear_fornecedores_cache):
+        """CNPJs sorted descending by contract count."""
+        rows = [
+            {"ni_fornecedor": "11111111111111"},
+            {"ni_fornecedor": "22222222222222"},
+            {"ni_fornecedor": "22222222222222"},
+            {"ni_fornecedor": "22222222222222"},
+            {"ni_fornecedor": "33333333333333"},
+            {"ni_fornecedor": "33333333333333"},
+        ]
+        mock_get_sb.return_value = _mock_supabase_with_data(rows)
+
+        resp = client.get("/v1/sitemap/fornecedores-cnpj")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 3
+        assert data["cnpjs"][0] == "22222222222222"  # 3 contracts
+        assert data["cnpjs"][1] == "33333333333333"  # 2 contracts
+        assert data["cnpjs"][2] == "11111111111111"  # 1 contract
+
+    @patch("supabase_client.get_supabase")
+    def test_filters_invalid_cnpjs(self, mock_get_sb, client, _clear_fornecedores_cache):
+        """Skips non-14-digit and non-numeric ni_fornecedor values."""
+        rows = [
+            {"ni_fornecedor": ""},
+            {"ni_fornecedor": None},
+            {"ni_fornecedor": "123"},
+            {"ni_fornecedor": "ABCDEFGHIJKLMN"},
+            {"ni_fornecedor": "44444444444444"},
+            {"ni_fornecedor": "44444444444444"},
+        ]
+        mock_get_sb.return_value = _mock_supabase_with_data(rows)
+
+        resp = client.get("/v1/sitemap/fornecedores-cnpj")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 1
+        assert data["cnpjs"] == ["44444444444444"]
+
+    @patch("supabase_client.get_supabase")
+    def test_max_5000_fornecedores(self, mock_get_sb, client, _clear_fornecedores_cache):
+        """Respects _MAX_FORNECEDORES_CNPJS cap."""
+        rows = []
+        for i in range(6000):
+            cnpj = f"{i:014d}"
+            rows.extend([{"ni_fornecedor": cnpj}] * 2)
+        mock_get_sb.return_value = _mock_supabase_with_data(rows)
+
+        resp = client.get("/v1/sitemap/fornecedores-cnpj")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] <= 5000
+        assert len(data["cnpjs"]) <= 5000
+
+    @patch("supabase_client.get_supabase")
+    def test_graceful_failure(self, mock_get_sb, client, _clear_fornecedores_cache):
+        """Returns empty response on Supabase error."""
+        mock_get_sb.side_effect = Exception("connection failed")
+
+        resp = client.get("/v1/sitemap/fornecedores-cnpj")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["cnpjs"] == []
+        assert data["total"] == 0
