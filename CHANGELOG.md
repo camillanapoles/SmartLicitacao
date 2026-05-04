@@ -5,11 +5,6 @@ All notable changes to SmartLic will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-- **CONV-INST-001**: Analytics `page_load` enriquecido com `traffic_source` (organic_search | paid_search | referral | direct | utm_campaign), `is_landing_page` e `entry_pathname` super-property. Helper puro `frontend/lib/analytics-traffic-source.ts` isolado e testado com 169 testes unitários. Gated por LGPD consent. Additive-only — nenhuma propriedade existente removida.
-
 ## [0.5.4] - 2026-04-18 - CACHE WARMING DEPRECATION
 
 ### Removed — BREAKING
