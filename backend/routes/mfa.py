@@ -40,6 +40,19 @@ RECOVERY_CODE_LENGTH = 8  # 8 hex chars = 4 bytes = 2^32 possibilities
 MAX_FAILED_ATTEMPTS_PER_HOUR = 3
 
 
+def _safe_log_value(value: object, max_len: int = 200) -> str:
+    """Strip CRLF/control chars and truncate before logging.
+
+    Defends against log-injection (CodeQL py/log-injection) when interpolating
+    user-controlled or user-derived values (user_id, factor_id, exception types)
+    into log statements. Output is always a plain str — never raw secrets.
+    """
+    if value is None:
+        return ""
+    text = str(value).replace("\r", "").replace("\n", "")
+    return text[:max_len]
+
+
 # ─── Schemas ───────────────────────────────────────────────────────────────────
 
 class MfaStatusResponse(BaseModel):
@@ -417,15 +430,19 @@ def _log_mfa_event(
 ) -> None:
     """Structured log for MFA enroll/verify attempts (Issue #639 AC).
 
-    PII is masked via log_sanitizer (mask_user_id, mask_ip_address).
+    PII is masked via log_sanitizer (mask_user_id, mask_ip_address). All
+    user-derived values are additionally passed through ``_safe_log_value``
+    to strip CRLF/control chars and prevent log-injection
+    (CodeQL py/log-injection / py/clear-text-logging-sensitive-data).
     """
+    safe_extra = _safe_log_value(extra)
     logger.info(
         "mfa_event user_id=%s event=%s success=%s ip=%s%s",
-        mask_user_id(user_id),
-        event,
+        _safe_log_value(mask_user_id(user_id)),
+        _safe_log_value(event),
         success,
-        mask_ip_address(ip),
-        f" {extra}" if extra else "",
+        _safe_log_value(mask_ip_address(ip)),
+        f" {safe_extra}" if safe_extra else "",
     )
 
 
@@ -463,7 +480,11 @@ async def enroll_totp(
             user_id, "mfa_enroll", success=False, ip=ip,
             extra=f"reason=supabase_error type={type(e).__name__}",
         )
-        logger.warning("MFA enrol failed for user %s: %s", mask_user_id(user_id), type(e).__name__)
+        logger.warning(
+            "MFA enrol failed for user %s: %s",
+            _safe_log_value(mask_user_id(user_id)),
+            _safe_log_value(type(e).__name__),
+        )
         raise HTTPException(
             status_code=502,
             detail="Não foi possível iniciar o cadastro de MFA. Tente novamente em instantes.",
@@ -485,8 +506,8 @@ async def enroll_totp(
     except Exception as e:  # noqa: BLE001
         logger.warning(
             "MFA enrol: failed to persist backup codes for user %s: %s",
-            mask_user_id(user_id),
-            type(e).__name__,
+            _safe_log_value(mask_user_id(user_id)),
+            _safe_log_value(type(e).__name__),
         )
         # Non-fatal: enrolment can proceed; user can call /v1/mfa/recovery-codes later.
         backup_codes = []
@@ -542,8 +563,8 @@ async def verify_totp(
     except Exception as e:  # noqa: BLE001
         logger.warning(
             "MFA verify: failed to read factors for user %s: %s",
-            mask_user_id(user_id),
-            type(e).__name__,
+            _safe_log_value(mask_user_id(user_id)),
+            _safe_log_value(type(e).__name__),
         )
         raise HTTPException(status_code=502, detail="Erro ao consultar fator MFA.")
 
@@ -589,8 +610,8 @@ async def verify_totp(
         )
         logger.warning(
             "MFA verify failed for user %s: %s",
-            mask_user_id(user_id),
-            type(e).__name__,
+            _safe_log_value(mask_user_id(user_id)),
+            _safe_log_value(type(e).__name__),
         )
         raise HTTPException(
             status_code=400,
