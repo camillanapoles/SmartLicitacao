@@ -85,12 +85,13 @@ describe("STORY-319: TrialCountdown badge", () => {
 
   it("AC7: renders countdown for 14-day trial", () => {
     render(<TrialCountdown daysRemaining={14} />);
-    expect(screen.getByText(/14 dias de acesso completo/)).toBeInTheDocument();
+    // Issue #620: feature-named urgency at high tiers (>=5 days)
+    expect(screen.getByText(/14 dias · Pipeline \+ Excel/)).toBeInTheDocument();
   });
 
   it("AC7: renders countdown for 7 days remaining", () => {
     render(<TrialCountdown daysRemaining={7} />);
-    expect(screen.getByText(/7 dias de acesso completo/)).toBeInTheDocument();
+    expect(screen.getByText(/7 dias · Pipeline \+ Excel/)).toBeInTheDocument();
   });
 
   it("AC7: renders nothing when 0 days remaining", () => {

@@ -245,8 +245,8 @@ describe('TrialCountdown', () => {
   it('shows green/emerald colors for 5+ days', () => {
     const { container } = render(<TrialCountdown daysRemaining={5} />);
 
-    // STORY-264 AC7: "de acesso completo" instead of "restantes"
-    expect(screen.getByText(/5 dias de acesso completo/)).toBeInTheDocument();
+    // Issue #620: feature-named urgency replaces "acesso completo"
+    expect(screen.getByText(/5 dias · Pipeline \+ Excel/)).toBeInTheDocument();
 
     // Check for emerald color classes on the link element
     const link = container.querySelector('a');
@@ -257,7 +257,7 @@ describe('TrialCountdown', () => {
   it('shows amber/yellow colors for 3-4 days', () => {
     const { container } = render(<TrialCountdown daysRemaining={3} />);
 
-    expect(screen.getByText(/3 dias de acesso completo/)).toBeInTheDocument();
+    expect(screen.getByText(/3 dias · alertas expiram em breve/)).toBeInTheDocument();
 
     const link = container.querySelector('a');
     expect(link).not.toBeNull();
@@ -267,7 +267,8 @@ describe('TrialCountdown', () => {
   it('shows red colors with pulse for 1-2 days', () => {
     const { container } = render(<TrialCountdown daysRemaining={1} />);
 
-    expect(screen.getByText(/1 dia de acesso completo/)).toBeInTheDocument();
+    // Issue #620: n=1 uses "Última 1 dia" + features at risk
+    expect(screen.getByText(/Última 1 dia · Excel \+ alertas expiram/)).toBeInTheDocument();
 
     const link = container.querySelector('a');
     expect(link).not.toBeNull();
@@ -276,6 +277,14 @@ describe('TrialCountdown', () => {
     // Check for pulse animation on the dot
     const pulseDot = container.querySelector('.animate-pulse');
     expect(pulseDot).not.toBeNull();
+
+    // Tooltip on red tier names the 3 features that disappear
+    expect(link!.getAttribute('title')).toContain('alertas por e-mail');
+    expect(link!.getAttribute('title')).toContain('exportação Excel');
+    expect(link!.getAttribute('title')).toContain('pipeline ilimitado');
+
+    // aria-label matches visible text for accessibility
+    expect(link!.getAttribute('aria-label')).toContain('Última 1 dia');
   });
 
   it('does not render for 0 days', () => {
