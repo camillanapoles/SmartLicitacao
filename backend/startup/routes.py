@@ -32,6 +32,7 @@ from routes.admin_cron import router as admin_cron_router
 from routes.admin_llm_cost import router as admin_llm_cost_router
 from routes.admin_calibration import router as admin_calibration_router
 from routes.survey import router as survey_router
+from routes.admin_billing_sync import router as admin_billing_sync_router
 from routes.auth_check import router as auth_check_router
 from routes.bid_analysis import router as bid_analysis_router
 from routes.slo import router as slo_router
@@ -134,6 +135,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(admin_cron_router)
     app.include_router(admin_llm_cost_router)
     app.include_router(admin_calibration_router)
+    app.include_router(admin_billing_sync_router)
     app.include_router(slo_router)
 
     # Stripe webhook at root — DEBT-324: single registration only.

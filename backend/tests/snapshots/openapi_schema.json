@@ -762,6 +762,112 @@
         "title": "BillingPlansResponse",
         "type": "object"
       },
+      "BillingSyncListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BillingSyncRow"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BillingSyncListResponse",
+        "type": "object"
+      },
+      "BillingSyncRow": {
+        "properties": {
+          "billing_period": {
+            "title": "Billing Period",
+            "type": "string"
+          },
+          "discount_percent": {
+            "default": 0,
+            "title": "Discount Percent",
+            "type": "integer"
+          },
+          "drift_status": {
+            "default": "unknown",
+            "description": "in_sync | drift_recent | drift_stale | unknown",
+            "title": "Drift Status",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_archived": {
+            "default": false,
+            "title": "Is Archived",
+            "type": "boolean"
+          },
+          "last_forward_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Forward Synced At"
+          },
+          "last_reverse_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reverse Synced At"
+          },
+          "plan_id": {
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "price_cents": {
+            "title": "Price Cents",
+            "type": "integer"
+          },
+          "stripe_price_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Price Id"
+          },
+          "stripe_product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Product Id"
+          }
+        },
+        "required": [
+          "id",
+          "plan_id",
+          "billing_period",
+          "price_cents"
+        ],
+        "title": "BillingSyncRow",
+        "type": "object"
+      },
       "BuscaRequest": {
         "description": "Request schema for /buscar endpoint.\n\nValidates user input for procurement search:\n- At least 1 Brazilian state (UF) must be selected\n- Dates must be in YYYY-MM-DD format\n- data_inicial must be <= data_final\n- Date range cannot exceed 30 days\n- data_final cannot be in the future\n- valor_maximo must be >= valor_minimo (if both provided)\n\nExamples:\n    >>> request = BuscaRequest(\n    ...     ufs=[\"SP\", \"RJ\"],\n    ...     data_inicial=\"2025-01-01\",\n    ...     data_final=\"2025-01-31\"\n    ... )\n    >>> request.ufs\n    ['SP', 'RJ']\n\n    >>> # With new P0/P1 filters\n    >>> request = BuscaRequest(\n    ...     ufs=[\"SP\"],\n    ...     data_inicial=\"2025-01-01\",\n    ...     data_final=\"2025-01-31\",\n    ...     status=StatusLicitacao.RECEBENDO_PROPOSTA,\n    ...     modalidades=[1, 2, 6],\n    ...     valor_minimo=50000,\n    ...     valor_maximo=500000,\n    ...     esferas=[EsferaGovernamental.MUNICIPAL]\n    ... )",
         "example": {
@@ -8159,6 +8265,141 @@
         "title": "RecommendedPlanResponse",
         "type": "object"
       },
+      "ReconcileNowResponse": {
+        "properties": {
+          "drifts_detected": {
+            "default": 0,
+            "title": "Drifts Detected",
+            "type": "integer"
+          },
+          "drifts_fixed": {
+            "default": 0,
+            "title": "Drifts Fixed",
+            "type": "integer"
+          },
+          "drifts_manual": {
+            "default": 0,
+            "title": "Drifts Manual",
+            "type": "integer"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "dry_run"
+        ],
+        "title": "ReconcileNowResponse",
+        "type": "object"
+      },
+      "ReconciliationRun": {
+        "properties": {
+          "drift_report": {
+            "title": "Drift Report"
+          },
+          "drifts_detected": {
+            "default": 0,
+            "title": "Drifts Detected",
+            "type": "integer"
+          },
+          "drifts_fixed": {
+            "default": 0,
+            "title": "Drifts Fixed",
+            "type": "integer"
+          },
+          "drifts_manual": {
+            "default": 0,
+            "title": "Drifts Manual",
+            "type": "integer"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "rows_checked": {
+            "default": 0,
+            "title": "Rows Checked",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "status"
+        ],
+        "title": "ReconciliationRun",
+        "type": "object"
+      },
+      "ReconciliationRunsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationRun"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReconciliationRunsResponse",
+        "type": "object"
+      },
       "RecoveryCodesResponse": {
         "properties": {
           "codes": {
@@ -8718,6 +8959,92 @@
           "valor_total"
         ],
         "title": "ResumoLicitacoes",
+        "type": "object"
+      },
+      "ReverseSyncRequest": {
+        "properties": {
+          "i_understand_this_modifies_stripe": {
+            "default": false,
+            "description": "Admin must explicitly confirm intent to mutate Stripe.",
+            "title": "I Understand This Modifies Stripe",
+            "type": "boolean"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "ReverseSyncRequest",
+        "type": "object"
+      },
+      "ReverseSyncResponse": {
+        "properties": {
+          "audit_log_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Log Id"
+          },
+          "new_stripe_price_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Stripe Price Id"
+          },
+          "old_stripe_price_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Stripe Price Id"
+          },
+          "plan_billing_period_id": {
+            "title": "Plan Billing Period Id",
+            "type": "string"
+          },
+          "skipped_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped Reason"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "plan_billing_period_id"
+        ],
+        "title": "ReverseSyncResponse",
         "type": "object"
       },
       "RevokeResponse": {
@@ -12749,6 +13076,193 @@
         "summary": "Get Partner Revenue Endpoint",
         "tags": [
           "partners"
+        ]
+      }
+    },
+    "/v1/admin/plans/billing-sync": {
+      "get": {
+        "description": "Return every plan_billing_periods row enriched with drift_status.",
+        "operationId": "list_billing_sync_rows_v1_admin_plans_billing_sync_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingSyncListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Billing Sync Rows",
+        "tags": [
+          "admin",
+          "billing"
+        ]
+      }
+    },
+    "/v1/admin/plans/reconcile-now": {
+      "post": {
+        "operationId": "reconcile_now_v1_admin_plans_reconcile_now_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileNowResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reconcile Now",
+        "tags": [
+          "admin",
+          "billing"
+        ]
+      }
+    },
+    "/v1/admin/plans/reconciliation-runs": {
+      "get": {
+        "operationId": "list_reconciliation_runs_v1_admin_plans_reconciliation_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRunsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Reconciliation Runs",
+        "tags": [
+          "admin",
+          "billing"
+        ]
+      }
+    },
+    "/v1/admin/plans/{plan_billing_period_id}/sync-to-stripe": {
+      "post": {
+        "description": "AC8/AC9: Push DB price -> Stripe by creating a new Price + archiving old.",
+        "operationId": "sync_to_stripe_v1_admin_plans__plan_billing_period_id__sync_to_stripe_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_billing_period_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Billing Period Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReverseSyncResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync To Stripe",
+        "tags": [
+          "admin",
+          "billing"
         ]
       }
     },

@@ -621,6 +621,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/plans/billing-sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Billing Sync Rows
+         * @description Return every plan_billing_periods row enriched with drift_status.
+         */
+        get: operations["list_billing_sync_rows_v1_admin_plans_billing_sync_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/plans/reconcile-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcile Now */
+        post: operations["reconcile_now_v1_admin_plans_reconcile_now_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/plans/reconciliation-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reconciliation Runs */
+        get: operations["list_reconciliation_runs_v1_admin_plans_reconciliation_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/plans/{plan_billing_period_id}/sync-to-stripe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync To Stripe
+         * @description AC8/AC9: Push DB price -> Stripe by creating a new Price + archiving old.
+         */
+        post: operations["sync_to_stripe_v1_admin_plans__plan_billing_period_id__sync_to_stripe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/reconciliation/history": {
         parameters: {
             query?: never;
@@ -5144,6 +5218,46 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** BillingSyncListResponse */
+        BillingSyncListResponse: {
+            /** Items */
+            items: components["schemas"]["BillingSyncRow"][];
+        };
+        /** BillingSyncRow */
+        BillingSyncRow: {
+            /** Billing Period */
+            billing_period: string;
+            /**
+             * Discount Percent
+             * @default 0
+             */
+            discount_percent: number;
+            /**
+             * Drift Status
+             * @description in_sync | drift_recent | drift_stale | unknown
+             * @default unknown
+             */
+            drift_status: string;
+            /** Id */
+            id: string;
+            /**
+             * Is Archived
+             * @default false
+             */
+            is_archived: boolean;
+            /** Last Forward Synced At */
+            last_forward_synced_at?: string | null;
+            /** Last Reverse Synced At */
+            last_reverse_synced_at?: string | null;
+            /** Plan Id */
+            plan_id: string;
+            /** Price Cents */
+            price_cents: number;
+            /** Stripe Price Id */
+            stripe_price_id?: string | null;
+            /** Stripe Product Id */
+            stripe_product_id?: string | null;
+        };
         /**
          * BuscaRequest
          * @description Request schema for /buscar endpoint.
@@ -8535,6 +8649,78 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** ReconcileNowResponse */
+        ReconcileNowResponse: {
+            /**
+             * Drifts Detected
+             * @default 0
+             */
+            drifts_detected: number;
+            /**
+             * Drifts Fixed
+             * @default 0
+             */
+            drifts_fixed: number;
+            /**
+             * Drifts Manual
+             * @default 0
+             */
+            drifts_manual: number;
+            /** Dry Run */
+            dry_run: boolean;
+            /** Run Id */
+            run_id?: string | null;
+            /** Status */
+            status: string;
+        };
+        /** ReconciliationRun */
+        ReconciliationRun: {
+            /** Drift Report */
+            drift_report?: unknown;
+            /**
+             * Drifts Detected
+             * @default 0
+             */
+            drifts_detected: number;
+            /**
+             * Drifts Fixed
+             * @default 0
+             */
+            drifts_fixed: number;
+            /**
+             * Drifts Manual
+             * @default 0
+             */
+            drifts_manual: number;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Error Message */
+            error_message?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Rows Checked
+             * @default 0
+             */
+            rows_checked: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Status */
+            status: string;
+        };
+        /** ReconciliationRunsResponse */
+        ReconciliationRunsResponse: {
+            /** Items */
+            items: components["schemas"]["ReconciliationRun"][];
+        };
         /** RecoveryCodesResponse */
         RecoveryCodesResponse: {
             /** Codes */
@@ -8870,6 +9056,32 @@ export interface components {
              * @description Total value of all opportunities in BRL
              */
             valor_total: number;
+        };
+        /** ReverseSyncRequest */
+        ReverseSyncRequest: {
+            /**
+             * I Understand This Modifies Stripe
+             * @description Admin must explicitly confirm intent to mutate Stripe.
+             * @default false
+             */
+            i_understand_this_modifies_stripe: boolean;
+            /** Note */
+            note?: string | null;
+        };
+        /** ReverseSyncResponse */
+        ReverseSyncResponse: {
+            /** Audit Log Id */
+            audit_log_id?: string | null;
+            /** New Stripe Price Id */
+            new_stripe_price_id?: string | null;
+            /** Old Stripe Price Id */
+            old_stripe_price_id?: string | null;
+            /** Plan Billing Period Id */
+            plan_billing_period_id: string;
+            /** Skipped Reason */
+            skipped_reason?: string | null;
+            /** Status */
+            status: string;
         };
         /**
          * RevokeResponse
@@ -10828,6 +11040,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_billing_sync_rows_v1_admin_plans_billing_sync_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingSyncListResponse"];
+                };
+            };
+        };
+    };
+    reconcile_now_v1_admin_plans_reconcile_now_post: {
+        parameters: {
+            query?: {
+                dry_run?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconcileNowResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reconciliation_runs_v1_admin_plans_reconciliation_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationRunsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_to_stripe_v1_admin_plans__plan_billing_period_id__sync_to_stripe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_billing_period_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReverseSyncRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReverseSyncResponse"];
                 };
             };
             /** @description Validation Error */

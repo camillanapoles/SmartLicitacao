@@ -62,6 +62,12 @@ from webhooks.handlers._shared import resolve_user_id as _resolve_user_id  # noq
 from webhooks.handlers.founding import (  # noqa: F401
     mark_founding_lead_abandoned as _handle_founding_checkout_expired_raw,
 )
+from webhooks.handlers.stripe_product_price import (  # noqa: F401
+    handle_product_updated as _handle_product_updated,
+    handle_price_created as _handle_price_created,
+    handle_price_updated as _handle_price_updated,
+    handle_price_deleted as _handle_price_deleted,
+)
 
 logger = get_sanitized_logger(__name__)
 router = APIRouter()
@@ -207,6 +213,15 @@ async def stripe_webhook(request: Request):
                 await _handle_invoice_payment_failed(sb, event)
             elif event.type == "invoice.payment_action_required":
                 await _handle_payment_action_required(sb, event)
+            # BILL-SYNC-001: Stripe -> DB forward sync for plan_billing_periods.
+            elif event.type == "product.updated":
+                await _handle_product_updated(sb, event)
+            elif event.type == "price.created":
+                await _handle_price_created(sb, event)
+            elif event.type == "price.updated":
+                await _handle_price_updated(sb, event)
+            elif event.type == "price.deleted":
+                await _handle_price_deleted(sb, event)
             else:
                 logger.info(f"Unhandled event type: {event.type}")
 
