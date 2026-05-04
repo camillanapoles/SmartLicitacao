@@ -32,7 +32,9 @@ jobs:
           set -euo pipefail
 
           # Get changed migration files (excluding .down.sql rollbacks)
-          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- 'supabase/migrations/*.sql' | grep -v '\.down\.sql$' || true)
+          # --diff-filter=AM: only Added/Modified files; skip Deleted (revert PRs would fail awk
+          # trying to read removed SQL files from working tree).
+          CHANGED=$(git diff --name-only --diff-filter=AM "origin/${{ github.base_ref }}...HEAD" -- 'supabase/migrations/*.sql' | grep -v '\.down\.sql$' || true)
 
           if [ -z "$CHANGED" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
