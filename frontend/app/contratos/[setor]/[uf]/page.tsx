@@ -92,6 +92,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `Transparência em gastos públicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
       type: 'website',
       locale: 'pt_BR',
+      images: [
+        {
+          url: `/api/og?title=${encodeURIComponent(`Contratos Públicos: ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`)}&subtitle=${encodeURIComponent(`${totalContracts.toLocaleString('pt-BR')} contratos firmados — PNCP`)}`,
+          width: 1200,
+          height: 630,
+          alt: `Contratos Públicos de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} | SmartLic`,
+        },
+      ],
     },
     robots: { index: shouldIndex, follow: true }, // AC4/AC5
   };

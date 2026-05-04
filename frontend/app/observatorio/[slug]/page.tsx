@@ -94,6 +94,14 @@ export async function generateMetadata({
       url: `https://smartlic.tech/observatorio/${slug}`,
       type: 'article',
       locale: 'pt_BR',
+      images: [
+        {
+          url: `/api/og?title=${encodeURIComponent(`Raio-X ${mesDisplay} ${ano}`)}&subtitle=${encodeURIComponent(`${totalDisplay} editais publicados no PNCP`)}`,
+          width: 1200,
+          height: 630,
+          alt: `Raio-X das Licitações — ${mesDisplay} ${ano} | SmartLic`,
+        },
+      ],
     },
     robots: { index: true },
   };

@@ -62,6 +62,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `Licitações recentes de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} — dados ao vivo do PNCP`,
       type: 'website',
       locale: 'pt_BR',
+      images: [
+        {
+          url: `/api/og?title=${encodeURIComponent(`Alertas: ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`)}&subtitle=${encodeURIComponent(`Licitações recentes — PNCP`)}`,
+          width: 1200,
+          height: 630,
+          alt: `Alertas de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} | SmartLic`,
+        },
+      ],
     },
     robots: { index: true, follow: true },
   };

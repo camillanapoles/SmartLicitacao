@@ -85,6 +85,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `CEIS e CNEP — ${profile.situacao_geral}`,
       type: 'website',
       locale: 'pt_BR',
+      images: [
+        {
+          url: `/api/og?title=${encodeURIComponent(`Due Diligence B2G: ${profile.razao_social}`)}&subtitle=${encodeURIComponent(`CEIS e CNEP — ${profile.situacao_geral}`)}`,
+          width: 1200,
+          height: 630,
+          alt: `Due Diligence B2G: ${profile.razao_social} | SmartLic`,
+        },
+      ],
     },
     robots: { index: true, follow: true },
   };

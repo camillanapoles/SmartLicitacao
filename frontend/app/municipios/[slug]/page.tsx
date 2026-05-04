@@ -99,6 +99,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `${profile.total_licitacoes_abertas} editais abertos — PNCP`,
       type: 'website',
       locale: 'pt_BR',
+      images: [
+        {
+          url: `/api/og?title=${encodeURIComponent(`Licitações em ${profile.nome}-${profile.uf}`)}&subtitle=${encodeURIComponent(`${profile.total_licitacoes_abertas} editais abertos — PNCP`)}`,
+          width: 1200,
+          height: 630,
+          alt: `Licitações em ${profile.nome}-${profile.uf} | SmartLic`,
+        },
+      ],
     },
     robots: { index: true, follow: true },
   };
