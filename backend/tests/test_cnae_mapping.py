@@ -1,7 +1,28 @@
-"""Tests for CNAE to sector mapping (GTM-004 AC6)."""
+"""Tests for CNAE to sector mapping (GTM-004 AC6).
+
+DATA-CNAE-001: utils.cnae_mapping now goes DB-first.  The legacy unit
+tests stay pinned to the in-memory snapshot — we set
+``CNAE_DB_LOOKUP_ENABLED=false`` so each call short-circuits straight
+to ``_LEGACY_CNAE_TO_SETOR`` and we don't try to reach Supabase from
+a unit test environment.
+"""
+
+import os
 
 import pytest
 from utils.cnae_mapping import map_cnae_to_setor, get_setor_name
+
+
+@pytest.fixture(autouse=True)
+def _force_legacy_only_lookup(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("CNAE_DB_LOOKUP_ENABLED", "false")
+    monkeypatch.setenv("CNAE_LISTENER_DISABLED", "true")
+    # Reset the module-level cache between tests so a value cached
+    # from one test doesn't leak into the next.
+    from utils import cnae_mapping
+    cnae_mapping.invalidate_cnae_cache(None)
+    yield
+    cnae_mapping.invalidate_cnae_cache(None)
 
 
 class TestMapCnaeToSetor:
