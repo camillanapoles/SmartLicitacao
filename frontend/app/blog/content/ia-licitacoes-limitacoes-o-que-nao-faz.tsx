@@ -187,7 +187,7 @@ export default function IaLicitacoesLimitacoesOQueNaoFaz() {
       <BlogInlineCTA
         slug="ia-licitacoes-limitacoes-o-que-nao-faz"
         campaign="guias"
-        ctaMessage="Veja o que a IA faz bem: 14 dias grátis para testar a triagem e viabilidade automática no seu setor."
+        ctaMessage="Teste triagem e viabilidade automática — 14 dias grátis."
         ctaText="Começar Trial Gratuito"
       />
 

@@ -211,7 +211,7 @@ export default function IaNovaLeiLicitacoes14133Fornecedores() {
       <BlogInlineCTA
         slug="ia-nova-lei-licitacoes-14133-fornecedores"
         campaign="guias"
-        ctaMessage="Veja como a IA filtra editais da nova lei: 14 dias grátis, sem cartão."
+        ctaMessage="IA filtra editais da Lei 14.133 — 14 dias grátis."
         ctaText="Começar Trial Gratuito"
       />
 

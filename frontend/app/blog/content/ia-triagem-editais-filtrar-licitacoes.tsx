@@ -319,7 +319,7 @@ export default function IaTriagemEditaisFiltrarLicitacoes() {
       <BlogInlineCTA
         slug="ia-triagem-editais-filtrar-licitacoes"
         campaign="b2g"
-        ctaMessage="Veja como o SmartLic aplica as 3 camadas de triagem no seu setor — trial gratuito por 14 dias, sem cartão de crédito."
+        ctaMessage="Triagem em 3 camadas no SmartLic — 14 dias grátis."
         ctaText="Começar triagem automática"
       />
 

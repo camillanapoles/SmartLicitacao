@@ -239,7 +239,7 @@ export default function SmartlicVsEffectiComparacao2026() {
       <BlogInlineCTA
         slug="smartlic-vs-effecti-comparacao-2026"
         campaign="guias"
-        ctaMessage="Veja a diferença na prática: teste o SmartLic por 14 dias, sem cartão de crédito."
+        ctaMessage="Teste o SmartLic por 14 dias — sem cartão."
         ctaText="Começar Trial Gratuito"
       />
 

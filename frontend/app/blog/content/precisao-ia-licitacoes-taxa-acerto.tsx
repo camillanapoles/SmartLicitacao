@@ -374,7 +374,7 @@ export default function PrecisaoIaLicitacoesTaxaAcerto() {
       <BlogInlineCTA
         slug="precisao-ia-licitacoes-taxa-acerto"
         campaign="guias"
-        ctaMessage="Veja como a classificação do SmartLic funciona no seu setor com precisão validada — 14 dias grátis, sem cartão de crédito."
+        ctaMessage="Classificação SmartLic com precisão validada — 14 dias grátis."
         ctaText="Testar agora gratuitamente"
       />
 

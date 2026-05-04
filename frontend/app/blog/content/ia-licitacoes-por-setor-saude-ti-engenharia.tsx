@@ -273,7 +273,7 @@ export default function IaLicitacoesPorSetorSaudeTiEngenharia() {
       <BlogInlineCTA
         slug="ia-licitacoes-por-setor-saude-ti-engenharia"
         campaign="guias"
-        ctaMessage="Monitore editais do seu setor com classificação por IA — 14 dias grátis, sem cartão."
+        ctaMessage="Editais do seu setor classificados por IA — 14 dias grátis."
         ctaText="Testar Grátis"
       />
 
