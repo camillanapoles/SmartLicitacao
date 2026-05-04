@@ -13,9 +13,9 @@ export function OnboardingStep1({ data, onChange, errors, onBlur }: OnboardingSt
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-[var(--ink)] mb-1">Qual é o seu negócio?</h2>
+        <h2 className="text-xl font-semibold text-[var(--ink)] mb-1">Vamos calibrar seu radar de oportunidades</h2>
         <p className="text-sm text-[var(--ink-secondary)]">
-          Informe seu segmento para encontrarmos oportunidades relevantes
+          Em 30 segundos: setor + objetivo. Você vê os primeiros editais relevantes na próxima tela.
         </p>
       </div>
 
