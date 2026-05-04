@@ -136,4 +136,25 @@ describe('sitemap() — coverage thresholds (STORY-SEO-001 AC7)', () => {
     const urls = await sitemap({ id: 0 });
     expect(urls.length).toBeGreaterThanOrEqual(10);
   });
+
+  it('SEO-661 regression: nenhuma URL duplicada entre shards 0-4', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      const endpoint = ENTITY_ENDPOINTS.find((e) => urlStr.includes(e));
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(endpoint ? buildShard4Payload(endpoint, 0) : {}),
+      } as Response);
+    });
+
+    const sitemap = await importSitemapFresh();
+    const allUrls: string[] = [];
+    for (let id = 0; id <= 4; id++) {
+      const entries = await sitemap({ id });
+      allUrls.push(...entries.map((e) => e.url));
+    }
+
+    const unique = new Set(allUrls);
+    expect(allUrls.length).toBe(unique.size);
+  });
 });
