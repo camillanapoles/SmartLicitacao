@@ -1927,6 +1927,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/login-attempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Login Attempt
+         * @description MFA-EXT-001 AC5/AC6: track password attempts to drive MFA enforcement.
+         *
+         *     Frontend (``AuthProvider``) calls this endpoint immediately after a
+         *     Supabase ``signInWithPassword`` call to report the outcome:
+         *
+         *       * ``success=true``  -> reset counter to 0, set ``last_success_at``
+         *       * ``success=false`` -> increment counter; if it crosses
+         *         ``BRUTEFORCE_FAIL_THRESHOLD`` (3), set
+         *         ``profiles.force_mfa_enrollment_until = NOW() + 7d`` and email
+         *         the user.
+         *
+         *     Trust model: the endpoint is unauthenticated; an attacker can lie
+         *     about the outcome but gains nothing — self-reported success without
+         *     a real session never produces a forced MFA window. Documented in
+         *     ADR-MFA-EXT-001.
+         *
+         *     Always returns 200 (no user-existence oracle).
+         */
+        post: operations["record_login_attempt_v1_auth_login_attempt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/resend-confirmation": {
         parameters: {
             query?: never;
@@ -3349,10 +3385,11 @@ export interface paths {
         };
         /**
          * Get Mfa Status
-         * @description AC4: Get MFA status for the current user.
+         * @description AC4 + MFA-EXT-001 AC8/AC9: Get MFA status for the current user.
          *
          *     Returns whether MFA is enabled, enrolled factors, current AAL level,
-         *     and whether MFA is required for this user's role.
+         *     whether MFA is required, and (MFA-EXT-001) the enforcement reason +
+         *     grace countdown so the banner can render the right variant.
          */
         get: operations["get_mfa_status_v1_mfa_status_get"];
         put?: never;
@@ -7824,6 +7861,42 @@ export interface components {
             updated_at: string;
         };
         /**
+         * LoginAttemptRequest
+         * @description Frontend reports the outcome of a Supabase signInWithPassword call.
+         *
+         *     The endpoint is unauthenticated by design (failures happen before a
+         *     session exists). To avoid leaking user existence, the endpoint always
+         *     returns 200; if the email is unknown we no-op silently.
+         */
+        LoginAttemptRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /**
+             * Success
+             * @description True if Supabase auth.signInWithPassword resolved with a session.
+             */
+            success: boolean;
+        };
+        /**
+         * LoginAttemptResponse
+         * @description Always 200 to avoid email-existence oracle. Body is intentionally bland.
+         */
+        LoginAttemptResponse: {
+            /**
+             * Force Mfa Triggered
+             * @default false
+             */
+            force_mfa_triggered: boolean;
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+        };
+        /**
          * MFAEnrollResponse
          * @description Response body for POST /v1/mfa/enroll (Issue #639).
          *
@@ -7953,10 +8026,16 @@ export interface components {
              * @default aal1
              */
             aal_level: string;
+            /** Enforce Reason */
+            enforce_reason?: string | null;
             /** Factors */
             factors?: {
                 [key: string]: unknown;
             }[];
+            /** Force Mfa Enrollment Until */
+            force_mfa_enrollment_until?: string | null;
+            /** Grace Days Remaining */
+            grace_days_remaining?: number | null;
             /** Mfa Enabled */
             mfa_enabled: boolean;
             /**
@@ -12748,6 +12827,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_login_attempt_v1_auth_login_attempt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginAttemptResponse"];
                 };
             };
             /** @description Validation Error */

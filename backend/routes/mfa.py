@@ -61,6 +61,11 @@ class MfaStatusResponse(BaseModel):
     factors: list[dict] = Field(default_factory=list)
     aal_level: str = "aal1"
     mfa_required: bool = False
+    # MFA-EXT-001 AC8/AC9: surface enforcement trigger + countdown so the
+    # banner renders the correct variant (admin/consultoria/bruteforce).
+    enforce_reason: str | None = None  # "admin" | "consultoria" | "bruteforce" | None
+    force_mfa_enrollment_until: str | None = None  # ISO 8601, or None
+    grace_days_remaining: int | None = None  # ceil((force_until - now)/1day) or None
 
 
 class RecoveryCodesResponse(BaseModel):
@@ -160,16 +165,37 @@ async def _record_attempt(user_id: str, success: bool) -> None:
 
 @router.get("/status", response_model=MfaStatusResponse)
 async def get_mfa_status(user: dict = Depends(require_auth)):
-    """AC4: Get MFA status for the current user.
+    """AC4 + MFA-EXT-001 AC8/AC9: Get MFA status for the current user.
 
     Returns whether MFA is enabled, enrolled factors, current AAL level,
-    and whether MFA is required for this user's role.
+    whether MFA is required, and (MFA-EXT-001) the enforcement reason +
+    grace countdown so the banner can render the right variant.
     """
     user_id = user["id"]
 
     # Check if user is admin/master (MFA required for these roles)
     is_admin, is_master = await check_user_roles(user_id)
-    mfa_required = is_admin or is_master
+
+    # MFA-EXT-001: also fetch plan_type + force_mfa_enrollment_until
+    plan_type: str | None = None
+    force_until_raw: object = None
+    try:
+        from auth import _get_profile_mfa_state
+        profile = await _get_profile_mfa_state(user_id)
+        plan_type = profile.get("plan_type")
+        force_until_raw = profile.get("force_mfa_enrollment_until")
+    except Exception as e:
+        # Sanitize user_id for log: keep only alphanumeric to defeat
+        # log-injection (CRLF / control chars). user_id originates from JWT
+        # (validated upstream) but CodeQL still classifies it as user-controlled.
+        safe_uid = "".join(c for c in str(user_id)[:8] if c.isalnum())
+        logger.warning(
+            "MFA-EXT-001: profile fetch failed for user %s: %s",
+            safe_uid,
+            type(e).__name__,
+        )
+
+    is_consultoria = plan_type == "consultoria"
 
     # Get AAL from JWT claims (stored in user dict by auth.py)
     aal_level = user.get("aal", "aal1")
@@ -199,11 +225,62 @@ async def get_mfa_status(user: dict = Depends(require_auth)):
 
     mfa_enabled = any(f.get("verified") for f in factors)
 
+    # Compute force-until window state (MFA-EXT-001 AC8/AC9)
+    from auth import _force_until_active
+    is_force_window = _force_until_active(force_until_raw)
+
+    # Resolve reason mirroring backend/auth.py::require_mfa precedence.
+    # Reason is only meaningful while MFA is NOT yet enabled.
+    enforce_reason: str | None = None
+    grace_days_remaining: int | None = None
+    if not mfa_enabled:
+        if is_admin or is_master:
+            enforce_reason = "admin"
+        elif is_consultoria:
+            enforce_reason = "consultoria"
+        elif is_force_window:
+            enforce_reason = "bruteforce"
+
+    # Compute countdown when force_until is set (regardless of reason —
+    # consultoria backfill writes force_until=NOW+14d so it's available
+    # for both consultoria and bruteforce variants).
+    force_until_iso: str | None = None
+    if force_until_raw:
+        try:
+            from datetime import datetime, timezone
+            import math
+            if isinstance(force_until_raw, str):
+                iso_in = force_until_raw.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(iso_in)
+            elif isinstance(force_until_raw, datetime):
+                dt = force_until_raw
+            else:
+                dt = None  # type: ignore[assignment]
+            if dt is not None:
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                force_until_iso = dt.isoformat()
+                delta = (dt - datetime.now(timezone.utc)).total_seconds()
+                if delta > 0:
+                    grace_days_remaining = max(1, math.ceil(delta / 86400))
+                else:
+                    grace_days_remaining = 0
+        except Exception:
+            # Best-effort countdown parse: malformed force_until payloads
+            # (e.g. legacy strings, stray timezone markers) must not break
+            # the /mfa/status response — degrade silently to None/None.
+            pass
+
+    mfa_required = bool(enforce_reason) or is_admin or is_master or is_consultoria
+
     return MfaStatusResponse(
         mfa_enabled=mfa_enabled,
         factors=factors,
         aal_level=aal_level,
         mfa_required=mfa_required,
+        enforce_reason=enforce_reason,
+        force_mfa_enrollment_until=force_until_iso,
+        grace_days_remaining=grace_days_remaining,
     )
 
 

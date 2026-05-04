@@ -364,14 +364,105 @@ async def require_auth(
     return user
 
 
+async def _get_profile_mfa_state(user_id: str) -> dict:
+    """MFA-EXT-001: Fetch the profile fields needed by require_mfa.
+
+    Returns ``{plan_type, force_mfa_enrollment_until}`` as a dict. On any
+    DB error returns an empty dict — caller treats missing fields as
+    "no extra enforcement" so the existing admin/master path still gates.
+
+    Uses ``sb_execute`` (asyncio.to_thread wrapper) to avoid blocking the
+    event loop — the prod outage on 2026-04-27 was rooted in sync
+    ``.execute()`` inside async handlers (memory
+    project_backend_outage_2026_04_27).
+    """
+    try:
+        from supabase_client import get_supabase, sb_execute
+        sb = get_supabase()
+        result = await sb_execute(
+            sb.table("profiles")
+            .select("plan_type, force_mfa_enrollment_until")
+            .eq("id", user_id)
+            .limit(1),
+            category="read",
+        )
+        rows = result.data or []
+        return rows[0] if rows else {}
+    except Exception as e:
+        logger.warning(
+            "MFA-EXT-001: profile fetch failed for user %s: %s",
+            user_id[:8],
+            type(e).__name__,
+        )
+        return {}
+
+
+async def _user_has_verified_mfa(user_id: str) -> bool:
+    """MFA-EXT-001: Check whether the user has any verified MFA factor.
+
+    Async-safe: uses sb_execute. Returns False on error (fail-open for
+    non-admin paths, matching prior STORY-317 behavior).
+    """
+    try:
+        from supabase_client import get_supabase, sb_execute
+        sb = get_supabase()
+        result = await sb_execute(
+            sb.table("mfa_factors")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("status", "verified")
+            .limit(1),
+            category="read",
+        )
+        return bool(result.data)
+    except Exception as e:
+        logger.warning(
+            "MFA-EXT-001: factor check failed for user %s: %s",
+            user_id[:8],
+            type(e).__name__,
+        )
+        return False
+
+
+def _force_until_active(force_until: Any) -> bool:
+    """Return True iff force_mfa_enrollment_until is set and in the future.
+
+    Accepts either an ISO string (Supabase return) or a datetime instance.
+    Treats parse errors as "not active" (fail-open for the trigger; the
+    admin/master path still gates).
+    """
+    if not force_until:
+        return False
+    try:
+        from datetime import datetime, timezone
+        if isinstance(force_until, str):
+            iso = force_until.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(iso)
+        elif isinstance(force_until, datetime):
+            dt = force_until
+        else:
+            return False
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt > datetime.now(timezone.utc)
+    except Exception:
+        return False
+
+
 async def require_mfa(
     user: dict = Depends(require_auth),
 ) -> dict:
-    """STORY-317 AC2/AC3: Require MFA (aal2) for sensitive endpoints.
+    """STORY-317 + MFA-EXT-001: Require MFA (aal2) for sensitive endpoints.
 
-    For admin/master roles: always requires aal2.
-    For regular users with MFA enrolled: requires aal2.
-    For regular users without MFA: allows aal1 (pass-through).
+    Enforcement triggers (any -> MFA mandatory):
+      1. admin or master role (STORY-317)
+      2. plan_type == 'consultoria' (MFA-EXT-001 AC1)
+      3. force_mfa_enrollment_until > NOW() — set by bruteforce trigger
+         or consultoria backfill (MFA-EXT-001 AC4-AC5)
+
+    If aal2 is already on the JWT, pass through. Otherwise, if any
+    enforcement trigger fires, raise 403 with X-MFA-Required +
+    X-MFA-Reason headers (the banner reads X-MFA-Reason for variant text).
 
     Used on: /admin/*, /checkout, /billing-portal, /change-password
     """
@@ -381,41 +472,65 @@ async def require_mfa(
     if aal == "aal2":
         return user
 
-    # Check if user is admin/master (MFA mandatory for these roles)
+    # Probe extra enforcement state (plan + bruteforce window) BEFORE the
+    # role check so we can build a single 403 with the right reason.
+    profile = await _get_profile_mfa_state(user_id)
+    plan_type = profile.get("plan_type")
+    force_until = profile.get("force_mfa_enrollment_until")
+
+    is_consultoria = plan_type == "consultoria"
+    is_force_window = _force_until_active(force_until)
+
+    # Existing admin/master check (kept as-is for STORY-317 compatibility)
     from authorization import check_user_roles
     is_admin, is_master = await check_user_roles(user_id)
 
-    if is_admin or is_master:
-        raise HTTPException(
-            status_code=403,
-            detail="MFA obrigatório para sua conta. Configure a autenticação em dois fatores.",
-            headers={"X-MFA-Required": "true"},
-        )
+    enforce_mfa = is_admin or is_master or is_consultoria or is_force_window
 
-    # For regular users: check if they have MFA enrolled but haven't verified
-    # If they have factors, they need to verify; if not, allow through
-    try:
-        from supabase_client import get_supabase
-        sb = get_supabase()
-        result = (
-            sb.table("mfa_factors")
-            .select("id, status")
-            .eq("user_id", user_id)
-            .eq("status", "verified")
-            .execute()
-        )
-        if result.data and len(result.data) > 0:
-            # User has MFA enrolled but session is aal1 — need to verify
+    if enforce_mfa:
+        # Resolve a single reason for telemetry / banner variant. Order
+        # mirrors STORY-317 precedence: admin > consultoria > bruteforce.
+        if is_admin or is_master:
+            reason = "admin"
+            detail = "MFA obrigatório para sua conta. Configure a autenticação em dois fatores."
+        elif is_consultoria:
+            reason = "consultoria"
+            detail = "Plano Consultoria requer MFA. Configure a autenticação em dois fatores."
+        else:
+            reason = "bruteforce"
+            detail = "Detectamos tentativas suspeitas. MFA é obrigatório. Configure agora."
+
+        # If user has a verified factor already, the issue is just step-up
+        # (aal1 -> aal2 challenge, handled by Supabase Auth client-side).
+        has_factor = await _user_has_verified_mfa(user_id)
+        if has_factor:
             raise HTTPException(
                 status_code=403,
                 detail="Verificação MFA necessária. Use seu app autenticador.",
-                headers={"X-MFA-Required": "true"},
+                headers={
+                    "X-MFA-Required": "true",
+                    "X-MFA-Reason": reason,
+                },
             )
-    except HTTPException:
-        raise
-    except Exception as e:
-        # If we can't check factors, allow through (fail-open for non-admin)
-        logger.warning(f"MFA factor check failed for user {user_id[:8]}: {type(e).__name__}")
+        # Otherwise: hard-block, banner will direct user to /conta/seguranca
+        raise HTTPException(
+            status_code=403,
+            detail=detail,
+            headers={
+                "X-MFA-Required": "true",
+                "X-MFA-Reason": reason,
+            },
+        )
+
+    # No enforcement -> for regular users, fall back to STORY-317 behavior:
+    # if they have a verified factor, they must step up to aal2.
+    has_factor = await _user_has_verified_mfa(user_id)
+    if has_factor:
+        raise HTTPException(
+            status_code=403,
+            detail="Verificação MFA necessária. Use seu app autenticador.",
+            headers={"X-MFA-Required": "true"},
+        )
 
     return user
 

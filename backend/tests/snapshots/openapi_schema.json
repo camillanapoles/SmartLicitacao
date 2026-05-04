@@ -6332,6 +6332,44 @@
         "title": "LicitacoesIndexableResponse",
         "type": "object"
       },
+      "LoginAttemptRequest": {
+        "description": "Frontend reports the outcome of a Supabase signInWithPassword call.\n\nThe endpoint is unauthenticated by design (failures happen before a\nsession exists). To avoid leaking user existence, the endpoint always\nreturns 200; if the email is unknown we no-op silently.",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "success": {
+            "description": "True if Supabase auth.signInWithPassword resolved with a session.",
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email",
+          "success"
+        ],
+        "title": "LoginAttemptRequest",
+        "type": "object"
+      },
+      "LoginAttemptResponse": {
+        "description": "Always 200 to avoid email-existence oracle. Body is intentionally bland.",
+        "properties": {
+          "force_mfa_triggered": {
+            "default": false,
+            "title": "Force Mfa Triggered",
+            "type": "boolean"
+          },
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "title": "LoginAttemptResponse",
+        "type": "object"
+      },
       "MFAEnrollResponse": {
         "description": "Response body for POST /v1/mfa/enroll (Issue #639).\n\nContains the data needed for the user to add the TOTP factor to an\nauthenticator app (Google Authenticator, Authy, 1Password, etc.) and\none-time backup codes for recovery if the device is lost.",
         "properties": {
@@ -6542,6 +6580,17 @@
             "title": "Aal Level",
             "type": "string"
           },
+          "enforce_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enforce Reason"
+          },
           "factors": {
             "items": {
               "additionalProperties": true,
@@ -6549,6 +6598,28 @@
             },
             "title": "Factors",
             "type": "array"
+          },
+          "force_mfa_enrollment_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Force Mfa Enrollment Until"
+          },
+          "grace_days_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grace Days Remaining"
           },
           "mfa_enabled": {
             "title": "Mfa Enabled",
@@ -15722,6 +15793,48 @@
         ]
       }
     },
+    "/v1/auth/login-attempt": {
+      "post": {
+        "description": "MFA-EXT-001 AC5/AC6: track password attempts to drive MFA enforcement.\n\nFrontend (``AuthProvider``) calls this endpoint immediately after a\nSupabase ``signInWithPassword`` call to report the outcome:\n\n  * ``success=true``  -> reset counter to 0, set ``last_success_at``\n  * ``success=false`` -> increment counter; if it crosses\n    ``BRUTEFORCE_FAIL_THRESHOLD`` (3), set\n    ``profiles.force_mfa_enrollment_until = NOW() + 7d`` and email\n    the user.\n\nTrust model: the endpoint is unauthenticated; an attacker can lie\nabout the outcome but gains nothing \u2014 self-reported success without\na real session never produces a forced MFA window. Documented in\nADR-MFA-EXT-001.\n\nAlways returns 200 (no user-existence oracle).",
+        "operationId": "record_login_attempt_v1_auth_login_attempt_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginAttemptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Login Attempt",
+        "tags": [
+          "auth-signup"
+        ]
+      }
+    },
     "/v1/auth/resend-confirmation": {
       "post": {
         "description": "Resend signup confirmation email with 60s rate limiting.\n\nCONV-INST-003: Cooldown persisted in Supabase user_email_actions table.\nIn-memory _resend_timestamps used as fallback when DB is unavailable.\nMED-SEC-001: Rate limited to 3 req/10min per IP to prevent trial multi-account abuse.",
@@ -18301,7 +18414,7 @@
     },
     "/v1/mfa/status": {
       "get": {
-        "description": "AC4: Get MFA status for the current user.\n\nReturns whether MFA is enabled, enrolled factors, current AAL level,\nand whether MFA is required for this user's role.",
+        "description": "AC4 + MFA-EXT-001 AC8/AC9: Get MFA status for the current user.\n\nReturns whether MFA is enabled, enrolled factors, current AAL level,\nwhether MFA is required, and (MFA-EXT-001) the enforcement reason +\ngrace countdown so the banner can render the right variant.",
         "operationId": "get_mfa_status_v1_mfa_status_get",
         "responses": {
           "200": {
