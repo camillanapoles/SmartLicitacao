@@ -14,6 +14,7 @@ are encoded in the ADR; changing them is a product decision).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -22,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from admin import require_admin
+from pipeline.budget import _run_with_budget
 from supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
@@ -167,18 +169,34 @@ async def list_founding_leads(
     """
     sb = get_supabase()
     capped_limit = max(1, min(limit, 500))
-    query = (
-        sb.table("founding_leads")
-        .select(
-            "id, email, nome, cnpj, razao_social, checkout_status, created_at, "
-            "completed_at, stripe_customer_id"
+
+    def _sync_query():
+        query = (
+            sb.table("founding_leads")
+            .select(
+                "id, email, nome, cnpj, razao_social, checkout_status, created_at, "
+                "completed_at, stripe_customer_id"
+            )
+            .order("created_at", desc=True)
+            .limit(capped_limit)
         )
-        .order("created_at", desc=True)
-        .limit(capped_limit)
-    )
-    if status:
-        query = query.eq("checkout_status", status)
-    res = query.execute()
+        if status:
+            query = query.eq("checkout_status", status)
+        return query.execute()
+
+    try:
+        res = await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=5.0,
+            phase="route",
+            source="admin_founding.list_founding_leads",
+        )
+    except asyncio.TimeoutError:
+        logger.warning("admin_founding list_founding_leads exceeded 5.0s budget")
+        raise HTTPException(status_code=503, detail="founding leads query timed out")
+    except Exception as e:
+        logger.error("admin_founding list_founding_leads DB query failed: %s", e)
+        raise HTTPException(status_code=500, detail="founding leads query failed")
     rows = res.data or []
 
     leads = [
@@ -223,7 +241,23 @@ async def pause_founding(
         "paused_by": admin_id,
         "paused_reason": reason,
     }
-    sb.table("founding_policy").update(update).eq("id", 1).execute()
+
+    def _sync_query():
+        return sb.table("founding_policy").update(update).eq("id", 1).execute()
+
+    try:
+        await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=3.0,
+            phase="route",
+            source="admin_founding.pause_founding",
+        )
+    except asyncio.TimeoutError:
+        logger.warning("admin_founding pause_founding exceeded 3.0s budget")
+        raise HTTPException(status_code=503, detail="founding pause timed out")
+    except Exception as e:
+        logger.error("admin_founding pause_founding DB update failed: %s", e)
+        raise HTTPException(status_code=500, detail="founding pause failed")
 
     logger.info(f"founding admin: paused by admin_id={admin_id} reason={reason!r}")
 
@@ -244,7 +278,23 @@ async def resume_founding(admin: dict = Depends(require_admin)) -> Any:
         "paused_by": None,
         "paused_reason": None,
     }
-    sb.table("founding_policy").update(update).eq("id", 1).execute()
+
+    def _sync_query():
+        return sb.table("founding_policy").update(update).eq("id", 1).execute()
+
+    try:
+        await _run_with_budget(
+            asyncio.to_thread(_sync_query),
+            budget=3.0,
+            phase="route",
+            source="admin_founding.resume_founding",
+        )
+    except asyncio.TimeoutError:
+        logger.warning("admin_founding resume_founding exceeded 3.0s budget")
+        raise HTTPException(status_code=503, detail="founding resume timed out")
+    except Exception as e:
+        logger.error("admin_founding resume_founding DB update failed: %s", e)
+        raise HTTPException(status_code=500, detail="founding resume failed")
 
     logger.info(f"founding admin: resumed by admin_id={admin.get('id')}")
 

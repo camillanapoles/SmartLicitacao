@@ -5247,6 +5247,67 @@
         "title": "FornecedoresStatsResponse",
         "type": "object"
       },
+      "FoundingAvailabilityResponse": {
+        "description": "Public availability snapshot for landing-page seat counter + countdown.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "coupon_code": {
+            "title": "Coupon Code",
+            "type": "string"
+          },
+          "deadline_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
+          "discount_pct": {
+            "title": "Discount Pct",
+            "type": "integer"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "seats_remaining": {
+            "title": "Seats Remaining",
+            "type": "integer"
+          },
+          "seats_taken": {
+            "title": "Seats Taken",
+            "type": "integer"
+          },
+          "seats_total": {
+            "title": "Seats Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "available",
+          "seats_total",
+          "seats_remaining",
+          "seats_taken",
+          "deadline_at",
+          "paused",
+          "reason",
+          "coupon_code",
+          "discount_pct"
+        ],
+        "title": "FoundingAvailabilityResponse",
+        "type": "object"
+      },
       "FoundingCheckoutRequest": {
         "properties": {
           "cnpj": {
@@ -5311,6 +5372,257 @@
           "lead_id"
         ],
         "title": "FoundingCheckoutResponse",
+        "type": "object"
+      },
+      "FoundingLeadEntry": {
+        "properties": {
+          "checkout_status": {
+            "title": "Checkout Status",
+            "type": "string"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "razao_social": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Razao Social"
+          },
+          "stripe_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Customer Id"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "nome",
+          "cnpj",
+          "checkout_status",
+          "created_at"
+        ],
+        "title": "FoundingLeadEntry",
+        "type": "object"
+      },
+      "FoundingLeadsListResponse": {
+        "properties": {
+          "completed_count": {
+            "title": "Completed Count",
+            "type": "integer"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "leads": {
+            "items": {
+              "$ref": "#/components/schemas/FoundingLeadEntry"
+            },
+            "title": "Leads",
+            "type": "array"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "completed_count",
+          "pending_count",
+          "leads"
+        ],
+        "title": "FoundingLeadsListResponse",
+        "type": "object"
+      },
+      "FoundingPauseRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "FoundingPauseRequest",
+        "type": "object"
+      },
+      "FoundingPolicyMutationResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "paused_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
+          "paused_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Reason"
+          }
+        },
+        "required": [
+          "ok",
+          "paused",
+          "paused_at",
+          "paused_reason"
+        ],
+        "title": "FoundingPolicyMutationResponse",
+        "type": "object"
+      },
+      "FoundingPolicySnapshot": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "completion_pct": {
+            "title": "Completion Pct",
+            "type": "number"
+          },
+          "coupon_code": {
+            "title": "Coupon Code",
+            "type": "string"
+          },
+          "deadline_at": {
+            "title": "Deadline At",
+            "type": "string"
+          },
+          "discount_pct": {
+            "title": "Discount Pct",
+            "type": "integer"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "paused_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
+          "paused_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused By"
+          },
+          "paused_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Reason"
+          },
+          "seat_limit": {
+            "title": "Seat Limit",
+            "type": "integer"
+          },
+          "seats_remaining": {
+            "title": "Seats Remaining",
+            "type": "integer"
+          },
+          "seats_taken": {
+            "title": "Seats Taken",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seat_limit",
+          "deadline_at",
+          "discount_pct",
+          "coupon_code",
+          "active",
+          "paused",
+          "paused_at",
+          "paused_by",
+          "paused_reason",
+          "seats_taken",
+          "seats_remaining",
+          "completion_pct"
+        ],
+        "title": "FoundingPolicySnapshot",
         "type": "object"
       },
       "GSCLowCTROpportunity": {
@@ -12811,6 +13123,183 @@
         ]
       }
     },
+    "/v1/admin/founding/leads": {
+      "get": {
+        "description": "List founding leads ordered by creation desc.\n\nOptional ``status`` filter restricts to one of the checkout_status enum\nvalues (pending|completed|abandoned|failed|cap_violated).",
+        "operationId": "list_founding_leads_v1_admin_founding_leads_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundingLeadsListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Founding Leads",
+        "tags": [
+          "admin",
+          "founding"
+        ]
+      }
+    },
+    "/v1/admin/founding/pause": {
+      "post": {
+        "description": "Soft-pause founding checkouts. Idempotent.",
+        "operationId": "pause_founding_v1_admin_founding_pause_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/FoundingPauseRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundingPolicyMutationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pause Founding",
+        "tags": [
+          "admin",
+          "founding"
+        ]
+      }
+    },
+    "/v1/admin/founding/policy": {
+      "get": {
+        "description": "Snapshot of the canonical policy + live seat usage.",
+        "operationId": "get_founding_policy_v1_admin_founding_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundingPolicySnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Founding Policy",
+        "tags": [
+          "admin",
+          "founding"
+        ]
+      }
+    },
+    "/v1/admin/founding/resume": {
+      "post": {
+        "description": "Resume founding checkouts (clear paused_at + paused_by + paused_reason).",
+        "operationId": "resume_founding_v1_admin_founding_resume_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundingPolicyMutationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resume Founding",
+        "tags": [
+          "admin",
+          "founding"
+        ]
+      }
+    },
     "/v1/admin/llm-cost": {
       "get": {
         "description": "Return LLM cost snapshot para o m\u00eas corrente (admin-only).\n\nResponse shape::\n\n    {\n        \"month_to_date_usd\": 42.1234,\n        \"budget_usd\": 100.0,\n        \"pct_used\": 42.12,\n        \"projected_end_of_month_usd\": 78.55,\n        \"month\": \"llm_cost_month_2026_04\",\n        \"exceeded\": false\n    }\n\nEm caso de Redis indispon\u00edvel, retorna zeros (graceful degradation).",
@@ -17661,9 +18150,31 @@
         ]
       }
     },
+    "/v1/founding/availability": {
+      "get": {
+        "description": "Public seat counter + countdown feed.\n\nNo auth \u2014 the landing page calls this anonymously to render the\ncountdown and the X/50 seat counter. Falls open with ``available=False``\non transient DB error so the CTA is disabled rather than over-selling.",
+        "operationId": "founding_availability_v1_founding_availability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundingAvailabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Founding Availability",
+        "tags": [
+          "founding"
+        ]
+      }
+    },
     "/v1/founding/checkout": {
       "post": {
-        "description": "Create a founding-customer Stripe Checkout Session with FOUNDING30 applied.\n\nSide effects:\n- Inserts a `founding_leads` row with `checkout_status='pending'`.\n- Later webhook events (`checkout.session.completed` / `expired`) update it.",
+        "description": "Create a founding-customer Stripe Checkout Session with the canonical coupon applied.\n\nBIZ-FOUND-002 gate:\n- Calls ``check_founding_availability()`` BEFORE creating the lead row.\n- On ``available=false`` returns 410 Gone with structured ``error_code`` +\n  ``error_reason`` so the frontend can render the right copy.\n\nSide effects (when available):\n- Inserts a ``founding_leads`` row with ``checkout_status='pending'``.\n- Subsequent webhook events (``checkout.session.completed`` / ``expired``)\n  update it. The webhook also re-checks availability for race guard\n  (handled in webhooks.handlers.founding).",
         "operationId": "founding_checkout_v1_founding_checkout_post",
         "requestBody": {
           "content": {
