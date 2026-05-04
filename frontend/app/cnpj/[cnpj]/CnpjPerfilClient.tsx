@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 
 interface Contrato {
   orgao: string;
@@ -108,6 +109,7 @@ export default function CnpjPerfilClient({ perfil }: { perfil: PerfilB2G }) {
 
   return (
     <div className="not-prose">
+      <StickyTrialCTA refParam="sticky-cnpj" />
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">{headline}</h1>

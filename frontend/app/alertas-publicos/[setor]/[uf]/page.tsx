@@ -13,6 +13,7 @@ import {
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
+import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 
 
 export const revalidate = 86400; // 24h ISR — alinhado com blog/contratos; reduz wave de re-validation que satura backend WC=1 (incident 2026-04-29)
@@ -119,6 +120,7 @@ export default async function AlertasPage({ params }: Props) {
   return (
     <>
       <LandingNavbar />
+      <StickyTrialCTA refParam="sticky-alertas" />
       <main className="min-h-screen bg-surface-0">
         {/* JSON-LD */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

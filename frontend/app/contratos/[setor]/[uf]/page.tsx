@@ -13,6 +13,7 @@ import { formatBRL } from '@/lib/sectors';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
+import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 
 export const revalidate = 14400; // 4h ISR (reduzido de 24h para melhorar freshness dos dados)
 
@@ -195,6 +196,7 @@ export default async function ContratosSetorUfPage({ params }: Props) {
   return (
     <>
       <LandingNavbar />
+      <StickyTrialCTA refParam="sticky-contratos" />
       <main className="min-h-screen bg-gray-50 pt-20 pb-16">
         {jsonLd.map((ld, i) => (
           <script

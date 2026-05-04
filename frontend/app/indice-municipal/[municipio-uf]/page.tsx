@@ -8,6 +8,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 
 export const revalidate = 86400;
 
@@ -180,6 +181,7 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
+      <StickyTrialCTA refParam="sticky-indice" />
       <main className="max-w-3xl mx-auto px-4 py-10">
         <nav className="text-sm text-gray-500 mb-6">
           <Link href="/indice-municipal" className="hover:underline">

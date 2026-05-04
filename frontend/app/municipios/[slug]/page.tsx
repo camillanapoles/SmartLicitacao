@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
+import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 
 // Sprint 4 Parte 13: páginas de municípios com licitações abertas
 // ISR 24h — dados do PNCP atualizados diariamente
@@ -187,6 +188,7 @@ export default async function MunicipioSlugPage({ params }: Props) {
   return (
     <>
       <LandingNavbar />
+      <StickyTrialCTA refParam="sticky-municipio" />
       <main className="min-h-screen bg-gray-50 pt-20 pb-16">
         {jsonLd.map((ld, i) => (
           <script
