@@ -29,7 +29,7 @@ openpyxl==3.1.5
 reportlab==4.4.0
 
 # JSON Schema validation (STORY-3.4 contract tests + STORY-4.5 PNCP canary shape drift)
-jsonschema==4.24.0
+jsonschema==4.26.0
 
 # LLM integration
 openai==1.109.1
@@ -107,4 +107,4 @@ opentelemetry-instrumentation-fastapi>=0.46b0
 opentelemetry-instrumentation-httpx>=0.46b0
 
 # Schema validation — contract tests (STORY-3.4) + PNCP canary (STORY-4.5)
-jsonschema==4.24.0
+jsonschema==4.26.0
