@@ -15,6 +15,13 @@ interface BlogInlineCTAProps {
   ctaMessage?: string;
 }
 
+/**
+ * Blog inline CTA banner.
+ *
+ * Copy rules:
+ * - ctaMessage ≤ 12 words (ideally ≤ 8)
+ * - ctaText ≤ 4 words
+ */
 export default function BlogInlineCTA({
   slug,
   campaign = 'b2g',
@@ -36,7 +43,7 @@ export default function BlogInlineCTA({
         href={href}
         className="inline-block bg-brand-navy hover:bg-brand-blue-hover text-white font-semibold px-4 py-2 rounded-button text-sm transition-all hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap"
       >
-        {ctaText || 'Comece Agora'}
+        {ctaText || 'Testar 14 dias grátis'}
       </Link>
     </div>
   );
