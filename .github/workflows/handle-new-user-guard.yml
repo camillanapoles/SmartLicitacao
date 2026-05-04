@@ -33,7 +33,13 @@ jobs:
           MATCHES=$(echo "$CHANGED" | xargs grep -l "handle_new_user" 2>/dev/null || true)
           if [ -n "$MATCHES" ]; then
             echo "found=true" >> $GITHUB_OUTPUT
-            echo "files=$MATCHES" >> $GITHUB_OUTPUT
+            # Multiline-safe heredoc delimiter (multiple matched files split by \n
+            # break a plain `key=value` write to $GITHUB_OUTPUT)
+            {
+              echo "files<<MATCHES_EOF"
+              echo "$MATCHES"
+              echo "MATCHES_EOF"
+            } >> $GITHUB_OUTPUT
           else
             echo "found=false" >> $GITHUB_OUTPUT
           fi
