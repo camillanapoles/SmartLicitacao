@@ -3124,6 +3124,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mfa/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enroll Totp
+         * @description Issue #639 AC1: Enrol a TOTP MFA factor for the current user.
+         *
+         *     Returns the QR code URI (otpauth://...), the base32 secret, and 10 fresh
+         *     one-time backup codes. The user adds the URI/secret to an authenticator
+         *     app and then calls /verify-totp with a generated code to complete enrolment.
+         *
+         *     Backup codes are returned ONCE — the client must persist them.
+         */
+        post: operations["enroll_totp_v1_mfa_enroll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/mfa/recovery-codes": {
         parameters: {
             query?: never;
@@ -3209,6 +3235,33 @@ export interface paths {
          *     On success: marks code as used, returns remaining count.
          */
         post: operations["verify_recovery_code_v1_mfa_verify_recovery_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mfa/verify-totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Totp
+         * @description Issue #639 AC2: Verify a TOTP code to complete enrolment + elevate to aal2.
+         *
+         *     Looks up the user's most recent unverified factor, creates a Supabase
+         *     challenge, then verifies the supplied code. On success the Supabase
+         *     session is elevated to aal2 (subsequent requests carry that claim in
+         *     the JWT, gating /admin and other sensitive routes).
+         *
+         *     Rate limit: 5 attempts / 15 min via require_rate_limit (token bucket).
+         */
+        post: operations["verify_totp_v1_mfa_verify_totp_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7478,6 +7531,75 @@ export interface components {
             total: number;
             /** Updated At */
             updated_at: string;
+        };
+        /**
+         * MFAEnrollResponse
+         * @description Response body for POST /v1/mfa/enroll (Issue #639).
+         *
+         *     Contains the data needed for the user to add the TOTP factor to an
+         *     authenticator app (Google Authenticator, Authy, 1Password, etc.) and
+         *     one-time backup codes for recovery if the device is lost.
+         */
+        MFAEnrollResponse: {
+            /**
+             * Backup Codes
+             * @description 10 one-time recovery codes (XXXX-XXXX format). Shown ONCE — user must save them. Used as MFA bypass via /v1/mfa/verify-recovery.
+             */
+            backup_codes?: string[];
+            /**
+             * Factor Id
+             * @description Supabase mfa_factors.id (UUID)
+             */
+            factor_id: string;
+            /**
+             * Qr Code Uri
+             * @description otpauth:// URI per RFC 6238. Encode as QR code on the client. Most TOTP apps support pasting the URI directly.
+             */
+            qr_code_uri: string;
+            /**
+             * Secret
+             * @description Base32-encoded TOTP shared secret. Provided so the user can manually enter it when the QR code cannot be scanned.
+             */
+            secret: string;
+        };
+        /**
+         * MFAVerifyRequest
+         * @description Request body for POST /v1/mfa/verify-totp (Issue #639).
+         */
+        MFAVerifyRequest: {
+            /**
+             * Totp Code
+             * @description 6-digit TOTP code from authenticator app (RFC 6238)
+             */
+            totp_code: string;
+        };
+        /**
+         * MFAVerifyResponse
+         * @description Response body for POST /v1/mfa/verify-totp (Issue #639).
+         */
+        MFAVerifyResponse: {
+            /**
+             * Aal Level
+             * @description Authenticator Assurance Level after verification
+             * @default aal2
+             */
+            aal_level: string;
+            /**
+             * Factor Id
+             * @description ID of the verified factor
+             */
+            factor_id: string;
+            /**
+             * Message
+             * @description Human-readable status message
+             * @default
+             */
+            message: string;
+            /**
+             * Success
+             * @description True when the code matched and AAL was elevated to aal2
+             */
+            success: boolean;
         };
         /**
          * MemorySnapshot
@@ -13703,6 +13825,26 @@ export interface operations {
             };
         };
     };
+    enroll_totp_v1_mfa_enroll_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MFAEnrollResponse"];
+                };
+            };
+        };
+    };
     generate_recovery_codes_v1_mfa_recovery_codes_post: {
         parameters: {
             query?: never;
@@ -13783,6 +13925,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerifyRecoveryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_totp_v1_mfa_verify_totp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MFAVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MFAVerifyResponse"];
                 };
             };
             /** @description Validation Error */
