@@ -6035,6 +6035,91 @@
         "title": "LicitacoesIndexableResponse",
         "type": "object"
       },
+      "MFAEnrollResponse": {
+        "description": "Response body for POST /v1/mfa/enroll (Issue #639).\n\nContains the data needed for the user to add the TOTP factor to an\nauthenticator app (Google Authenticator, Authy, 1Password, etc.) and\none-time backup codes for recovery if the device is lost.",
+        "properties": {
+          "backup_codes": {
+            "description": "10 one-time recovery codes (XXXX-XXXX format). Shown ONCE \u2014 user must save them. Used as MFA bypass via /v1/mfa/verify-recovery.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Backup Codes",
+            "type": "array"
+          },
+          "factor_id": {
+            "description": "Supabase mfa_factors.id (UUID)",
+            "title": "Factor Id",
+            "type": "string"
+          },
+          "qr_code_uri": {
+            "description": "otpauth:// URI per RFC 6238. Encode as QR code on the client. Most TOTP apps support pasting the URI directly.",
+            "title": "Qr Code Uri",
+            "type": "string"
+          },
+          "secret": {
+            "description": "Base32-encoded TOTP shared secret. Provided so the user can manually enter it when the QR code cannot be scanned.",
+            "title": "Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "factor_id",
+          "qr_code_uri",
+          "secret"
+        ],
+        "title": "MFAEnrollResponse",
+        "type": "object"
+      },
+      "MFAVerifyRequest": {
+        "description": "Request body for POST /v1/mfa/verify-totp (Issue #639).",
+        "properties": {
+          "totp_code": {
+            "description": "6-digit TOTP code from authenticator app (RFC 6238)",
+            "maxLength": 10,
+            "minLength": 6,
+            "title": "Totp Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "totp_code"
+        ],
+        "title": "MFAVerifyRequest",
+        "type": "object"
+      },
+      "MFAVerifyResponse": {
+        "description": "Response body for POST /v1/mfa/verify-totp (Issue #639).",
+        "properties": {
+          "aal_level": {
+            "default": "aal2",
+            "description": "Authenticator Assurance Level after verification",
+            "title": "Aal Level",
+            "type": "string"
+          },
+          "factor_id": {
+            "description": "ID of the verified factor",
+            "title": "Factor Id",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "description": "Human-readable status message",
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "description": "True when the code matched and AAL was elevated to aal2",
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "factor_id"
+        ],
+        "title": "MFAVerifyResponse",
+        "type": "object"
+      },
       "MemorySnapshot": {
         "description": "Response for GET /admin/memory-snapshot (SEN-BE-010 AC0).",
         "properties": {
@@ -17032,6 +17117,33 @@
         ]
       }
     },
+    "/v1/mfa/enroll": {
+      "post": {
+        "description": "Issue #639 AC1: Enrol a TOTP MFA factor for the current user.\n\nReturns the QR code URI (otpauth://...), the base32 secret, and 10 fresh\none-time backup codes. The user adds the URI/secret to an authenticator\napp and then calls /verify-totp with a generated code to complete enrolment.\n\nBackup codes are returned ONCE \u2014 the client must persist them.",
+        "operationId": "enroll_totp_v1_mfa_enroll_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MFAEnrollResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enroll Totp",
+        "tags": [
+          "MFA"
+        ]
+      }
+    },
     "/v1/mfa/recovery-codes": {
       "post": {
         "description": "AC5: Generate 10 recovery codes after MFA enrollment.\n\nThis should be called immediately after successful MFA enrollment.\nStores bcrypt-hashed codes in the database, returns plaintext once.",
@@ -17155,6 +17267,53 @@
           }
         ],
         "summary": "Verify Recovery Code",
+        "tags": [
+          "MFA"
+        ]
+      }
+    },
+    "/v1/mfa/verify-totp": {
+      "post": {
+        "description": "Issue #639 AC2: Verify a TOTP code to complete enrolment + elevate to aal2.\n\nLooks up the user's most recent unverified factor, creates a Supabase\nchallenge, then verifies the supplied code. On success the Supabase\nsession is elevated to aal2 (subsequent requests carry that claim in\nthe JWT, gating /admin and other sensitive routes).\n\nRate limit: 5 attempts / 15 min via require_rate_limit (token bucket).",
+        "operationId": "verify_totp_v1_mfa_verify_totp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MFAVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MFAVerifyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Verify Totp",
         "tags": [
           "MFA"
         ]
