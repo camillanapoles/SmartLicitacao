@@ -34,6 +34,7 @@ Notes:
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import logging
@@ -44,6 +45,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from pydantic import BaseModel, Field, ConfigDict
 
 from admin import require_admin
+from pipeline.budget import _run_with_budget
 from supabase_client import get_supabase
 from utils.cnae_mapping import (
     CNAE_INVALIDATION_CHANNEL,
@@ -52,6 +54,11 @@ from utils.cnae_mapping import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Per-route budget for admin CRUD against cnae_setor_mapping (small table, but
+# wraps every call in _run_with_budget per RES-BE-001/015 to prevent the sync
+# Supabase client from blocking the event loop under saturation).
+_ADMIN_CNAE_BUDGET_S = 5.0
 
 router = APIRouter(prefix="/v1/admin/cnae-mapping", tags=["admin", "cnae"])
 
@@ -183,7 +190,7 @@ def _row_to_dict(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _record_audit(
+async def _record_audit(
     sb,
     *,
     cnae_code: Optional[str],
@@ -203,11 +210,27 @@ def _record_audit(
         "actor_email": actor.get("email"),
         "note": note,
     }
+
+    def _sync_insert():
+        return sb.table("cnae_mapping_audit_log").insert(payload).execute()
+
     try:
-        result = sb.table("cnae_mapping_audit_log").insert(payload).execute()
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_insert),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.record_audit",
+        )
         rows = getattr(result, "data", None) or []
         if rows:
             return str(rows[0].get("id"))
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping audit log insert exceeded %.1fs for cnae=%s action=%s",
+            _ADMIN_CNAE_BUDGET_S,
+            cnae_code,
+            action,
+        )
     except Exception as exc:
         # Audit failure must not break the mutation, but we want a
         # loud Sentry breadcrumb because losing audit is a compliance
@@ -221,15 +244,30 @@ def _record_audit(
     return ""
 
 
-def _fetch_row(sb, code: str) -> Optional[dict[str, Any]]:
-    try:
-        result = (
+async def _fetch_row(sb, code: str) -> Optional[dict[str, Any]]:
+    def _sync_select():
+        return (
             sb.table("cnae_setor_mapping")
             .select("*")
             .eq("cnae_code", code)
             .limit(1)
             .execute()
         )
+
+    try:
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_select),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.fetch_row",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping fetch exceeded %.1fs budget for %s",
+            _ADMIN_CNAE_BUDGET_S,
+            code,
+        )
+        raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as exc:
         logger.warning("cnae_mapping fetch failed for %s: %s", code, exc)
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -273,12 +311,25 @@ async def list_cnae_mappings(
     if min_confidence is not None:
         query = query.gte("confidence", min_confidence)
 
-    try:
-        result = (
+    def _sync_list():
+        return (
             query.order("cnae_code", desc=False)
             .range(offset, offset + limit - 1)
             .execute()
         )
+
+    try:
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_list),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.list_cnae_mappings",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping list query exceeded %.1fs budget", _ADMIN_CNAE_BUDGET_S
+        )
+        raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as exc:
         logger.warning("cnae_mapping list query failed: %s", exc)
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -297,12 +348,12 @@ async def get_cnae_mapping(
     code = _normalise_code(cnae_code)
     sb = get_supabase()
 
-    row = _fetch_row(sb, code)
+    row = await _fetch_row(sb, code)
     if not row:
         raise HTTPException(status_code=404, detail=f"cnae_code={code} not found")
 
-    try:
-        audit_result = (
+    def _sync_audit_fetch():
+        return (
             sb.table("cnae_mapping_audit_log")
             .select("*")
             .eq("cnae_code", code)
@@ -310,6 +361,19 @@ async def get_cnae_mapping(
             .limit(50)
             .execute()
         )
+
+    try:
+        audit_result = await _run_with_budget(
+            asyncio.to_thread(_sync_audit_fetch),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.get_cnae_mapping",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping audit fetch exceeded %.1fs budget", _ADMIN_CNAE_BUDGET_S
+        )
+        audit_result = None
     except Exception as exc:
         logger.warning("cnae_mapping audit fetch failed: %s", exc)
         audit_result = None
@@ -330,7 +394,7 @@ async def create_cnae_mapping(
     code = _normalise_code(body.cnae_code)
     sb = get_supabase()
 
-    if _fetch_row(sb, code) is not None:
+    if await _fetch_row(sb, code) is not None:
         raise HTTPException(
             status_code=409,
             detail=f"cnae_code={code} already exists; use PATCH to update.",
@@ -344,8 +408,24 @@ async def create_cnae_mapping(
         "is_active": True,
         "updated_by": admin.get("id"),
     }
+
+    def _sync_insert():
+        return sb.table("cnae_setor_mapping").insert(payload).execute()
+
     try:
-        result = sb.table("cnae_setor_mapping").insert(payload).execute()
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_insert),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.create_cnae_mapping",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping create exceeded %.1fs budget for %s",
+            _ADMIN_CNAE_BUDGET_S,
+            code,
+        )
+        raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as exc:
         # Postgres CHECK constraint violations land here.
         msg = str(exc)
@@ -358,7 +438,7 @@ async def create_cnae_mapping(
         raise HTTPException(status_code=503, detail="Database unavailable")
 
     new_row = (result.data or [payload])[0]
-    audit_id = _record_audit(
+    audit_id = await _record_audit(
         sb,
         cnae_code=code,
         action="create",
@@ -384,7 +464,7 @@ async def update_cnae_mapping(
     code = _normalise_code(cnae_code)
     sb = get_supabase()
 
-    old = _fetch_row(sb, code)
+    old = await _fetch_row(sb, code)
     if old is None:
         raise HTTPException(status_code=404, detail=f"cnae_code={code} not found")
 
@@ -401,13 +481,28 @@ async def update_cnae_mapping(
         raise HTTPException(status_code=400, detail="No fields to update")
     update["updated_by"] = admin.get("id")
 
-    try:
-        result = (
+    def _sync_update():
+        return (
             sb.table("cnae_setor_mapping")
             .update(update)
             .eq("cnae_code", code)
             .execute()
         )
+
+    try:
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_update),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.update_cnae_mapping",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping update exceeded %.1fs budget for %s",
+            _ADMIN_CNAE_BUDGET_S,
+            code,
+        )
+        raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as exc:
         msg = str(exc)
         if "cnae_setor_mapping_setor_id_chk" in msg or "23514" in msg:
@@ -419,7 +514,7 @@ async def update_cnae_mapping(
         raise HTTPException(status_code=503, detail="Database unavailable")
 
     new_row = (result.data or [{**old, **update}])[0]
-    audit_id = _record_audit(
+    audit_id = await _record_audit(
         sb,
         cnae_code=code,
         action="update",
@@ -444,7 +539,7 @@ async def soft_delete_cnae_mapping(
     code = _normalise_code(cnae_code)
     sb = get_supabase()
 
-    old = _fetch_row(sb, code)
+    old = await _fetch_row(sb, code)
     if old is None:
         raise HTTPException(status_code=404, detail=f"cnae_code={code} not found")
     if not old.get("is_active", True):
@@ -453,19 +548,36 @@ async def soft_delete_cnae_mapping(
             detail=f"cnae_code={code} is already inactive",
         )
 
-    try:
-        result = (
+    actor_id = admin.get("id")
+
+    def _sync_soft_delete():
+        return (
             sb.table("cnae_setor_mapping")
-            .update({"is_active": False, "updated_by": admin.get("id")})
+            .update({"is_active": False, "updated_by": actor_id})
             .eq("cnae_code", code)
             .execute()
         )
+
+    try:
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_soft_delete),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.soft_delete_cnae_mapping",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping soft-delete exceeded %.1fs budget for %s",
+            _ADMIN_CNAE_BUDGET_S,
+            code,
+        )
+        raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as exc:
         logger.warning("cnae_mapping soft-delete failed: %s", exc)
         raise HTTPException(status_code=503, detail="Database unavailable")
 
     new_row = (result.data or [{**old, "is_active": False}])[0]
-    audit_id = _record_audit(
+    audit_id = await _record_audit(
         sb,
         cnae_code=code,
         action="delete",
@@ -490,7 +602,7 @@ async def restore_cnae_mapping(
     code = _normalise_code(cnae_code)
     sb = get_supabase()
 
-    old = _fetch_row(sb, code)
+    old = await _fetch_row(sb, code)
     if old is None:
         raise HTTPException(status_code=404, detail=f"cnae_code={code} not found")
     if old.get("is_active", True):
@@ -499,19 +611,36 @@ async def restore_cnae_mapping(
             detail=f"cnae_code={code} is already active",
         )
 
-    try:
-        result = (
+    actor_id = admin.get("id")
+
+    def _sync_restore():
+        return (
             sb.table("cnae_setor_mapping")
-            .update({"is_active": True, "updated_by": admin.get("id")})
+            .update({"is_active": True, "updated_by": actor_id})
             .eq("cnae_code", code)
             .execute()
         )
+
+    try:
+        result = await _run_with_budget(
+            asyncio.to_thread(_sync_restore),
+            budget=_ADMIN_CNAE_BUDGET_S,
+            phase="route",
+            source="admin_cnae.restore_cnae_mapping",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "cnae_mapping restore exceeded %.1fs budget for %s",
+            _ADMIN_CNAE_BUDGET_S,
+            code,
+        )
+        raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as exc:
         logger.warning("cnae_mapping restore failed: %s", exc)
         raise HTTPException(status_code=503, detail="Database unavailable")
 
     new_row = (result.data or [{**old, "is_active": True}])[0]
-    audit_id = _record_audit(
+    audit_id = await _record_audit(
         sb,
         cnae_code=code,
         action="restore",
@@ -626,7 +755,7 @@ async def bulk_import(
             )
             continue
 
-        old = _fetch_row(sb, code)
+        old = await _fetch_row(sb, code)
         if old is None:
             creates += 1
             new_row = {
@@ -700,6 +829,7 @@ async def bulk_import(
             continue
         new = item.new.model_dump(mode="json") if item.new else {}
         old = item.old.model_dump(mode="json") if item.old else None
+        actor_id = admin.get("id")
         try:
             if item.action == "create":
                 payload = {
@@ -708,20 +838,53 @@ async def bulk_import(
                     "confidence": new.get("confidence", 1.0),
                     "notes": new.get("notes"),
                     "is_active": True,
-                    "updated_by": admin.get("id"),
+                    "updated_by": actor_id,
                 }
-                sb.table("cnae_setor_mapping").insert(payload).execute()
+
+                def _sync_bulk_insert(_payload=payload):
+                    return sb.table("cnae_setor_mapping").insert(_payload).execute()
+
+                await _run_with_budget(
+                    asyncio.to_thread(_sync_bulk_insert),
+                    budget=_ADMIN_CNAE_BUDGET_S,
+                    phase="route",
+                    source="admin_cnae.bulk_import_create",
+                )
             else:
                 update = {
                     "setor_id": new.get("setor_id"),
                     "confidence": new.get("confidence", 1.0),
                     "notes": new.get("notes"),
                     "is_active": new.get("is_active", True),
-                    "updated_by": admin.get("id"),
+                    "updated_by": actor_id,
                 }
-                sb.table("cnae_setor_mapping").update(update).eq(
-                    "cnae_code", item.cnae_code
-                ).execute()
+                cnae_code_local = item.cnae_code
+
+                def _sync_bulk_update(_update=update, _code=cnae_code_local):
+                    return (
+                        sb.table("cnae_setor_mapping")
+                        .update(_update)
+                        .eq("cnae_code", _code)
+                        .execute()
+                    )
+
+                await _run_with_budget(
+                    asyncio.to_thread(_sync_bulk_update),
+                    budget=_ADMIN_CNAE_BUDGET_S,
+                    phase="route",
+                    source="admin_cnae.bulk_import_update",
+                )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "cnae_mapping bulk-import row exceeded %.1fs budget cnae=%s action=%s",
+                _ADMIN_CNAE_BUDGET_S,
+                item.cnae_code,
+                item.action,
+            )
+            item.action = "error"
+            item.error = "timeout"
+            errors += 1
+            continue
         except Exception as exc:
             logger.warning(
                 "cnae_mapping bulk-import row failed cnae=%s action=%s: %s",
@@ -733,7 +896,7 @@ async def bulk_import(
             item.error = str(exc)
             errors += 1
             continue
-        _record_audit(
+        await _record_audit(
             sb,
             cnae_code=item.cnae_code,
             action="bulk_import",

@@ -328,7 +328,15 @@ def _ensure_listener() -> None:
                             "cnae_mapping listener exited: %s", exc
                         )
 
-                asyncio.run(_subscribe())
+                # STORY-221 invariant: never call asyncio.run() in production
+                # code (it conflicts with the main event loop and breaks the
+                # test_no_asyncio_run_in_production guard). This thread
+                # creates and owns its own loop instead.
+                loop = asyncio.new_event_loop()
+                try:
+                    loop.run_until_complete(_subscribe())
+                finally:
+                    loop.close()
             except Exception as exc:  # pragma: no cover
                 logger.debug("cnae_mapping listener boot failed: %s", exc)
 
