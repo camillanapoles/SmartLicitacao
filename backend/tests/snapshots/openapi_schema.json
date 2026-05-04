@@ -5034,6 +5034,153 @@
         "title": "FoundingCheckoutResponse",
         "type": "object"
       },
+      "GSCLowCTROpportunity": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "ctr": {
+            "title": "Ctr",
+            "type": "number"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page",
+          "impressions",
+          "clicks",
+          "ctr"
+        ],
+        "title": "GSCLowCTROpportunity",
+        "type": "object"
+      },
+      "GSCPageRow": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "ctr": {
+            "title": "Ctr",
+            "type": "number"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "number"
+          }
+        },
+        "required": [
+          "page",
+          "impressions",
+          "clicks",
+          "ctr",
+          "position"
+        ],
+        "title": "GSCPageRow",
+        "type": "object"
+      },
+      "GSCQueryRow": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "ctr": {
+            "title": "Ctr",
+            "type": "number"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "position": {
+            "title": "Position",
+            "type": "number"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "impressions",
+          "clicks",
+          "ctr",
+          "position"
+        ],
+        "title": "GSCQueryRow",
+        "type": "object"
+      },
+      "GSCSummaryResponse": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "low_ctr_opportunities": {
+            "items": {
+              "$ref": "#/components/schemas/GSCLowCTROpportunity"
+            },
+            "title": "Low Ctr Opportunities",
+            "type": "array"
+          },
+          "top_pages_ctr": {
+            "items": {
+              "$ref": "#/components/schemas/GSCPageRow"
+            },
+            "title": "Top Pages Ctr",
+            "type": "array"
+          },
+          "top_queries": {
+            "items": {
+              "$ref": "#/components/schemas/GSCQueryRow"
+            },
+            "title": "Top Queries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "top_queries",
+          "top_pages_ctr",
+          "low_ctr_opportunities",
+          "days",
+          "enabled"
+        ],
+        "title": "GSCSummaryResponse",
+        "type": "object"
+      },
       "GoogleSheetsExportHistory": {
         "description": "Schema for individual export history entry.",
         "properties": {
@@ -12140,7 +12287,7 @@
     },
     "/v1/admin/seo-metrics": {
       "get": {
-        "description": "Return SEO metrics for the last N days. Admin-only.",
+        "description": "Return SEO metrics for the last N days (legacy S14 daily rollup). Admin-only.",
         "operationId": "get_seo_metrics_v1_admin_seo_metrics_get",
         "parameters": [
           {
@@ -12184,6 +12331,57 @@
           }
         ],
         "summary": "Get Seo Metrics",
+        "tags": [
+          "seo_admin"
+        ]
+      }
+    },
+    "/v1/admin/seo/summary": {
+      "get": {
+        "description": "Return aggregated GSC analytics from gsc_metrics cache. Admin-only.\n\nSTORY-SEO-005 AC4. Populated weekly by backend/jobs/cron/gsc_sync.py.",
+        "operationId": "get_gsc_summary_v1_admin_seo_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 7,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GSCSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Gsc Summary",
         "tags": [
           "seo_admin"
         ]
