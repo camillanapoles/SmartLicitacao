@@ -612,11 +612,21 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
         priority: 0.8,
       }));
 
+      // fix(#661): /blog/programmatic/{setor}/{uf} was only covered by the legacy
+      // sitemap-blog.xml (now removed). 540 combos (20 sectors × 27 UFs), static.
+      const programmaticSectorUfRoutes: MetadataRoute.Sitemap = generateSectorUfParams().map(({ setor, uf }) => ({
+        url: `${baseUrl}/blog/programmatic/${setor}/${uf}`,
+        lastModified: today,
+        changeFrequency: 'daily' as const,
+        priority: 0.7,
+      }));
+
       return [
         ...sectorRoutes,
         ...programmaticSectorRoutes,
         ...panoramaSectorRoutes,
         ...blogContratosRoutes,
+        ...programmaticSectorUfRoutes,
       ];
     }
 
