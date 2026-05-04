@@ -273,7 +273,7 @@ async def get_gsc_summary(
             )
             if sync_resp.data:
                 last_sync_at = sync_resp.data[0].get("fetched_at")
-        except Exception:
+        except Exception:  # last_sync_at optional — proceed with None if DB unavailable
             pass
 
         return GSCSummaryResponse(

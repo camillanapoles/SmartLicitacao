@@ -39,7 +39,7 @@ try:
     try:
         from jobs.cron.cron_monitor import cron_monitoring_job
         _worker_cron_jobs.append(_arq_cron(cron_monitoring_job, minute={0}, timeout=300))
-    except ImportError:
+    except ImportError:  # cron_monitor optional — skip if module unavailable in test env
         pass
 
     # STORY-SEO-005: weekly GSC sync job (Sun 03:00 BRT = 06:00 UTC).

@@ -176,7 +176,7 @@ async def gsc_sync_job(ctx: dict[str, Any]) -> dict[str, Any]:
         logger.error("gsc_sync: supabase_client module not found")
         return result
 
-    supabase = get_supabase(service_role=True)
+    supabase = get_supabase()
     if supabase is None:
         result["skipped"] = True
         result["skip_reason"] = "supabase_unavailable"
@@ -213,7 +213,7 @@ async def gsc_sync_job(ctx: dict[str, Any]) -> dict[str, Any]:
         )
         smartlic_gsc_sync_duration_seconds.observe(result["duration_s"])
         smartlic_gsc_sync_rows_upserted_total.inc(total_upserted)
-    except Exception:
+    except Exception:  # metrics optional — never block sync on observability failure
         pass
 
     return result
