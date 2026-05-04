@@ -107,6 +107,20 @@ export default async function SectorPage({
       {/* AC6: Hero */}
       <section className="bg-gradient-to-br from-brand-blue to-blue-700 text-white py-16 px-4">
         <div className="max-w-5xl mx-auto text-center">
+          {/* Issue #662: Visual breadcrumb (matches JSON-LD BreadcrumbList below) */}
+          <nav aria-label="Breadcrumb" className="text-sm text-white/60 mb-4 text-left">
+            <ol className="flex flex-wrap items-center gap-x-1">
+              <li>
+                <Link href="/" className="hover:text-white/80">Início</Link>
+              </li>
+              <li aria-hidden="true"> › </li>
+              <li>
+                <Link href="/licitacoes" className="hover:text-white/80">Licitações</Link>
+              </li>
+              <li aria-hidden="true"> › </li>
+              <li aria-current="page" className="text-white/80">{sector.name}</li>
+            </ol>
+          </nav>
           <h1 className="text-3xl md:text-5xl font-bold mb-4">
             Licitações de {sector.name}
             {stats && stats.total_open > 0 && (
