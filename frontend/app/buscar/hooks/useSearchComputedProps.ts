@@ -122,6 +122,20 @@ export function useSearchComputedProps(
     onAddNeighborStates: undefined,
     onViewNearbyResults: undefined,
     onGeneratePdf: () => setPdfModalOpen(true),
+    // BIZ-METRIC-001: Sheets export success → trigger post-export survey.
+    // Excel uses ``useSearchExport.onExportSucceeded`` (already wired
+    // inside the hook); PDF uses ``handleGeneratePdf`` in the
+    // orchestrator. Sheets is rendered directly by ResultsToolbar so we
+    // pass the trigger through here.
+    onSheetsExportSucceeded: search.maybeOpenExportSurvey
+      ? (input: { exportType: "sheets"; bidCount: number }) => {
+          search.maybeOpenExportSurvey({
+            exportType: input.exportType,
+            searchId: search.searchId ?? null,
+            bidCount: input.bidCount,
+          });
+        }
+      : undefined,
     onStartResultsTour: () => {
       startResultsTour();
       trackEvent("onboarding_tour_started", { tour: "results" });

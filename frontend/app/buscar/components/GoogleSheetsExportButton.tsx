@@ -46,13 +46,17 @@ interface GoogleSheetsExportButtonProps {
   disabled?: boolean;
   /** Session object with access_token (from useAuth) */
   session?: { access_token: string } | null;
+  /** BIZ-METRIC-001: callback fired after a successful Sheets export so
+   * the post-export survey can be triggered. */
+  onExportSucceeded?: (input: { exportType: "sheets"; bidCount: number }) => void;
 }
 
 export default function GoogleSheetsExportButton({
   licitacoes,
   searchLabel,
   disabled = false,
-  session
+  session,
+  onExportSucceeded,
 }: GoogleSheetsExportButtonProps) {
   const [exporting, setExporting] = useState(false);
 
@@ -167,6 +171,14 @@ export default function GoogleSheetsExportButton({
         description: `${result.total_rows} licitações exportadas para Google Sheets`,
         duration: 5000
       });
+
+      // BIZ-METRIC-001: notify parent so the post-export survey
+      // (frequency-throttled) can be triggered.
+      try {
+        onExportSucceeded?.({ exportType: "sheets", bidCount: licitacoes.length });
+      } catch {
+        // never let survey errors break the export flow
+      }
 
     } catch (error: unknown) {
       // Show error toast

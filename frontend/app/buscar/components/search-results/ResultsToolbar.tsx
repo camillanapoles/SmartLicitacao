@@ -32,6 +32,8 @@ interface ResultsToolbarProps {
   pdfLoading?: boolean;
   // Search
   onSearch: () => void;
+  // BIZ-METRIC-001: optional pass-through to GoogleSheetsExportButton
+  onSheetsExportSucceeded?: (input: { exportType: "sheets"; bidCount: number }) => void;
 }
 
 /**
@@ -58,6 +60,7 @@ export function ResultsToolbar({
   onGeneratePdf,
   pdfLoading,
   onSearch,
+  onSheetsExportSucceeded,
 }: ResultsToolbarProps) {
   return (
     <div
@@ -95,6 +98,7 @@ export function ResultsToolbar({
               searchLabel={`${sectorName} - ${Array.from(ufsSelecionadas).join(', ')}`}
               disabled={downloadLoading}
               session={session}
+              onExportSucceeded={onSheetsExportSucceeded}
             />
           )}
 

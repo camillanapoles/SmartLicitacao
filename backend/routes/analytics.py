@@ -19,6 +19,10 @@ from auth import require_auth
 from database import get_db
 from log_sanitizer import mask_user_id
 from supabase_client import sb_execute, CircuitBreakerOpenError
+from utils.app_config import (
+    DEFAULT_HOURS_SAVED_PER_SEARCH,
+    get_hours_saved_per_search,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +113,23 @@ async def get_analytics_summary(user: dict = Depends(require_auth), db=Depends(g
         total_value_discovered = float(row["total_value_discovered"] or 0)
         member_since = row["member_since"] or datetime.now(timezone.utc).isoformat()
 
-        # Calculate derived metrics
-        estimated_hours_saved = float(total_searches * 2)
+        # Calculate derived metrics.
+        # BIZ-METRIC-001 (AC5): hours-saved multiplier comes from
+        # ``app_config.hours_saved_per_search`` (TTL-cached 5 min). The
+        # helper falls back to ``DEFAULT_HOURS_SAVED_PER_SEARCH`` (== 2.0,
+        # preserves the previous hardcoded ``total_searches * 2``) on any
+        # DB error or missing row, so the dashboard never breaks because
+        # of a config issue.
+        try:
+            hours_per_search = get_hours_saved_per_search()
+        except Exception as exc:  # belt-and-suspenders — helper already swallows
+            logger.warning(
+                "BIZ-METRIC-001: get_hours_saved_per_search raised %s; falling back to %.2f",
+                exc,
+                DEFAULT_HOURS_SAVED_PER_SEARCH,
+            )
+            hours_per_search = DEFAULT_HOURS_SAVED_PER_SEARCH
+        estimated_hours_saved = float(total_searches) * hours_per_search
         avg_results_per_search = (
             total_opportunities / total_searches if total_searches > 0 else 0.0
         )

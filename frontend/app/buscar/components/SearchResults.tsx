@@ -96,7 +96,7 @@ export default function SearchResults(props: SearchResultsProps) {
     isResultsTourCompleted, onStartResultsTour, isProfileComplete = true,
     downloadLoading, downloadError, onDownload, planInfo, session, termosArray,
     onShowUpgradeModal, searchId, setorId, onRegenerateExcel, excelFailCount = 0,
-    onGeneratePdf, pdfLoading, onRetryWithUfs,
+    onGeneratePdf, pdfLoading, onRetryWithUfs, onSheetsExportSucceeded,
   } = props;
 
   // --- State ---
@@ -234,7 +234,7 @@ export default function SearchResults(props: SearchResultsProps) {
           <ZeroMatchBadge progress={zeroMatchProgress ?? null} />
           <ResultsHeader ref={resultsHeadingRef} result={result} rawCount={rawCount} isProfileComplete={isProfileComplete} filterSummary={filterSummary} />
           <TourInviteBanner isCompleted={isResultsTourCompleted} onStartTour={onStartResultsTour} />
-          <ResultsToolbar result={result} ordenacao={ordenacao} onOrdenacaoChange={onOrdenacaoChange} loading={loading} onDownload={onDownload} downloadLoading={downloadLoading} onRegenerateExcel={onRegenerateExcel} excelFailCount={excelFailCount} excelTimedOut={excelTimedOut} planInfo={planInfo} session={session} isTrialExpired={isTrialExpired} paywallApplied={paywallApplied} totalBeforePaywall={totalBeforePaywall} sectorName={sectorName} ufsSelecionadas={ufsSelecionadas} onGeneratePdf={onGeneratePdf} pdfLoading={pdfLoading} onSearch={onSearch} />
+          <ResultsToolbar result={result} ordenacao={ordenacao} onOrdenacaoChange={onOrdenacaoChange} loading={loading} onDownload={onDownload} downloadLoading={downloadLoading} onRegenerateExcel={onRegenerateExcel} excelFailCount={excelFailCount} excelTimedOut={excelTimedOut} planInfo={planInfo} session={session} isTrialExpired={isTrialExpired} paywallApplied={paywallApplied} totalBeforePaywall={totalBeforePaywall} sectorName={sectorName} ufsSelecionadas={ufsSelecionadas} onGeneratePdf={onGeneratePdf} pdfLoading={pdfLoading} onSearch={onSearch} onSheetsExportSucceeded={onSheetsExportSucceeded} />
 
           {/* DEBT-FE-004: Result-area informational banners via BannerStack (max 2 visible) */}
           <SearchResultsBanners

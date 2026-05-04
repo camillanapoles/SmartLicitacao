@@ -34,6 +34,7 @@ exports[`useSearchComputedProps — searchResultsProps snapshot produces a stabl
   "onRetryNow": "[Function]",
   "onRetryWithUfs": "[Function]",
   "onSearch": "[Function]",
+  "onSheetsExportSucceeded": undefined,
   "onShowUpgradeModal": "[Function]",
   "onStageChange": "[Function]",
   "onStartResultsTour": "[Function]",

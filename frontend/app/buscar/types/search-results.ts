@@ -107,6 +107,8 @@ export interface SearchResultsActions {
   onStartResultsTour?: () => void;
   /** UX-436: Retry search with a reduced set of UFs */
   onRetryWithUfs?: (ufs: string[]) => void;
+  /** BIZ-METRIC-001: post-export survey trigger for the Sheets export path. */
+  onSheetsExportSucceeded?: (input: { exportType: "sheets"; bidCount: number }) => void;
 }
 
 // ---------------------------------------------------------------------------

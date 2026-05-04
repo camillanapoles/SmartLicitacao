@@ -643,6 +643,83 @@
         "title": "AlertasResponse",
         "type": "object"
       },
+      "AppConfigPatchRequest": {
+        "description": "PATCH /v1/admin/config/{key} body.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional updated description",
+            "title": "Description"
+          },
+          "value": {
+            "description": "New JSONB value (scalar/array/object)",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "AppConfigPatchRequest",
+        "type": "object"
+      },
+      "AppConfigRow": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "AppConfigRow",
+        "type": "object"
+      },
       "AuthStatusResponse": {
         "properties": {
           "confirmed": {
@@ -3945,6 +4022,102 @@
         "title": "ExperienciaLicitacoes",
         "type": "string"
       },
+      "ExportTimeSavedSurveyRequest": {
+        "description": "Body for POST /v1/survey/export-time-saved.",
+        "properties": {
+          "bid_count": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of bids included in the export",
+            "title": "Bid Count"
+          },
+          "estimated_manual_hours": {
+            "description": "User-reported manual-equivalent hours (range [0.1, 50])",
+            "maximum": 50.0,
+            "minimum": 0.1,
+            "title": "Estimated Manual Hours",
+            "type": "number"
+          },
+          "export_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Export job/download identifier",
+            "title": "Export Id"
+          },
+          "export_type": {
+            "description": "excel | pdf | sheets",
+            "maxLength": 16,
+            "title": "Export Type",
+            "type": "string"
+          },
+          "free_text": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional free-text answer ('how would you have done this before?')",
+            "title": "Free Text"
+          },
+          "search_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Search session id this export came from",
+            "title": "Search Id"
+          }
+        },
+        "required": [
+          "export_type",
+          "estimated_manual_hours"
+        ],
+        "title": "ExportTimeSavedSurveyRequest",
+        "type": "object"
+      },
+      "ExportTimeSavedSurveyResponse": {
+        "description": "Body for POST /v1/survey/export-time-saved (201).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submitted_at"
+        ],
+        "title": "ExportTimeSavedSurveyResponse",
+        "type": "object"
+      },
       "ExtendRequest": {
         "properties": {
           "condition": {
@@ -5364,6 +5537,24 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HistogramBucket": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "range_label": {
+            "title": "Range Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "range_label",
+          "count"
+        ],
+        "title": "HistogramBucket",
         "type": "object"
       },
       "IndiceResult": {
@@ -7659,6 +7850,119 @@
         "title": "RankingResponse",
         "type": "object"
       },
+      "RecalibrateRequest": {
+        "description": "POST /v1/admin/calibration/recalibrate body.",
+        "properties": {
+          "apply": {
+            "default": false,
+            "description": "When true, writes the new median to app_config.",
+            "title": "Apply",
+            "type": "boolean"
+          },
+          "range_days": {
+            "default": 90,
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Range Days",
+            "type": "integer"
+          }
+        },
+        "title": "RecalibrateRequest",
+        "type": "object"
+      },
+      "RecalibrateResponse": {
+        "properties": {
+          "after_outlier_removal": {
+            "title": "After Outlier Removal",
+            "type": "integer"
+          },
+          "applied": {
+            "title": "Applied",
+            "type": "boolean"
+          },
+          "diff_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Pct"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "median_bid_count": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Bid Count"
+          },
+          "median_per_bid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Per Bid"
+          },
+          "new_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Value"
+          },
+          "old_value": {
+            "title": "Old Value",
+            "type": "number"
+          },
+          "range_days": {
+            "title": "Range Days",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "sample_size": {
+            "title": "Sample Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "range_days",
+          "sample_size",
+          "after_outlier_removal",
+          "eligible",
+          "old_value",
+          "applied"
+        ],
+        "title": "RecalibrateResponse",
+        "type": "object"
+      },
       "RecentContract": {
         "properties": {
           "data_assinatura": {
@@ -9736,6 +10040,131 @@
         "title": "SupplierEntry",
         "type": "object"
       },
+      "SurveyAggregateResponse": {
+        "description": "GET /v1/admin/survey/export-time-saved response.",
+        "properties": {
+          "after_outlier_removal": {
+            "title": "After Outlier Removal",
+            "type": "integer"
+          },
+          "current_constant": {
+            "title": "Current Constant",
+            "type": "number"
+          },
+          "histogram": {
+            "items": {
+              "$ref": "#/components/schemas/HistogramBucket"
+            },
+            "title": "Histogram",
+            "type": "array"
+          },
+          "iqr_lower_bound": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iqr Lower Bound"
+          },
+          "iqr_q1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iqr Q1"
+          },
+          "iqr_q3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iqr Q3"
+          },
+          "iqr_upper_bound": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iqr Upper Bound"
+          },
+          "mean_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Hours"
+          },
+          "median_bid_count": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Bid Count"
+          },
+          "median_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Hours"
+          },
+          "median_per_bid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Per Bid"
+          },
+          "range_days": {
+            "title": "Range Days",
+            "type": "integer"
+          },
+          "sample_size": {
+            "title": "Sample Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "range_days",
+          "sample_size",
+          "after_outlier_removal",
+          "histogram",
+          "current_constant"
+        ],
+        "title": "SurveyAggregateResponse",
+        "type": "object"
+      },
       "TimeSeriesDataPoint": {
         "properties": {
           "label": {
@@ -11589,6 +12018,53 @@
         ]
       }
     },
+    "/v1/admin/calibration/recalibrate": {
+      "post": {
+        "description": "Compute new ``hours_saved_per_search`` from survey distribution.\n\nEligibility rules (mirrors AC6 + risk R3):\n    * After IQR outlier removal there must be >= MIN_SAMPLE_SIZE rows.\n    * The new median must be in (0, 50].\n\nWhen ``apply=true`` and eligible, persists the new value via\n``app_config`` and drops the cache.",
+        "operationId": "recalibrate_v1_admin_calibration_recalibrate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecalibrateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecalibrateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Recalibrate",
+        "tags": [
+          "admin",
+          "calibration"
+        ]
+      }
+    },
     "/v1/admin/cb/reset": {
       "post": {
         "description": "STORY-416 AC5: Reset all segregated Supabase CBs to CLOSED.\n\nIntended for on-call use after an upstream incident has been mitigated\nand the CBs are still in OPEN/HALF_OPEN due to the cooldown. Returns\nthe previous state per category so the action is auditable in logs.\nAdmin only \u2014 never expose this without authentication.",
@@ -11644,6 +12120,65 @@
         "summary": "Clear Contracts Checkpoints",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/v1/admin/config/{key}": {
+      "patch": {
+        "description": "Update one row in ``app_config``. Whitelist enforced.\n\nOn success the in-process TTL cache for *key* is invalidated so\nthe new value becomes visible in this worker on the next read\n(other workers see it after their TTL expires).",
+        "operationId": "patch_app_config_v1_admin_config__key__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppConfigPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch App Config",
+        "tags": [
+          "admin",
+          "calibration"
         ]
       }
     },
@@ -12492,6 +13027,58 @@
         "summary": "Get Support Sla",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/v1/admin/survey/export-time-saved": {
+      "get": {
+        "description": "Aggregated histogram + summary stats for the calibration dashboard.",
+        "operationId": "list_export_surveys_aggregate_v1_admin_survey_export_time_saved_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "range_days",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Range Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyAggregateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Export Surveys Aggregate",
+        "tags": [
+          "admin",
+          "calibration"
         ]
       }
     },
@@ -19457,6 +20044,53 @@
         "summary": "Get Subscription Status",
         "tags": [
           "billing"
+        ]
+      }
+    },
+    "/v1/survey/export-time-saved": {
+      "post": {
+        "description": "Persist one row in ``export_time_saved_survey``.\n\nAuth required. The row is owned by ``user.id`` (RLS: users only ever\nsee their own submissions). Returns 503 if the database is\nunavailable so the frontend can retry on next export.",
+        "operationId": "submit_export_time_saved_survey_v1_survey_export_time_saved_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportTimeSavedSurveyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportTimeSavedSurveyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Export Time Saved Survey",
+        "tags": [
+          "survey"
         ]
       }
     },

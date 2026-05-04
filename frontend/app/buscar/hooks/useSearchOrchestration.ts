@@ -321,6 +321,19 @@ export function useSearchOrchestration() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       trackEvent("pdf_diagnostico_generated", { max_items: options.maxItems, has_client: !!options.clientName });
+      // BIZ-METRIC-001: notify the post-export survey hook so the
+      // modal can fire (frequency-throttled in
+      // ``useExportTimeSavedSurvey`` — won't open more than once
+      // per session, every 3rd export, capped at 5 lifetime).
+      try {
+        search.maybeOpenExportSurvey({
+          exportType: "pdf",
+          searchId: effectiveSearchId,
+          bidCount: options.maxItems,
+        });
+      } catch {
+        // never let survey errors break the export flow
+      }
     } catch {
       toast.error("Erro ao gerar relatorio PDF. Tente novamente.");
     } finally {

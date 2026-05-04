@@ -256,6 +256,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/calibration/recalibrate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recalibrate
+         * @description Compute new ``hours_saved_per_search`` from survey distribution.
+         *
+         *     Eligibility rules (mirrors AC6 + risk R3):
+         *         * After IQR outlier removal there must be >= MIN_SAMPLE_SIZE rows.
+         *         * The new median must be in (0, 50].
+         *
+         *     When ``apply=true`` and eligible, persists the new value via
+         *     ``app_config`` and drops the cache.
+         */
+        post: operations["recalibrate_v1_admin_calibration_recalibrate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/cb/reset": {
         parameters: {
             query?: never;
@@ -302,6 +329,30 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/config/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch App Config
+         * @description Update one row in ``app_config``. Whitelist enforced.
+         *
+         *     On success the in-process TTL cache for *key* is invalidated so
+         *     the new value becomes visible in this worker on the next read
+         *     (other workers see it after their TTL expires).
+         */
+        patch: operations["patch_app_config_v1_admin_config__key__patch"];
         trace?: never;
     };
     "/v1/admin/cron-status": {
@@ -786,6 +837,26 @@ export interface paths {
          *         breached_count: Number of conversations exceeding 20 business hours
          */
         get: operations["get_support_sla_v1_admin_support_sla_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/survey/export-time-saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Export Surveys Aggregate
+         * @description Aggregated histogram + summary stats for the calibration dashboard.
+         */
+        get: operations["list_export_surveys_aggregate_v1_admin_survey_export_time_saved_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4452,6 +4523,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/survey/export-time-saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Export Time Saved Survey
+         * @description Persist one row in ``export_time_saved_survey``.
+         *
+         *     Auth required. The row is owned by ``user.id`` (RLS: users only ever
+         *     see their own submissions). Returns 503 if the database is
+         *     unavailable so the frontend can retry on next export.
+         */
+        post: operations["submit_export_time_saved_survey_v1_survey_export_time_saved_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/trial-emails/unsubscribe": {
         parameters: {
             query?: never;
@@ -4949,6 +5044,35 @@ export interface components {
             total: number;
             /** Uf */
             uf: string;
+        };
+        /**
+         * AppConfigPatchRequest
+         * @description PATCH /v1/admin/config/{key} body.
+         */
+        AppConfigPatchRequest: {
+            /**
+             * Description
+             * @description Optional updated description
+             */
+            description?: string | null;
+            /**
+             * Value
+             * @description New JSONB value (scalar/array/object)
+             */
+            value: unknown;
+        };
+        /** AppConfigRow */
+        AppConfigRow: {
+            /** Description */
+            description?: string | null;
+            /** Key */
+            key: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+            /** Value */
+            value: unknown;
         };
         /** AuthStatusResponse */
         AuthStatusResponse: {
@@ -6497,6 +6621,52 @@ export interface components {
          * @enum {string}
          */
         ExperienciaLicitacoes: "PRIMEIRA_VEZ" | "INICIANTE" | "INTERMEDIARIO" | "EXPERIENTE";
+        /**
+         * ExportTimeSavedSurveyRequest
+         * @description Body for POST /v1/survey/export-time-saved.
+         */
+        ExportTimeSavedSurveyRequest: {
+            /**
+             * Bid Count
+             * @description Number of bids included in the export
+             */
+            bid_count?: number | null;
+            /**
+             * Estimated Manual Hours
+             * @description User-reported manual-equivalent hours (range [0.1, 50])
+             */
+            estimated_manual_hours: number;
+            /**
+             * Export Id
+             * @description Export job/download identifier
+             */
+            export_id?: string | null;
+            /**
+             * Export Type
+             * @description excel | pdf | sheets
+             */
+            export_type: string;
+            /**
+             * Free Text
+             * @description Optional free-text answer ('how would you have done this before?')
+             */
+            free_text?: string | null;
+            /**
+             * Search Id
+             * @description Search session id this export came from
+             */
+            search_id?: string | null;
+        };
+        /**
+         * ExportTimeSavedSurveyResponse
+         * @description Body for POST /v1/survey/export-time-saved (201).
+         */
+        ExportTimeSavedSurveyResponse: {
+            /** Id */
+            id: string;
+            /** Submitted At */
+            submitted_at: string;
+        };
         /** ExtendRequest */
         ExtendRequest: {
             /**
@@ -7221,6 +7391,13 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HistogramBucket */
+        HistogramBucket: {
+            /** Count */
+            count: number;
+            /** Range Label */
+            range_label: string;
         };
         /** IndiceResult */
         IndiceResult: {
@@ -8135,6 +8312,48 @@ export interface components {
             resultados: components["schemas"]["IndiceResult"][];
             /** Total */
             total: number;
+        };
+        /**
+         * RecalibrateRequest
+         * @description POST /v1/admin/calibration/recalibrate body.
+         */
+        RecalibrateRequest: {
+            /**
+             * Apply
+             * @description When true, writes the new median to app_config.
+             * @default false
+             */
+            apply: boolean;
+            /**
+             * Range Days
+             * @default 90
+             */
+            range_days: number;
+        };
+        /** RecalibrateResponse */
+        RecalibrateResponse: {
+            /** After Outlier Removal */
+            after_outlier_removal: number;
+            /** Applied */
+            applied: boolean;
+            /** Diff Pct */
+            diff_pct?: number | null;
+            /** Eligible */
+            eligible: boolean;
+            /** Median Bid Count */
+            median_bid_count?: number | null;
+            /** Median Per Bid */
+            median_per_bid?: number | null;
+            /** New Value */
+            new_value?: number | null;
+            /** Old Value */
+            old_value: number;
+            /** Range Days */
+            range_days: number;
+            /** Reason */
+            reason?: string | null;
+            /** Sample Size */
+            sample_size: number;
         };
         /** RecentContract */
         RecentContract: {
@@ -9162,6 +9381,38 @@ export interface components {
             /** Valor Total */
             valor_total: number;
         };
+        /**
+         * SurveyAggregateResponse
+         * @description GET /v1/admin/survey/export-time-saved response.
+         */
+        SurveyAggregateResponse: {
+            /** After Outlier Removal */
+            after_outlier_removal: number;
+            /** Current Constant */
+            current_constant: number;
+            /** Histogram */
+            histogram: components["schemas"]["HistogramBucket"][];
+            /** Iqr Lower Bound */
+            iqr_lower_bound?: number | null;
+            /** Iqr Q1 */
+            iqr_q1?: number | null;
+            /** Iqr Q3 */
+            iqr_q3?: number | null;
+            /** Iqr Upper Bound */
+            iqr_upper_bound?: number | null;
+            /** Mean Hours */
+            mean_hours?: number | null;
+            /** Median Bid Count */
+            median_bid_count?: number | null;
+            /** Median Hours */
+            median_hours?: number | null;
+            /** Median Per Bid */
+            median_per_bid?: number | null;
+            /** Range Days */
+            range_days: number;
+            /** Sample Size */
+            sample_size: number;
+        };
         /** TimeSeriesDataPoint */
         TimeSeriesDataPoint: {
             /** Label */
@@ -10050,6 +10301,39 @@ export interface operations {
             };
         };
     };
+    recalibrate_v1_admin_calibration_recalibrate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RecalibrateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecalibrateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reset_circuit_breakers_v1_admin_cb_reset_post: {
         parameters: {
             query?: never;
@@ -10090,6 +10374,41 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    patch_app_config_v1_admin_config__key__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppConfigPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppConfigRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -10648,6 +10967,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_export_surveys_aggregate_v1_admin_survey_export_time_saved_get: {
+        parameters: {
+            query?: {
+                range_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyAggregateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -15412,6 +15762,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    submit_export_time_saved_survey_v1_survey_export_time_saved_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportTimeSavedSurveyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportTimeSavedSurveyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

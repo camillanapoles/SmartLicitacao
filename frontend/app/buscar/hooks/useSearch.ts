@@ -16,6 +16,7 @@ import { cleanupExpiredPartials } from "../../../lib/searchPartialCache";
 
 import { useSearchRetry } from "./useSearchRetry";
 import { useSearchExport } from "./useSearchExport";
+import { useExportTimeSavedSurvey } from "../../../components/survey/ExportTimeSavedModal";
 import { useSearchPersistence } from "./useSearchPersistence";
 import { useSearchSSEHandler } from "./useSearchSSEHandler";
 import { useSearchExecution } from "./useSearchExecution";
@@ -157,6 +158,10 @@ export interface UseSearchReturn {
   handleNovaBusca: () => void;
   // UX-436: Snapshot of ufStatuses at the time of timeout error
   ufStatusesSnapshot: Map<string, UfStatus>;
+  // BIZ-METRIC-001: post-export survey props (buscar page renders the modal)
+  exportSurveyModalProps: import("../../../components/survey/ExportTimeSavedModal").ExportTimeSavedModalProps;
+  // BIZ-METRIC-001: trigger for non-Excel export paths (PDF / Sheets)
+  maybeOpenExportSurvey: (input: import("../../../components/survey/ExportTimeSavedModal").MaybeOpenInput) => void;
 }
 
 // ── Orchestrator ────────────────────────────────────────────────────────
@@ -331,6 +336,15 @@ export function useSearch(filters: UseSearchParams): UseSearchReturn {
   // AC21: Use polling event when SSE is disconnected
   const effectiveEvent = sseDisconnected && pollingEvent ? pollingEvent : sseEvent;
 
+  // BIZ-METRIC-001: post-export survey (modal + frequency throttling).
+  // ``totalSearches`` is intentionally left undefined here — the
+  // user lifetime count is not available in this orchestrator. The
+  // hook still enforces the every-3rd-export and 5-lifetime-cap
+  // gates from local/sessionStorage. AC10's "≥3 searches" gate is
+  // implicitly satisfied by the every-3rd-export rule (the modal
+  // never opens before the third Excel download anyway).
+  const exportSurvey = useExportTimeSavedSurvey({});
+
   // ── 7. Export ──
   const exportHook = useSearchExport({
     result,
@@ -346,6 +360,14 @@ export function useSearch(filters: UseSearchParams): UseSearchReturn {
     dataFinal: filters.dataFinal,
     excelFailCountRef,
     excelToastFiredRef,
+    onExportSucceeded: ({ exportType, bidCount }) => {
+      const sid = execution.asyncSearchIdRef.current || execution.searchId;
+      exportSurvey.maybeOpen({
+        exportType,
+        searchId: sid ?? null,
+        bidCount,
+      });
+    },
   });
 
   // Wire handleExcelFailure ref for SSE handler
@@ -492,5 +514,9 @@ export function useSearch(filters: UseSearchParams): UseSearchReturn {
     handleNovaBusca: persistence.handleNovaBusca,
     // UX-436
     ufStatusesSnapshot,
+    // BIZ-METRIC-001: post-export survey props for the buscar page
+    exportSurveyModalProps: exportSurvey.modalProps,
+    // BIZ-METRIC-001: trigger for non-Excel export paths (PDF, Sheets)
+    maybeOpenExportSurvey: exportSurvey.maybeOpen,
   };
 }

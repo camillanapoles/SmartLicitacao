@@ -13,6 +13,7 @@ import { OnboardingSuccessBanner } from "./components/OnboardingSuccessBanner";
 import { OnboardingEmptyState } from "./components/OnboardingEmptyState";
 import { BuscarModals } from "./components/BuscarModals";
 import { useSearchOrchestration } from "./hooks/useSearchOrchestration";
+import ExportTimeSavedModal from "../../components/survey/ExportTimeSavedModal";
 
 import BackendStatusIndicator from "../components/BackendStatusIndicator";
 import { MobileDrawer } from "../../components/MobileDrawer";
@@ -282,6 +283,9 @@ function HomePageContent() {
             <SearchErrorBoundary onReset={orch.handleErrorBoundaryReset}>
               <SearchResults {...orch.searchResultsProps} />
             </SearchErrorBoundary>
+
+            {/* BIZ-METRIC-001: post-export survey (frequency-throttled by hook) */}
+            <ExportTimeSavedModal {...orch.search.exportSurveyModalProps} />
           </div>
         </PullToRefresh>
       </main>
