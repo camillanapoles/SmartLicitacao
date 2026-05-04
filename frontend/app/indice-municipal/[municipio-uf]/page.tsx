@@ -157,6 +157,16 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
         }
       : null;
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://smartlic.tech' },
+      { '@type': 'ListItem', position: 2, name: 'Índice Municipal', item: 'https://smartlic.tech/indice-municipal' },
+      { '@type': 'ListItem', position: 3, name: `${municipioTitulo} (${uf})`, item: `https://smartlic.tech/indice-municipal/${slug}` },
+    ],
+  };
+
   return (
     <>
       {articleSchema && (
@@ -165,6 +175,10 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
           dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
         />
       )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
 
       <main className="max-w-3xl mx-auto px-4 py-10">
         <nav className="text-sm text-gray-500 mb-6">
