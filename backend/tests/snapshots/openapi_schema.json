@@ -6081,6 +6081,145 @@
         "title": "IndiceResult",
         "type": "object"
       },
+      "IntelReportCheckoutRequest": {
+        "description": "Request body for POST /v1/intel-reports/checkout.",
+        "properties": {
+          "entity_key": {
+            "title": "Entity Key",
+            "type": "string"
+          },
+          "product_type": {
+            "enum": [
+              "cnpj",
+              "sector_uf"
+            ],
+            "title": "Product Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_type",
+          "entity_key"
+        ],
+        "title": "IntelReportCheckoutRequest",
+        "type": "object"
+      },
+      "IntelReportCheckoutResponse": {
+        "description": "Response for POST /v1/intel-reports/checkout.",
+        "properties": {
+          "checkout_url": {
+            "title": "Checkout Url",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkout_url",
+          "session_id"
+        ],
+        "title": "IntelReportCheckoutResponse",
+        "type": "object"
+      },
+      "IntelReportPurchase": {
+        "description": "Represents a row in intel_report_purchases table.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_key": {
+            "title": "Entity Key",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "pdf_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Url"
+          },
+          "product_type": {
+            "title": "Product Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "product_type",
+          "entity_key",
+          "status",
+          "created_at"
+        ],
+        "title": "IntelReportPurchase",
+        "type": "object"
+      },
+      "IntelReportStatusResponse": {
+        "description": "Response for GET /v1/intel-reports/{purchase_id}.",
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "pdf_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Url"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "IntelReportStatusResponse",
+        "type": "object"
+      },
       "InviteMemberRequest": {
         "properties": {
           "email": {
@@ -18572,6 +18711,178 @@
         "summary": "\u00cdndice de transpar\u00eancia de um munic\u00edpio (p\u00fablico)",
         "tags": [
           "indice-municipal"
+        ]
+      }
+    },
+    "/v1/intel-reports/": {
+      "get": {
+        "description": "List all Intel Report purchases for the authenticated user.",
+        "operationId": "list_intel_report_purchases_v1_intel_reports__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IntelReportPurchase"
+                  },
+                  "title": "Response List Intel Report Purchases V1 Intel Reports  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Intel Report Purchases",
+        "tags": [
+          "intel_reports"
+        ]
+      }
+    },
+    "/v1/intel-reports/checkout": {
+      "post": {
+        "description": "Create a Stripe Checkout session for an Intel Report one-time purchase.\n\nproduct_type:\n    - \"cnpj\"       \u2192 R$197.00 \u2014 Company analysis report (INTEL-REPORT-001)\n    - \"sector_uf\"  \u2192 R$147.00 \u2014 Sector/UF market report (INTEL-REPORT-002)\n\nentity_key:\n    - For cnpj:       the CNPJ string (e.g. \"12345678000195\")\n    - For sector_uf:  \"sector:uf\" (e.g. \"limpeza:SP\")\n\nReturns checkout_url (redirect user) and session_id (for polling).",
+        "operationId": "create_intel_report_checkout_v1_intel_reports_checkout_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntelReportCheckoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelReportCheckoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Intel Report Checkout",
+        "tags": [
+          "intel_reports"
+        ]
+      }
+    },
+    "/v1/intel-reports/{purchase_id}": {
+      "get": {
+        "description": "Poll status of an Intel Report purchase.\n\nFrontend uses this endpoint after being redirected back from Stripe\n(/intel-reports/{CHECKOUT_SESSION_ID}?status=processing).\nPoll until status is \"completed\" or \"failed\".",
+        "operationId": "get_intel_report_status_v1_intel_reports__purchase_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelReportStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Intel Report Status",
+        "tags": [
+          "intel_reports"
+        ]
+      }
+    },
+    "/v1/intel-reports/{purchase_id}/download": {
+      "get": {
+        "description": "Stream the Intel Report PDF.\n\nRequires:\n- Authentication\n- Ownership: purchase must belong to the authenticated user\n- Status: purchase must be \"completed\" (pdf_url present)\n\nReturns the PDF as a streaming attachment.",
+        "operationId": "download_intel_report_v1_intel_reports__purchase_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Intel Report",
+        "tags": [
+          "intel_reports"
         ]
       }
     },

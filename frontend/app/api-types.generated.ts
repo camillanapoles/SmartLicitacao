@@ -3235,6 +3235,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/intel-reports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Intel Report Purchases
+         * @description List all Intel Report purchases for the authenticated user.
+         */
+        get: operations["list_intel_report_purchases_v1_intel_reports__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/intel-reports/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Intel Report Checkout
+         * @description Create a Stripe Checkout session for an Intel Report one-time purchase.
+         *
+         *     product_type:
+         *         - "cnpj"       → R$197.00 — Company analysis report (INTEL-REPORT-001)
+         *         - "sector_uf"  → R$147.00 — Sector/UF market report (INTEL-REPORT-002)
+         *
+         *     entity_key:
+         *         - For cnpj:       the CNPJ string (e.g. "12345678000195")
+         *         - For sector_uf:  "sector:uf" (e.g. "limpeza:SP")
+         *
+         *     Returns checkout_url (redirect user) and session_id (for polling).
+         */
+        post: operations["create_intel_report_checkout_v1_intel_reports_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/intel-reports/{purchase_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Intel Report Status
+         * @description Poll status of an Intel Report purchase.
+         *
+         *     Frontend uses this endpoint after being redirected back from Stripe
+         *     (/intel-reports/{CHECKOUT_SESSION_ID}?status=processing).
+         *     Poll until status is "completed" or "failed".
+         */
+        get: operations["get_intel_report_status_v1_intel_reports__purchase_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/intel-reports/{purchase_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Intel Report
+         * @description Stream the Intel Report PDF.
+         *
+         *     Requires:
+         *     - Authentication
+         *     - Ownership: purchase must belong to the authenticated user
+         *     - Status: purchase must be "completed" (pdf_url present)
+         *
+         *     Returns the PDF as a streaming attachment.
+         */
+        get: operations["download_intel_report_v1_intel_reports__purchase_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/itens/{catmat}/profile": {
         parameters: {
             query?: never;
@@ -7850,6 +7951,63 @@ export interface components {
             uf: string;
             /** Uf Nome */
             uf_nome: string;
+        };
+        /**
+         * IntelReportCheckoutRequest
+         * @description Request body for POST /v1/intel-reports/checkout.
+         */
+        IntelReportCheckoutRequest: {
+            /** Entity Key */
+            entity_key: string;
+            /**
+             * Product Type
+             * @enum {string}
+             */
+            product_type: "cnpj" | "sector_uf";
+        };
+        /**
+         * IntelReportCheckoutResponse
+         * @description Response for POST /v1/intel-reports/checkout.
+         */
+        IntelReportCheckoutResponse: {
+            /** Checkout Url */
+            checkout_url: string;
+            /** Session Id */
+            session_id: string;
+        };
+        /**
+         * IntelReportPurchase
+         * @description Represents a row in intel_report_purchases table.
+         */
+        IntelReportPurchase: {
+            /** Created At */
+            created_at: string;
+            /** Entity Key */
+            entity_key: string;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Id */
+            id: string;
+            /** Pdf Url */
+            pdf_url?: string | null;
+            /** Product Type */
+            product_type: string;
+            /** Status */
+            status: string;
+            /** User Id */
+            user_id: string;
+        };
+        /**
+         * IntelReportStatusResponse
+         * @description Response for GET /v1/intel-reports/{purchase_id}.
+         */
+        IntelReportStatusResponse: {
+            /** Expires At */
+            expires_at?: string | null;
+            /** Pdf Url */
+            pdf_url?: string | null;
+            /** Status */
+            status: string;
         };
         /** InviteMemberRequest */
         InviteMemberRequest: {
@@ -14737,6 +14895,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IndiceResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_intel_report_purchases_v1_intel_reports__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntelReportPurchase"][];
+                };
+            };
+        };
+    };
+    create_intel_report_checkout_v1_intel_reports_checkout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntelReportCheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntelReportCheckoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_intel_report_status_v1_intel_reports__purchase_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntelReportStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_intel_report_v1_intel_reports__purchase_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
