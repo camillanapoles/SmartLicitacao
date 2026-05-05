@@ -546,13 +546,14 @@ describe("DEBT-126: Contact row (WhatsApp + Email)", () => {
     expect(screen.getByTestId("icon-mail")).toBeInTheDocument();
   });
 
-  it("AC5: WhatsApp link uses wa.me format with pre-filled message", () => {
+  it("AC5: WhatsApp link opens WhatsApp Web for support with pre-filled message", () => {
     setupMocks({ session: false });
     render(<PlanosPage />);
     const link = screen.getByTestId("whatsapp-link") as HTMLAnchorElement;
-    expect(link.href).toMatch(/https:\/\/wa\.me\//);
+    expect(link.href).toMatch(/^https:\/\/web\.whatsapp\.com\/send/);
+    expect(link.href).toContain("phone=5548988344559");
     expect(link.href).toContain("text=");
-    expect(decodeURIComponent(link.href)).toContain("SmartLic Pro");
+    expect(decodeURIComponent(link.href)).toContain("Preciso de suporte no SmartLic");
   });
 
   it("AC3: Email link has correct mailto href", () => {

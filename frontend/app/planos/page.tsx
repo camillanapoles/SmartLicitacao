@@ -35,6 +35,9 @@ type UserProfile = Partial<components["schemas"]["UserProfileResponse"]>;
 // STORY-360 AC2 + STORY-SEO-004: pricing source of truth lives in `lib/plan-pricing.ts`
 // (consumed here and by ProductSchema.tsx to keep JSON-LD in sync with UI).
 const PRICING_FALLBACK = PRO_PRICING;
+const SUPPORT_WHATSAPP_NUMBER = "5548988344559";
+const SUPPORT_WHATSAPP_MESSAGE = "Olá! Preciso de suporte no SmartLic.";
+const SUPPORT_WHATSAPP_URL = `https://web.whatsapp.com/send?phone=${SUPPORT_WHATSAPP_NUMBER}&text=${encodeURIComponent(SUPPORT_WHATSAPP_MESSAGE)}`;
 
 // Coupon → discount % mapping. Day 16 trial-expired email sends TRIAL_COMEBACK_20.
 // Keep in sync with Stripe coupon configuration (Stripe is source of truth for actual billing).
@@ -500,7 +503,7 @@ export default function PlanosPage() {
           <div className="py-8 text-center">
             <p className="text-lg font-semibold text-[var(--ink)] mb-4">Precisa de mais informações?</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-              <a href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "5548988344559"}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre o SmartLic Pro.")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[var(--ink-secondary)] hover:text-[var(--brand-blue)] transition-colors" data-testid="whatsapp-link">
+              <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[var(--ink-secondary)] hover:text-[var(--brand-blue)] transition-colors" data-testid="whatsapp-link">
                 <MessageCircle className="w-5 h-5" /><span className="font-medium">Fale conosco</span>
               </a>
               <a href="mailto:tiago.sasaki@confenge.com.br" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[var(--ink-secondary)] hover:text-[var(--brand-blue)] transition-colors" data-testid="email-link">
