@@ -82,12 +82,46 @@ WEBHOOK_DB_TIMEOUT_S = 30
 
 # RES-BE: per-query budget for idempotency/status writes (fits within the 30s overall budget)
 _WEBHOOK_IDEMPOTENCY_BUDGET_S = 5.0
+_MAX_LOG_VALUE_LEN = 80
 
 if not STRIPE_WEBHOOK_SECRET:
     logger.error(
         "STRIPE_WEBHOOK_SECRET not configured — webhook signature validation will fail. "
         "Set STRIPE_WEBHOOK_SECRET in .env (get from Stripe Dashboard > Developers > Webhooks > Signing secret)"
     )
+
+
+def _safe_log_value(value) -> str:
+    """Return a bounded, non-sensitive value for webhook logs."""
+    if value is None:
+        return "unknown"
+    safe = "".join(ch for ch in str(value) if ch.isalnum() or ch in "._:-")
+    if not safe:
+        return "unknown"
+    if len(safe) > _MAX_LOG_VALUE_LEN:
+        return f"{safe[:_MAX_LOG_VALUE_LEN]}..."
+    return safe
+
+
+def _validate_event_envelope(event) -> None:
+    """
+    Validate the Stripe event fields used before any database operation.
+
+    Stripe verifies authenticity in construct_event(), but tests and future
+    SDK changes can still hand us malformed envelopes. Fail closed before
+    idempotency writes so bad events are not persisted or routed.
+    """
+    event_id = getattr(event, "id", None)
+    event_type = getattr(event, "type", None)
+    data = getattr(event, "data", None)
+    data_object = getattr(data, "object", None)
+
+    if not isinstance(event_id, str) or not event_id.startswith("evt_"):
+        raise ValueError("missing_or_invalid_event_id")
+    if not isinstance(event_type, str) or not event_type.strip():
+        raise ValueError("missing_or_invalid_event_type")
+    if data is None or data_object is None:
+        raise ValueError("missing_event_data_object")
 
 
 @router.post("/webhooks/stripe")
@@ -131,13 +165,33 @@ async def stripe_webhook(request: Request):
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
     except ValueError as e:
-        logger.error(f"Webhook payload invalid: {e}")
+        logger.warning(
+            "Stripe webhook rejected: invalid payload "
+            f"reason={_safe_log_value(e.__class__.__name__)}"
+        )
         raise HTTPException(status_code=400, detail="Dados de webhook inválidos")
     except stripe.error.SignatureVerificationError as e:
-        logger.error(f"Webhook signature verification failed: {e}")
+        logger.warning(
+            "Stripe webhook rejected: signature verification failed "
+            f"reason={_safe_log_value(e.__class__.__name__)}"
+        )
         raise HTTPException(status_code=400, detail="Assinatura de webhook inválida")
 
-    logger.info(f"Received Stripe webhook: event_id={event.id}, type={event.type}")
+    try:
+        _validate_event_envelope(event)
+    except ValueError as e:
+        logger.warning(
+            "Stripe webhook rejected: malformed event envelope "
+            f"reason={_safe_log_value(e)}, "
+            f"event_id={_safe_log_value(getattr(event, 'id', None))}, "
+            f"type={_safe_log_value(getattr(event, 'type', None))}"
+        )
+        raise HTTPException(status_code=400, detail="Dados de webhook inválidos")
+
+    logger.info(
+        "Received Stripe webhook: "
+        f"event_id={_safe_log_value(event.id)}, type={_safe_log_value(event.type)}"
+    )
 
     sb = get_supabase()
 
@@ -194,8 +248,8 @@ async def stripe_webhook(request: Request):
                     if (now - received_at) > timedelta(minutes=5):
                         # AC7: Log WARNING and allow reprocessing
                         logger.warning(
-                            f"Stripe webhook {event.id} stuck in processing "
-                            f"for >5min — reprocessing"
+                            "Stripe webhook stuck in processing for >5min — reprocessing: "
+                            f"event_id={_safe_log_value(event.id)}"
                         )
                         await _run_with_budget(
                             asyncio.to_thread(lambda: sb.table("stripe_webhook_events").update({
@@ -207,10 +261,14 @@ async def stripe_webhook(request: Request):
                             source="webhook.stripe.stuck_reset",
                         )
                     else:
-                        logger.info(f"Webhook already processing: event_id={event.id}")
+                        logger.info(
+                            f"Webhook already processing: event_id={_safe_log_value(event.id)}"
+                        )
                         return {"status": "already_processed", "event_id": event.id}
                 else:
-                    logger.info(f"Webhook already processed: event_id={event.id}")
+                    logger.info(
+                        f"Webhook already processed: event_id={_safe_log_value(event.id)}"
+                    )
                     return {"status": "already_processed", "event_id": event.id}
 
         # SYS-024: Wrap event routing in asyncio.wait_for() to prevent DB hangs
@@ -264,7 +322,7 @@ async def stripe_webhook(request: Request):
         except asyncio.TimeoutError:
             logger.error(
                 f"Webhook processing timed out after {WEBHOOK_DB_TIMEOUT_S}s: "
-                f"event_id={event.id}, type={event.type}"
+                f"event_id={_safe_log_value(event.id)}, type={_safe_log_value(event.type)}"
             )
             try:
                 _timeout_at = datetime.now(timezone.utc).isoformat()
@@ -297,7 +355,9 @@ async def stripe_webhook(request: Request):
             source="webhook.stripe.mark_completed",
         )
 
-        logger.info(f"Webhook processed successfully: event_id={event.id}")
+        logger.info(
+            f"Webhook processed successfully: event_id={_safe_log_value(event.id)}"
+        )
         return {"status": "success", "event_id": event.id}
 
     except HTTPException:
