@@ -7,6 +7,7 @@
 
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { ObservatorioCTA } from './ObservatorioCTA';
 
 export const metadata: Metadata = {
   title: 'Observatório de Licitações',
@@ -79,7 +80,12 @@ export default function ObservatorioPage() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Relatórios publicados</h2>
 
           {RELATORIOS_PUBLICADOS.length === 0 ? (
-            <p className="text-gray-500">Primeiro relatório em breve.</p>
+            <p className="text-gray-500">
+              Primeiro relatório em breve.{' '}
+              <Link href="/licitacoes" className="text-blue-700 hover:underline">
+                Enquanto isso, veja o que está aberto agora →
+              </Link>
+            </p>
           ) : (
             <div className="space-y-4">
               {RELATORIOS_PUBLICADOS.map((rel) => (
@@ -98,6 +104,8 @@ export default function ObservatorioPage() {
             </div>
           )}
         </section>
+
+        <ObservatorioCTA />
 
         <section className="mt-12 p-6 bg-blue-50 rounded-xl border border-blue-100">
           <h2 className="text-lg font-semibold text-gray-800 mb-2">Sobre os dados</h2>
