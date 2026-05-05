@@ -9,6 +9,7 @@ import time
 import threading
 import sys
 import os
+import types
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -305,3 +306,53 @@ class TestThreadSafety:
         assert len(errors) == 0
         # Should be OPEN after 200 failures in a 100-window
         assert cb.state == "OPEN"
+
+    @pytest.mark.timeout(30)
+    def test_get_supabase_singleton_initialized_once_under_concurrency(self, monkeypatch):
+        import supabase_client
+
+        monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key")
+        monkeypatch.setattr(supabase_client, "_supabase_client", None)
+        monkeypatch.setattr(supabase_client, "_configure_httpx_pool", lambda client: None)
+
+        create_calls = []
+        create_started = threading.Event()
+        release_create = threading.Event()
+
+        def create_client(url, key):
+            create_calls.append((url, key))
+            create_started.set()
+            assert release_create.wait(timeout=5)
+            return object()
+
+        fake_supabase = types.ModuleType("supabase")
+        fake_supabase.create_client = create_client
+        monkeypatch.setitem(sys.modules, "supabase", fake_supabase)
+
+        results = []
+        errors = []
+
+        def get_client():
+            try:
+                results.append(supabase_client.get_supabase())
+            except Exception as exc:
+                errors.append(exc)
+
+        first = threading.Thread(target=get_client)
+        first.start()
+        assert create_started.wait(timeout=5)
+
+        contenders = [threading.Thread(target=get_client) for _ in range(8)]
+        for thread in contenders:
+            thread.start()
+
+        release_create.set()
+        first.join(timeout=5)
+        for thread in contenders:
+            thread.join(timeout=5)
+
+        assert errors == []
+        assert len(results) == 9
+        assert len({id(client) for client in results}) == 1
+        assert create_calls == [("https://test.supabase.co", "service-role-key")]

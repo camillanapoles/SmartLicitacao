@@ -31,6 +31,7 @@ T = TypeVar("T")
 
 # Lazy import to avoid breaking existing tests that don't have supabase installed
 _supabase_client = None
+_supabase_client_lock = threading.Lock()
 
 # ============================================================================
 # CRIT-046 + DEBT-018 SYS-020: Connection pool configuration
@@ -84,11 +85,13 @@ def get_supabase():
     """
     global _supabase_client
     if _supabase_client is None:
-        from supabase import create_client
-        url, key = _get_config()
-        _supabase_client = create_client(url, key)
-        _configure_httpx_pool(_supabase_client)
-        logger.info("Supabase client initialized")
+        with _supabase_client_lock:
+            if _supabase_client is None:
+                from supabase import create_client
+                url, key = _get_config()
+                _supabase_client = create_client(url, key)
+                _configure_httpx_pool(_supabase_client)
+                logger.info("Supabase client initialized")
     return _supabase_client
 
 
