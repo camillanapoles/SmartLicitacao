@@ -7,16 +7,16 @@ import { SECTORS, fetchSectorStats, formatBRL } from "@/lib/sectors";
  */
 
 export const metadata: Metadata = {
-  title: "Licitações por Setor — Oportunidades Abertas",
+  title: "Licitações Públicas 2026 — Editais Abertos por Setor | SmartLic",
   description:
-    "Encontre licitações abertas em 15 setores: TI, Saúde, Engenharia, Alimentos e mais. Dados reais do PNCP atualizados diariamente.",
+    "Encontre licitações públicas abertas em 2026: TI, Saúde, Engenharia, Alimentos e mais. Análise com IA e score de viabilidade. Teste grátis 14 dias.",
   alternates: {
     canonical: "https://smartlic.tech/licitacoes",
   },
   openGraph: {
-    title: "Licitações por Setor — Oportunidades Abertas | SmartLic",
+    title: "Licitações Públicas 2026 — Editais por Setor | SmartLic",
     description:
-      "Encontre licitações abertas em 15 setores. Dados reais do PNCP atualizados diariamente. 14 dias grátis.",
+      "Encontre licitações públicas abertas em 2026. Análise com IA, score de viabilidade. 14 dias grátis.",
     url: "https://smartlic.tech/licitacoes",
     type: "website",
     locale: "pt_BR",
