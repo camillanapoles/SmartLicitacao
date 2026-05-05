@@ -85,7 +85,7 @@ export async function generateMetadata({
 
   return {
     title: `${empresa.razao_social} — Histórico de Contratos Públicos`,
-    description: `${empresa.razao_social} tem ${total_contratos_24m} contratos com o governo nos últimos 24 meses. Total: ${valorFormatado}. Score B2G: ${score}.`,
+    description: `Contratos públicos, licitações e editais do CNPJ ${cnpj} (${empresa.razao_social}). ${total_contratos_24m} contratos | ${valorFormatado} captados. Monitore via SmartLic.`,
     alternates: {
       canonical: `https://smartlic.tech/cnpj/${cnpj}`,
     },

@@ -310,15 +310,15 @@ describe('JSON-LD schema (AC10)', () => {
 describe('Meta tags structure (AC9, AC11)', () => {
   it('title follows pattern for each sector', () => {
     SECTORS.forEach((s) => {
-      const title = `Licitações de ${s.name} — Oportunidades Abertas`;
-      expect(title.length).toBeLessThan(100);
+      const title = `Editais de ${s.name} 2026 — Para sua Empresa | SmartLic`;
+      expect(title.length).toBeLessThanOrEqual(91);
       expect(title).toContain(s.name);
     });
   });
 
   it('description follows pattern for each sector', () => {
     SECTORS.forEach((s) => {
-      const desc = `Encontre licitações abertas de ${s.name}. Analise com IA e score de viabilidade. 14 dias grátis.`;
+      const desc = `Encontre editais abertos de ${s.name}. Análise com IA e score de viabilidade. Teste grátis 14 dias.`;
       expect(desc.length).toBeLessThan(200);
     });
   });

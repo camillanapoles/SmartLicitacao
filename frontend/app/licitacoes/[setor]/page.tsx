@@ -56,15 +56,15 @@ export async function generateMetadata({
   // AC9: Meta tags
   return {
     robots: { index: true },
-    title: `Licitações de ${sector.name} — ${totalOpen > 0 ? `${totalOpen} Oportunidades Abertas` : "Oportunidades Abertas"}`,
-    description: `Encontre ${totalOpen > 0 ? totalOpen : ""} licitações abertas de ${sector.name} em ${topUfs}. Analise com IA e score de viabilidade. 14 dias grátis.`,
+    title: `Editais de ${sector.name} 2026 — Para sua Empresa | SmartLic`,
+    description: `Encontre ${totalOpen > 0 ? `${totalOpen} ` : ""}editais abertos de ${sector.name} em ${topUfs}. Análise com IA e score de viabilidade. Teste grátis 14 dias.`,
     alternates: {
       canonical: canonicalUrl,
     },
     // AC11: Open Graph
     openGraph: {
-      title: `Licitações de ${sector.name} — Oportunidades Abertas | SmartLic`,
-      description: `Encontre licitações abertas de ${sector.name}. Analise a viabilidade com IA. 14 dias grátis.`,
+      title: `Editais de ${sector.name} 2026 — Para sua Empresa | SmartLic`,
+      description: `Encontre editais abertos de ${sector.name}. Análise com IA e score de viabilidade. Teste grátis 14 dias.`,
       url: canonicalUrl,
       type: "website",
       locale: "pt_BR",
