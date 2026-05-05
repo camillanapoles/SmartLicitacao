@@ -108,6 +108,12 @@ export default function ObservatorioPage() {
             <li>Licença: Creative Commons BY 4.0 — cite como "SmartLic Observatório (smartlic.tech/observatorio)"</li>
             <li>Disponível via API: <code className="text-xs bg-white px-1 rounded">GET /v1/observatorio/relatorio/{'{mes}'}/{'{ano}'}</code></li>
           </ul>
+          {/* Issue #653: link interno para landing tool-search */}
+          <p className="mt-4 text-sm text-gray-600">
+            <Link href="/ferramentas/pncp-licitacoes" className="text-blue-700 hover:underline">
+              Como buscar licitações no PNCP automaticamente &rarr;
+            </Link>
+          </p>
         </section>
       </main>
     </>

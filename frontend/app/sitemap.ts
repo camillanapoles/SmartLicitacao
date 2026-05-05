@@ -368,6 +368,13 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
           changeFrequency: 'weekly' as const,
           priority: 0.8,
         },
+        // Issue #653: Landing dedicada B2B tool-search (queries "pncp licitações", "pncp contratos")
+        {
+          url: `${baseUrl}/ferramentas/pncp-licitacoes`,
+          lastModified: STATIC_LAST_EDIT,
+          changeFrequency: 'monthly' as const,
+          priority: 0.8,
+        },
         // SEO-PLAYBOOK P2: Calculadora B2G
         {
           url: `${baseUrl}/calculadora`,

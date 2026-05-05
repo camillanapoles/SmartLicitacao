@@ -425,6 +425,15 @@ export default async function SectorPage({
       {/* Footer: All sectors */}
       <section className="border-t border-gray-200 dark:border-gray-800 py-8 px-4">
         <div className="max-w-5xl mx-auto">
+          {/* Issue #653: link interno para landing tool-search */}
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            <Link
+              href="/ferramentas/pncp-licitacoes"
+              className="text-brand-blue hover:underline"
+            >
+              Saiba mais sobre o PNCP e como automatizar a busca de licitações &rarr;
+            </Link>
+          </p>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-4">
             Todos os setores
           </h3>
