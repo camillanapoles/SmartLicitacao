@@ -1133,6 +1133,7 @@
           "termos_busca": {
             "anyOf": [
               {
+                "maxLength": 500,
                 "type": "string"
               },
               {
