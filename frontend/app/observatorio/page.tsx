@@ -105,7 +105,6 @@ export default function ObservatorioPage() {
           )}
         </section>
 
-        {/* Issue #619: Trial CTA — auth-aware (unauthenticated → /signup, authenticated → /buscar) */}
         <ObservatorioCTA />
 
         <section className="mt-12 p-6 bg-blue-50 rounded-xl border border-blue-100">

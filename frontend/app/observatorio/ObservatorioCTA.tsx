@@ -1,11 +1,5 @@
 'use client';
 
-/**
- * Issue #619: Auth-aware trial CTA for /observatorio hub.
- * - Unauthenticated: link to /signup?ref=observatorio-hub
- * - Authenticated: link to /buscar
- */
-
 import Link from 'next/link';
 import { useUser } from '../../contexts/UserContext';
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Frontend / GTM
+- **CTA de trial em /observatorio (#619)** — `ObservatorioCTA` client component adicionado ao hub do observatório. Usuários não autenticados veem link `/signup?ref=observatorio-hub`; autenticados veem link `/buscar`. Empty-state de relatórios agora inclui link ativo para `/licitacoes`.
+
 ### Added — SEO Admin
 - **GSC API sync + dashboard /admin/seo (STORY-SEO-005 #478)** — ARQ cron semanal (dom 06 UTC) sincroniza Google Search Console searchanalytics para `gsc_metrics` (Supabase). Dashboard `/admin/seo` ganhou seção "Query Analytics" com top queries, top pages por CTR e oportunidades CTR <1%. Graceful no-op se `GSC_SERVICE_ACCOUNT_JSON` ausente. Prometheus: `smartlic_gsc_sync_duration_seconds` + `smartlic_gsc_sync_rows_upserted_total`. Migration: `20260422120000_create_gsc_metrics.sql`.
 
