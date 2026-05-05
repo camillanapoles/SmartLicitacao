@@ -57,6 +57,7 @@ jobs:
         run: |
           cd backend
           python -m pytest tests/contracts/ \
+            --confcutdir=tests/contracts \
             -m 'contract and not external' \
             --tb=short --no-header -v \
             --junitxml=contract-results.xml
@@ -161,6 +162,7 @@ jobs:
         run: |
           cd backend
           python -m pytest tests/contracts/ \
+            --confcutdir=tests/contracts \
             -m external \
             --tb=short --no-header -v
         continue-on-error: true  # External APIs are flaky — failures go to the issue, don't break pipeline
