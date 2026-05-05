@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import OrgaoPerfilClient from './OrgaoPerfilClient';
+import InlineTrialCTA from '../../components/InlineTrialCTA';
 import { LeadCapture } from '@/components/LeadCapture';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
@@ -191,6 +192,13 @@ export default async function OrgaoPerfilPage({
       />
 
       <OrgaoPerfilClient stats={stats} />
+
+      {/* #652: Inline trial CTA after licitações list */}
+      <InlineTrialCTA
+        page="orgao"
+        source="orgao-page"
+        extraParam={{ name: 'slug', value: slug }}
+      />
 
       <div className="mt-10">
         <LeadCapture

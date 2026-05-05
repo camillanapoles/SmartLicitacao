@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import CnpjPerfilClient from './CnpjPerfilClient';
+import InlineTrialCTA from '../../components/InlineTrialCTA';
 import { LeadCapture } from '@/components/LeadCapture';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
@@ -185,6 +186,13 @@ export default async function CnpjPerfilPage({
       />
 
       <CnpjPerfilClient perfil={perfil} />
+
+      {/* #652: Inline trial CTA after contratos section */}
+      <InlineTrialCTA
+        page="cnpj"
+        source="cnpj-page"
+        extraParam={{ name: 'orgao', value: cnpj }}
+      />
 
       {/* A2: Contextual lead capture with detected sector + UF */}
       <div className="mt-10">
