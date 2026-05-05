@@ -158,6 +158,81 @@ class TestIdempotency:
         result = await stripe_webhook(mock_request)
         assert result["status"] == "already_processed"
 
+    @pytest.mark.timeout(30)
+    @pytest.mark.asyncio
+    @patch("webhooks.stripe.STRIPE_WEBHOOK_SECRET", "whsec_test")
+    @patch("webhooks.stripe.stripe.Webhook.construct_event")
+    @patch("webhooks.stripe.get_supabase")
+    async def test_payment_intent_succeeded_replay_is_deduped_before_delivery(
+        self, mock_get_sb, mock_construct, mock_request
+    ):
+        """Issue #718: payment_intent.succeeded is covered by event-id dedup.
+
+        The one-time purchase delivery handler is not implemented yet. This
+        verifies the dispatcher still claims the Stripe event before routing, so
+        a replay of the same payment_intent.succeeded event cannot reach future
+        delivery logic twice unless that logic bypasses /webhooks/stripe.
+        """
+        from webhooks.stripe import stripe_webhook
+
+        event = _make_event(
+            event_id="evt_pi_succeeded_718",
+            event_type="payment_intent.succeeded",
+            data_object={
+                "id": "pi_718",
+                "metadata": {"purchase_id": "purchase_718"},
+            },
+        )
+        mock_construct.return_value = event
+
+        def make_sb(*, replay: bool):
+            sb = MagicMock()
+            table_chains = {}
+            events_execute_calls = {"n": 0}
+
+            def table_side_effect(name):
+                if name in table_chains:
+                    return table_chains[name]
+
+                chain = _make_chain_mock()
+                if name == "stripe_webhook_events":
+                    def execute_side_effect():
+                        events_execute_calls["n"] += 1
+                        if not replay:
+                            return Mock(data=[{"id": "evt_pi_succeeded_718"}])
+                        if events_execute_calls["n"] == 1:
+                            return Mock(data=[])
+                        return Mock(data=[{
+                            "id": "evt_pi_succeeded_718",
+                            "status": "completed",
+                            "received_at": None,
+                        }])
+
+                    chain.execute = Mock(side_effect=execute_side_effect)
+
+                table_chains[name] = chain
+                return chain
+
+            sb.table = Mock(side_effect=table_side_effect)
+            sb._table_chains = table_chains
+            return sb
+
+        first_sb = make_sb(replay=False)
+        replay_sb = make_sb(replay=True)
+        mock_get_sb.side_effect = [first_sb, replay_sb]
+
+        first_result = await stripe_webhook(mock_request)
+        replay_result = await stripe_webhook(mock_request)
+
+        assert first_result["status"] == "success"
+        assert replay_result["status"] == "already_processed"
+        assert {
+            call.args[0] for call in first_sb.table.call_args_list
+        } == {"stripe_webhook_events"}
+        assert {
+            call.args[0] for call in replay_sb.table.call_args_list
+        } == {"stripe_webhook_events"}
+
 
 # ──────────────────────────────────────────────────────────────────────
 # Event Handler Routing
