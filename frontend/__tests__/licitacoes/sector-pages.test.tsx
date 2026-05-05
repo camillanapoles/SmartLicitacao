@@ -311,7 +311,7 @@ describe('Meta tags structure (AC9, AC11)', () => {
   it('title follows pattern for each sector', () => {
     SECTORS.forEach((s) => {
       const title = `Editais de ${s.name} 2026 — Para sua Empresa | SmartLic`;
-      expect(title.length).toBeLessThan(100);
+      expect(title.length).toBeLessThanOrEqual(91);
       expect(title).toContain(s.name);
     });
   });
