@@ -36,7 +36,8 @@ class CreatePartnerRequest(BaseModel):
     contact_email: str
     contact_name: Optional[str] = None
     stripe_coupon_id: Optional[str] = None
-    revenue_share_pct: float = 25.00
+    # Canonical partner commercial policy lives in docs/adr/partner-program.md.
+    revenue_share_pct: float = 20.00
 
 
 # ── Admin guard helper ────────────────────────────────────────────────────────

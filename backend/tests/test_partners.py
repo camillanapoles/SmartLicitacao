@@ -353,6 +353,8 @@ class TestPartnerRoutes:
             assert res.status_code == 201
             data = res.json()
             assert data["slug"] == "new-partner"
+            mock_create.assert_awaited_once()
+            assert mock_create.await_args.kwargs["revenue_share_pct"] == 20.00
 
             app.dependency_overrides.clear()
 

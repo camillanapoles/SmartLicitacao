@@ -3313,7 +3313,7 @@
             "type": "string"
           },
           "revenue_share_pct": {
-            "default": 25.0,
+            "default": 20.0,
             "title": "Revenue Share Pct",
             "type": "number"
           },

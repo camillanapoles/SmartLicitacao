@@ -143,14 +143,16 @@ async def create_partner_referral(
     if not partner_id:
         return None  # User not referred by any partner
 
-    # Get partner's revenue share percentage
+    # Partner commercial policy is documented in docs/adr/partner-program.md.
+    # Existing rows keep explicit negotiated values; missing legacy values use
+    # the current canonical default.
     partner_result = await sb_execute(
         sb.table("partners")
         .select("revenue_share_pct")
         .eq("id", partner_id)
         .single()
     )
-    share_pct = float((partner_result.data or {}).get("revenue_share_pct", 25.00))
+    share_pct = float((partner_result.data or {}).get("revenue_share_pct", 20.00))
     share_amount = round(monthly_revenue * share_pct / 100, 2)
 
     # Upsert referral (idempotent — handles duplicate webhooks)
@@ -359,11 +361,12 @@ async def create_partner(
     contact_email: str,
     contact_name: Optional[str] = None,
     stripe_coupon_id: Optional[str] = None,
-    revenue_share_pct: float = 25.00,
+    revenue_share_pct: float = 20.00,
 ) -> dict:
     """Create a new partner.
 
     AC11: Used by POST /v1/admin/partners.
+    Default commission follows docs/adr/partner-program.md.
     """
     sb = get_supabase()
     result = await sb_execute(
