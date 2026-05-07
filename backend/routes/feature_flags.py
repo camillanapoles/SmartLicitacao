@@ -219,6 +219,8 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     # Datalake Search Improvements
     "TRIGRAM_FALLBACK_ENABLED": "Trigram fallback for datalake search (STORY-437)",
     "EMBEDDING_ENABLED": "Semantic embedding search for datalake (STORY-438)",
+    # Founders Offer
+    "FOUNDERS_OFFER_ENABLED": "Kill switch for the Founders lifetime offer (epic:fundadores — BIZ-FOUND-002)",
 }
 
 
@@ -284,6 +286,8 @@ _FLAG_LIFECYCLE: dict[str, dict] = {
     "TRIGRAM_FALLBACK_ENABLED": {"owner": "search", "category": "search", "lifecycle": "experimental", "created": "2026-03"},
     # STORY-438: Semantic embeddings
     "EMBEDDING_ENABLED": {"owner": "search", "category": "search", "lifecycle": "experimental", "created": "2026-03"},
+    # BIZ-FOUND-002: Founders lifetime offer kill switch
+    "FOUNDERS_OFFER_ENABLED": {"owner": "billing", "category": "founding", "lifecycle": "temporary", "created": "2026-05"},
 }
 
 

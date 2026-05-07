@@ -232,6 +232,23 @@ async def founding_availability(response: Response) -> Any:
     countdown and the X/50 seat counter. Falls open with ``available=False``
     on transient DB error so the CTA is disabled rather than over-selling.
     """
+    from config.features import get_feature_flag
+
+    if not get_feature_flag("FOUNDERS_OFFER_ENABLED"):
+        return FoundingAvailabilityResponse(
+            available=False,
+            seats_total=0,
+            seats_remaining=0,
+            seats_taken=0,
+            deadline_at=None,
+            paused=False,
+            reason="founders_offer_disabled",
+            coupon_code="",
+            discount_pct=0,
+            offer_mode="lifetime",
+            price_brl_cents=99700,
+        )
+
     sb = get_supabase()
     snapshot = await _run_with_budget(
         asyncio.to_thread(_check_availability, sb),
@@ -286,6 +303,17 @@ async def founding_checkout(
       update it. The webhook also re-checks availability for race guard
       (handled in webhooks.handlers.founding).
     """
+    from config.features import get_feature_flag
+
+    if not get_feature_flag("FOUNDERS_OFFER_ENABLED"):
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "message": "Oferta Fundadores encerrada.",
+                "error_code": "founders_offer_disabled",
+            },
+        )
+
     import stripe as stripe_lib
 
     stripe_key = os.getenv("STRIPE_SECRET_KEY")
