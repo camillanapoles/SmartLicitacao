@@ -193,7 +193,9 @@ describe("Email confirmation flow — 5-minute timeout", () => {
     // (b) Reenviar email
     expect(screen.getByTestId("dead-end-resend")).toBeInTheDocument();
     // (c) Falar com suporte
-    expect(screen.getByTestId("dead-end-support")).toBeInTheDocument();
+    const supportLink = screen.getByTestId("dead-end-support");
+    expect(supportLink).toBeInTheDocument();
+    expect(supportLink).toHaveAttribute("href", "mailto:tiago@smartlic.tech");
   });
 
   it("modal closes on ESC key", async () => {
