@@ -3064,12 +3064,19 @@ export interface paths {
         put?: never;
         /**
          * Founding Checkout
-         * @description Create a founding-customer Stripe Checkout Session with the canonical coupon applied.
+         * @description Create a founding-customer Stripe Checkout Session (v2 one-time payment).
          *
          *     BIZ-FOUND-002 gate:
          *     - Calls ``check_founding_availability()`` BEFORE creating the lead row.
          *     - On ``available=false`` returns 410 Gone with structured ``error_code`` +
          *       ``error_reason`` so the frontend can render the right copy.
+         *
+         *     #783 changes:
+         *     - Uses ``mode='payment'`` (one-time) with ``FOUNDING_ONE_TIME_PRICE_ID``.
+         *     - Accepts ``card`` and ``boleto`` payment methods.
+         *     - No coupon / discounts applied.
+         *     - Expanded metadata: ``offer_version``, ``offer_mode``, ``price_brl_cents``,
+         *       ``checkout_source`` (resolved from ``src`` or ``utm_source`` query param).
          *
          *     Side effects (when available):
          *     - Inserts a ``founding_leads`` row with ``checkout_status='pending'``.
