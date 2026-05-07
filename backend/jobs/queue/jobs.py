@@ -9,6 +9,47 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+async def send_founders_welcome(ctx: dict, user_email: str, user_name: str) -> dict:
+    """ARQ job: send founders welcome email + record is_founder in Mixpanel.
+
+    Idempotency is enforced inside send_founders_welcome_email() via
+    founding_leads.welcome_sent_at — safe to enqueue more than once.
+
+    Args:
+        ctx: ARQ worker context (unused, kept for ARQ signature compatibility).
+        user_email: Founder email address (key in founding_leads).
+        user_name: Display name from profiles.full_name or email prefix.
+
+    Returns:
+        Dict with status and email_id.
+    """
+    logger.info("send_founders_welcome: start email=%s", user_email)
+    try:
+        from email_service import send_founders_welcome_email
+
+        email_id = send_founders_welcome_email(user_email=user_email, user_name=user_name)
+    except Exception as exc:
+        logger.error("send_founders_welcome: email send failed email=%s: %s", user_email, exc)
+        return {"status": "error", "error": str(exc), "email_id": None}
+
+    # Mixpanel people.set — best-effort, never blocks the job
+    try:
+        import os
+        if os.getenv("MIXPANEL_TOKEN", "").strip():
+            from analytics_events import set_user_profile
+
+            set_user_profile(user_email, {"is_founder": True, "plan": "founders"})
+    except Exception as exc:
+        logger.warning("send_founders_welcome: Mixpanel people.set failed: %s", exc)
+
+    if email_id:
+        logger.info("send_founders_welcome: sent email_id=%s email=%s", email_id, user_email)
+        return {"status": "sent", "email_id": email_id}
+
+    logger.info("send_founders_welcome: skipped (already sent or no lead) email=%s", user_email)
+    return {"status": "skipped", "email_id": None}
+
+
 async def llm_summary_job(ctx: dict, search_id: str, licitacoes: list, sector_name: str, termos_busca: str | None = None, **kwargs) -> dict:
     from middleware import search_id_var, request_id_var
     search_id_var.set(search_id)
