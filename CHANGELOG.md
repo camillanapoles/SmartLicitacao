@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Tests
+- **Idempotência payment_intent.succeeded + runbook ops Intel Reports (#718)** — `TestIdempotency::test_payment_intent_succeeded_replay_is_deduped_before_delivery` verifica que replay do mesmo event-id retorna `already_processed` sem tocar tabelas de purchase/subscription. Documenta guardrails para implementação futura de one-time purchases em `purchases` table. Runbook em `docs/runbooks/issue-718-intel-reports-ops-validation.md`.
+
 ### Added — Frontend / GTM
 - **CTA de trial em /observatorio (#619)** — `ObservatorioCTA` client component adicionado ao hub do observatório. Usuários não autenticados veem link `/signup?ref=observatorio-hub`; autenticados veem link `/buscar`. Empty-state de relatórios agora inclui link ativo para `/licitacoes`.
 
