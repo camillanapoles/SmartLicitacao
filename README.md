@@ -121,9 +121,9 @@ SaaS with 14-day free trial, no credit card required.
 | **Backend** | FastAPI 0.136 · Python 3.12 · Pydantic 2.12 · httpx |
 | **AI / LLM** | GPT-4.1-nano (classification + summaries) |
 | **Queue** | ARQ 0.26+ · Redis (cache · circuit breaker · SSE · rate limiter) |
-| **Database** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) · 183 migrations · 48 tables |
+| **Database** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) |
 | **Frontend** | Next.js 16.1 · React 18.3 · TypeScript 5.9 · Tailwind CSS 3.4 |
-| **Billing** | Stripe 11.4 · 12 webhook events |
+| **Billing** | Stripe 11.4 |
 | **Infra** | Railway · Supabase Cloud · Redis · GitHub Actions CI/CD |
 | **Observability** | Prometheus · OpenTelemetry · Sentry · Mixpanel |
 
@@ -158,7 +158,7 @@ For **investment, partnership, data licensing, or white-label** inquiries, reach
 
 Conecta-se às principais fontes oficiais do governo brasileiro — **PNCP (Portal Nacional de Contratações Públicas)**, **ComprasGov** e **Portal de Compras Públicas** — e aplica IA para classificar editais por setor econômico, avaliar viabilidade e entregar inteligência comercial acionável.
 
-**Produção:** https://smartlic.tech | **Versão:** v0.5 (beta com trials pagos) | **Backend:** 187 endpoints · 65 módulos | **Frontend:** 25 páginas + 10 mil+ páginas SEO programático
+**Produção:** https://smartlic.tech | **Versão:** v0.5 (beta com trials pagos) | **Backend:** 187 endpoints | **Frontend:** 25 páginas + 10 mil+ páginas SEO programático
 
 ---
 
@@ -179,7 +179,7 @@ Monitore editais, prazos de habilitação, modalidades (pregão eletrônico, dis
 Integre via API os dados consolidados de PNCP + ComprasGov + PCP v2 — 1,5 milhão de editais indexados com deduplicação, classificação setorial e avaliação de viabilidade já processados. Evite construir e manter crawlers próprios.
 
 #### Govtechs e civic-techs
-Construa sobre uma infraestrutura de dados públicos já operacional: ingestão ETL diária, full-text search em PostgreSQL, 183 migrações versionadas, API pública de observatório municipal e setorial.
+Construa sobre uma infraestrutura de dados públicos já operacional: ingestão ETL diária, full-text search em PostgreSQL e API pública de observatório municipal e setorial.
 
 #### Portais de transparência, observatórios e órgãos de controle
 Use os endpoints públicos de observatório (`/observatorio`, `/indice-municipal`, `/cnpj`, `/compliance`) para construir painéis de transparência, monitoramento de fornecedores e alertas. Compatível com Tribunais de Contas, Controladorias e Ministérios Públicos.
@@ -281,9 +281,9 @@ flowchart LR
 | **Backend** | FastAPI 0.136 · Python 3.12 · Pydantic 2.12 · httpx · OpenAI SDK 1.109 |
 | **IA / LLM** | GPT-4.1-nano (classificação setorial + resumos executivos) |
 | **Filas** | ARQ 0.26+ · Redis (cache · circuit breaker · SSE · rate limiter · locks distribuídos) |
-| **Banco de dados** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) · 183 migrações · 48 tabelas · 13+ RPCs |
+| **Banco de dados** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) |
 | **Frontend** | Next.js 16.1 · React 18.3 · TypeScript 5.9 · Tailwind CSS 3.4 · Framer Motion · @dnd-kit |
-| **Billing** | Stripe 11.4 (12 eventos webhook) · Resend (e-mail transacional) |
+| **Billing** | Stripe 11.4 · Resend (e-mail transacional) |
 | **Infra** | Railway (web + worker + frontend) · Supabase Cloud · Redis · GitHub Actions |
 | **Observabilidade** | Prometheus · OpenTelemetry · Sentry · Mixpanel |
 
@@ -327,22 +327,22 @@ cp .env.example .env
 # SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, REDIS_URL, etc.
 ```
 
-Veja [.env.example](.env.example) para a lista completa de 70+ variáveis documentadas.
+Veja [.env.example](.env.example) para a lista completa de variáveis de ambiente.
 
 ---
 
 ### Testes
 
 ```bash
-# Backend (454 arquivos, 5.131+ aprovados)
+# Backend (5.131+ testes aprovados)
 cd backend
 pytest --timeout=30
 
-# Frontend (376 arquivos, 2.681+ aprovados)
+# Frontend (2.681+ testes aprovados)
 cd frontend
 npm test
 
-# E2E Playwright (60 fluxos críticos de usuário)
+# E2E Playwright
 cd frontend
 npm run test:e2e
 ```
@@ -386,7 +386,7 @@ Software proprietário. Para propostas de **parceria, integração, licenciament
 
 Connects to Brazil's official procurement sources — **PNCP (National Public Procurement Portal)**, **ComprasGov**, and **Portal de Compras Públicas** — and applies AI to classify bids by economic sector, assess viability, and deliver actionable commercial intelligence.
 
-**Production:** https://smartlic.tech | **Version:** v0.5 (beta with paid trials) | **Backend:** 187 endpoints · 65 modules | **Frontend:** 25 pages + 10k+ programmatic SEO pages
+**Production:** https://smartlic.tech | **Version:** v0.5 (beta with paid trials) | **Backend:** 187 endpoints | **Frontend:** 25 pages + 10k+ programmatic SEO pages
 
 ---
 
@@ -407,7 +407,7 @@ Monitor bids, qualification deadlines, procurement modalities (electronic biddin
 Integrate via API the consolidated data from PNCP + ComprasGov + PCP v2 — 1.5M indexed bids with deduplication, sector classification, and viability scoring already processed. Avoid building and maintaining your own crawlers.
 
 #### Govtechs and civic-techs
-Build on top of an already operational public data infrastructure: daily ETL ingestion, PostgreSQL full-text search, 183 versioned migrations, and a public observatory API for municipal and sector-level data.
+Build on top of an already operational public data infrastructure: daily ETL ingestion, PostgreSQL full-text search, and a public observatory API for municipal and sector-level data.
 
 #### Transparency portals, observatories, and oversight bodies
 Use public endpoints (`/observatorio`, `/indice-municipal`, `/cnpj`, `/compliance`) to build transparency dashboards, supplier monitoring tools, risk indices, and contract anomaly alerts. Suitable for Courts of Audit, Internal Control Bodies, and Public Ministries.
@@ -451,9 +451,9 @@ Full source of a production B2G platform: DataLake with 3.5M+ records, AI classi
 | **Backend** | FastAPI 0.136 · Python 3.12 · Pydantic 2.12 · httpx · OpenAI SDK 1.109 |
 | **AI / LLM** | GPT-4.1-nano (sector classification + executive summaries) |
 | **Queues** | ARQ 0.26+ · Redis (cache · circuit breaker · SSE · rate limiter · distributed locks) |
-| **Database** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) · 183 migrations · 48 tables · 13+ RPCs |
+| **Database** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) |
 | **Frontend** | Next.js 16.1 · React 18.3 · TypeScript 5.9 · Tailwind CSS 3.4 · Framer Motion · @dnd-kit |
-| **Billing** | Stripe 11.4 (12 webhook events) · Resend (transactional email) |
+| **Billing** | Stripe 11.4 · Resend (transactional email) |
 | **Infra** | Railway (web + worker + frontend) · Supabase Cloud · Redis · GitHub Actions |
 | **Observability** | Prometheus · OpenTelemetry · Sentry · Mixpanel |
 
@@ -483,13 +483,13 @@ cp .env.example .env
 ### Tests
 
 ```bash
-# Backend (454 files, 5,131+ passing)
+# Backend
 cd backend && pytest --timeout=30
 
-# Frontend (376 files, 2,681+ passing)
+# Frontend
 cd frontend && npm test
 
-# E2E Playwright (60 critical user flows)
+# E2E Playwright
 cd frontend && npm run test:e2e
 ```
 
