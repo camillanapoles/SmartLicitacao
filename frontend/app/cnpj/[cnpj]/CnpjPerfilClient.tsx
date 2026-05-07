@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
+import { ViabilityVerdict } from '@/components/ViabilityVerdict';
 
 interface Contrato {
   orgao: string;
@@ -77,10 +78,28 @@ const SCORE_CONFIG = {
   },
 } as const;
 
+/**
+ * REPO-013 (#765): Map categorical B2G score → numeric ViabilityVerdict score (0-10).
+ *
+ * Mapping rationale:
+ *   ATIVO      → 8  (PARTICIPAR): empresa ativa, histórico de contratos governamentais
+ *   INICIANTE  → 5  (AVALIAR):    empresa com algum histórico, potencial mas inexperiente
+ *   SEM_HISTORICO → null (não renderiza): sem histórico não implica inviabilidade;
+ *                   copy da página já explica o ponto de partida positivamente.
+ */
+const SCORE_TO_VIABILITY: Record<string, number | null> = {
+  ATIVO: 8,
+  INICIANTE: 5,
+  SEM_HISTORICO: null,
+};
+
 export default function CnpjPerfilClient({ perfil }: { perfil: PerfilB2G }) {
   const { empresa, contratos, score, setor_nome, editais_abertos_setor, editais_amostra, total_contratos_24m, valor_total_24m, ufs_atuacao, aviso_legal } = perfil;
 
   const scoreConfig = SCORE_CONFIG[score as keyof typeof SCORE_CONFIG] || SCORE_CONFIG.SEM_HISTORICO;
+
+  // REPO-013: derive numeric viability score from categorical B2G score
+  const viabilityScore: number | null = SCORE_TO_VIABILITY[score] ?? null;
 
   const ctaRef = `ref=cnpj&setor=${perfil.setor_detectado}&uf=${empresa.uf}`;
 
@@ -177,6 +196,13 @@ export default function CnpjPerfilClient({ perfil }: { perfil: PerfilB2G }) {
           <p className="text-sm text-gray-500 mt-1">Editais abertos (setor/UF)</p>
         </div>
       </div>
+
+      {/* REPO-013 (#765): Algorithmic viability verdict — only when score is mappable */}
+      {viabilityScore !== null && (
+        <div className="mb-8">
+          <ViabilityVerdict score={viabilityScore} compact />
+        </div>
+      )}
 
       {/* Inline CTA mid-page */}
       <div className="my-6 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
