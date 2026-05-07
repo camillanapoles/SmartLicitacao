@@ -21,6 +21,7 @@ import {
   type ROIInputs,
 } from '@/lib/copy/roi';
 import Footer from '../components/Footer';
+import PricingComparisonTable from '@/components/pricing/PricingComparisonTable';
 
 const SMARTLIC_PRO_PRICE = 397;
 
@@ -234,6 +235,19 @@ export default function PricingPage() {
               {ROI_DISCLAIMER}
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Fundadores vs Pro Comparison */}
+      <section className="py-20 bg-surface-0">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-[var(--ink)] mb-4 text-center">
+            Compare os planos
+          </h2>
+          <p className="text-center text-[var(--ink-secondary)] mb-10">
+            Escolha o modelo que faz sentido para o momento da sua empresa.
+          </p>
+          <PricingComparisonTable />
         </div>
       </section>
 
