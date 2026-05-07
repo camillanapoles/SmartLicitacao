@@ -155,28 +155,18 @@ def _is_duplicate_storage_error(exc: Exception) -> bool:
     return any(token in message for token in ("already exists", "duplicate", "exists"))
 
 
-async def _upload_intel_report_pdf(db: Any, purchase_id: str, pdf_bytes: bytes) -> str:
+async def _upload_intel_report_pdf(db: Any, purchase_id: str, user_id: str, pdf_bytes: bytes) -> str:
+    """Upload PDF to Storage at {user_id}/{purchase_id}.pdf and return a 30-day signed URL.
+
+    Path structure aligns with the Storage RLS policy that allows authenticated
+    users to SELECT only files under their own {user_id}/ prefix
+    (migration 20260507110000_create_intel_reports_bucket.sql).
+    """
     def _upload_and_sign() -> str:
         storage = db.storage
-        try:
-            buckets = storage.list_buckets()
-            bucket_names = [
-                getattr(bucket, "name", None) if not isinstance(bucket, dict) else bucket.get("name")
-                for bucket in (buckets or [])
-            ]
-            if INTEL_REPORT_BUCKET not in bucket_names:
-                storage.create_bucket(
-                    INTEL_REPORT_BUCKET,
-                    options={
-                        "public": False,
-                        "file_size_limit": 50 * 1024 * 1024,
-                    },
-                )
-        except Exception as exc:
-            logger.debug("Intel Report bucket ensure skipped: %s", exc)
-
         bucket = storage.from_(INTEL_REPORT_BUCKET)
-        path = f"{purchase_id}.pdf"
+        # Folder prefix ensures RLS policy "users_read_own_intel_reports" works correctly.
+        path = f"{user_id}/{purchase_id}.pdf"
         try:
             bucket.upload(
                 path=path,
@@ -305,7 +295,7 @@ async def generate_intel_report(ctx: dict, purchase_id: str) -> dict:
             product_type=product_type,
             pdf_size_bytes=len(pdf_bytes),
         )
-        signed_url = await _upload_intel_report_pdf(db, purchase_id, pdf_bytes)
+        signed_url = await _upload_intel_report_pdf(db, purchase_id, purchase.get("user_id", ""), pdf_bytes)
 
         await _update_intel_report_purchase(
             db,
@@ -379,6 +369,47 @@ async def generate_intel_report(ctx: dict, purchase_id: str) -> dict:
             "refunded": refunded,
             "error": str(exc),
         }
+
+
+async def send_founders_welcome(ctx: dict, user_email: str, user_name: str) -> dict:
+    """ARQ job: send founders welcome email + record is_founder in Mixpanel.
+
+    Idempotency is enforced inside send_founders_welcome_email() via
+    founding_leads.welcome_sent_at — safe to enqueue more than once.
+
+    Args:
+        ctx: ARQ worker context (unused, kept for ARQ signature compatibility).
+        user_email: Founder email address (key in founding_leads).
+        user_name: Display name from profiles.full_name or email prefix.
+
+    Returns:
+        Dict with status and email_id.
+    """
+    logger.info("send_founders_welcome: start email=%s", user_email)
+    try:
+        from email_service import send_founders_welcome_email
+
+        email_id = send_founders_welcome_email(user_email=user_email, user_name=user_name)
+    except Exception as exc:
+        logger.error("send_founders_welcome: email send failed email=%s: %s", user_email, exc)
+        return {"status": "error", "error": str(exc), "email_id": None}
+
+    # Mixpanel people.set — best-effort, never blocks the job
+    try:
+        import os
+        if os.getenv("MIXPANEL_TOKEN", "").strip():
+            from analytics_events import set_user_profile
+
+            set_user_profile(user_email, {"is_founder": True, "plan": "founders"})
+    except Exception as exc:
+        logger.warning("send_founders_welcome: Mixpanel people.set failed: %s", exc)
+
+    if email_id:
+        logger.info("send_founders_welcome: sent email_id=%s email=%s", email_id, user_email)
+        return {"status": "sent", "email_id": email_id}
+
+    logger.info("send_founders_welcome: skipped (already sent or no lead) email=%s", user_email)
+    return {"status": "skipped", "email_id": None}
 
 
 async def llm_summary_job(ctx: dict, search_id: str, licitacoes: list, sector_name: str, termos_busca: str | None = None, **kwargs) -> dict:

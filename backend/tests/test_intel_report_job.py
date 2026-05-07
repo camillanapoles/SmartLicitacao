@@ -125,9 +125,10 @@ async def test_generate_intel_report_success_uploads_updates_ready_and_emails():
 
     assert result["status"] == "ready"
     assert db.purchases["purchase-001"]["status"] == "ready"
-    assert db.purchases["purchase-001"]["pdf_url"].startswith("https://storage.test/purchase-001.pdf")
+    # Path includes user_id prefix to align with Storage RLS policy (#824)
+    assert db.purchases["purchase-001"]["pdf_url"].startswith("https://storage.test/user-001/purchase-001.pdf")
     assert db.storage.bucket.upload_calls == [{
-        "path": "purchase-001.pdf",
+        "path": "user-001/purchase-001.pdf",
         "file": pdf_bytes,
         "file_options": {"content-type": "application/pdf", "upsert": "false"},
     }]
