@@ -2,6 +2,11 @@
  * STORY-BIZ-001: founding customer checkout proxy.
  * No auth required — called from the public /founding landing.
  * Backend enforces rate-limiting, CNPJ validation, and duplicate-email check.
+ *
+ * Analytics: trackFoundersCheckoutStart should be called on the CLIENT SIDE
+ * in the form submit handler (before calling this route), not here.
+ * See: frontend/lib/analytics/founders.ts → trackFoundersCheckoutStart
+ * TODO: track founders_checkout_start on client side in form submit handler
  */
 import { createProxyRoute } from "../../../../lib/create-proxy-route";
 

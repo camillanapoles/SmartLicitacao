@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from log_sanitizer import get_sanitized_logger
+from metrics import founders_checkout_success, founders_checkout_failed
 
 logger = get_sanitized_logger(__name__)
 
@@ -329,8 +330,11 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
             lead_id = str(result.data[0]["id"])
 
         logger.info(f"Founding lead marked completed: session_id={sid} rows={updated}")
+        # Optimistic success counter — may be reverted by race guard below
+        founders_checkout_success.labels(offer_version="v2_lifetime").inc()
     except Exception as e:
         logger.error(f"Failed to mark founding lead completed: session_id={sid} err={e}")
+        founders_checkout_failed.labels(reason="db_error").inc()
         return
 
     # BIZ-FOUND-002 race guard — re-check availability AFTER the flip so the
@@ -367,6 +371,7 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
         f"{snapshot.get('seats_total', 0)} — initiating refund + email."
     )
 
+    founders_checkout_failed.labels(reason="cap_violated").inc()
     refunded = _refund_session_charge(session)
 
     try:
