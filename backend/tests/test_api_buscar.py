@@ -222,6 +222,28 @@ class TestBuscarFeatureFlagDisabled:
 class TestBuscarDateRangeValidation:
     """Test date range validation based on plan capabilities."""
 
+    def test_rejects_date_range_above_schema_limit_with_helpful_error(self):
+        """Should reject date ranges above 30 days before calling downstream services."""
+        cleanup = setup_auth_override("user-123")
+        try:
+            response = client.post(
+                "/v1/buscar",
+                json={
+                    "ufs": ["SC"],
+                    "data_inicial": "2026-01-01",
+                    "data_final": "2026-02-01",
+                    "setor_id": "vestuario",
+                },
+            )
+
+            assert response.status_code == 400
+            body = response.json()
+            assert body["error_code"] == "date_range_exceeded"
+            assert "limite máximo de 30 dias" in body["detail"]
+            assert "recebido: 31 dias" in body["detail"]
+        finally:
+            cleanup()
+
     @patch("routes.search.ENABLE_NEW_PRICING", True)
     @patch("quota.check_quota")
     @patch("quota.increment_monthly_quota")
@@ -276,7 +298,7 @@ class TestBuscarDateRangeValidation:
     @patch("quota.increment_monthly_quota")
     @patch("quota.save_search_session", new_callable=AsyncMock)
     @patch("routes.search.PNCPClient")
-    def test_accepts_full_range_for_sala_guerra(
+    def test_rejects_long_range_before_plan_capabilities(
         self,
         mock_pncp_client_class,
         mock_save_session,
@@ -284,7 +306,7 @@ class TestBuscarDateRangeValidation:
         mock_check_quota,
         mock_rate_limiter,
     ):
-        """Should accept up to 1825 days for Sala de Guerra plan."""
+        """BuscaRequest should enforce the 30-day PNCP safety limit for all plans."""
         cleanup = setup_auth_override("user-sala-guerra-test")
         try:
             from quota import QuotaInfo, PLAN_CAPABILITIES
@@ -307,7 +329,6 @@ class TestBuscarDateRangeValidation:
             mock_client_instance.fetch_all.return_value = []
             mock_increment_quota.return_value = 501
 
-            # 1000 days range (within 1825 days limit)
             response = client.post(
                 "/v1/buscar",
                 json={
@@ -318,7 +339,12 @@ class TestBuscarDateRangeValidation:
                 },
             )
 
-            assert response.status_code == 200
+            assert response.status_code == 400
+            body = response.json()
+            assert body["error_code"] == "date_range_exceeded"
+            assert "limite máximo de 30 dias" in body["detail"]
+            mock_check_quota.assert_not_called()
+            mock_pncp_client_class.assert_not_called()
         finally:
             cleanup()
 
@@ -1274,4 +1300,3 @@ class TestBuscarCustomSearchTerms:
                 assert stopword not in data["termos_utilizados"]
         finally:
             cleanup()
-

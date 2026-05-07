@@ -12,6 +12,21 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 
+def _validation_error_messages(exc: RequestValidationError) -> list[str]:
+    """Extract validation messages without leaking raw request input."""
+    messages: list[str] = []
+    for error in exc.errors():
+        ctx = error.get("ctx")
+        if isinstance(ctx, dict):
+            ctx_error = ctx.get("error")
+            if ctx_error is not None:
+                messages.append(str(ctx_error))
+        msg = error.get("msg")
+        if isinstance(msg, str):
+            messages.append(msg)
+    return messages
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Attach global exception handlers to *app*."""
 
@@ -19,6 +34,24 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         """AC9: Validation errors in Portuguese."""
         logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
+        messages = _validation_error_messages(exc)
+        date_range_message = next(
+            (
+                message
+                for message in messages
+                if "Intervalo de datas excede o limite máximo de 30 dias" in message
+            ),
+            None,
+        )
+        if date_range_message and request.url.path.endswith("/buscar"):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": date_range_message,
+                    "error_code": "date_range_exceeded",
+                },
+            )
+
         return JSONResponse(
             status_code=422,
             content={"detail": "Dados inválidos. Verifique os campos e tente novamente."},

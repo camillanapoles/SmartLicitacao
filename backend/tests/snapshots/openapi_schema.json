@@ -899,7 +899,7 @@
             "type": "boolean"
           },
           "data_final": {
-            "description": "End date in YYYY-MM-DD format",
+            "description": "End date in YYYY-MM-DD format. The date range may span at most 30 days.",
             "examples": [
               "2025-01-31"
             ],
@@ -908,7 +908,7 @@
             "type": "string"
           },
           "data_inicial": {
-            "description": "Start date in YYYY-MM-DD format",
+            "description": "Start date in YYYY-MM-DD format. The date range may span at most 30 days.",
             "examples": [
               "2025-01-01"
             ],

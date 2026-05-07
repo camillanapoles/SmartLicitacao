@@ -5573,13 +5573,13 @@ export interface components {
             check_sanctions: boolean;
             /**
              * Data Final
-             * @description End date in YYYY-MM-DD format
+             * @description End date in YYYY-MM-DD format. The date range may span at most 30 days.
              * @example 2025-01-31
              */
             data_final: string;
             /**
              * Data Inicial
-             * @description Start date in YYYY-MM-DD format
+             * @description Start date in YYYY-MM-DD format. The date range may span at most 30 days.
              * @example 2025-01-01
              */
             data_inicial: string;
