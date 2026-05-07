@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Backend / Tech Debt
+- **Validação de duplicatas de keywords por normalização em sectors_data.yaml (TD-BE-015 #210)** — `_validate_sector_keywords()` e `_check_list_for_duplicates()` adicionados a `backend/sectors.py`. Detecta keywords que colapsam para a mesma forma após `normalize_text()` (ex: "café" e "cafe"). Log de warnings apenas — nunca levanta exceção, nunca bloqueia startup. Checa `keywords`, `exclusions` e `context_required_keywords` por setor. 20 novos testes. Rollback: reverter commit.
+
 ### Added — Frontend / GTM
 - **Social proof de volume na landing e /planos (#627)** — `StatsClientIsland.tsx` ganhou linha de métricas de volume estática ("+2 milhões contratos · 27 estados · R$1k–R$500M+") abaixo dos contadores animados existentes. `StatsSection.tsx` espelha a linha no fallback noscript/SSR para SEO. `/planos` ganhou trust strip compacto acima do toggle de billing period. Dados factualmente ancorados no DataLake (`pncp_supplier_contracts` ~2M rows, `pncp_raw_bids` 27 UFs). Rollback: reverter commit `86b20bb00`.
 - **Intel Reports: CTA + checkout + polling + download (#632)** — `IntelReportCTA.tsx` client component em `/cnpj/[cnpj]` page (Server Component ISR). Proxies Next.js: `GET /api/intel-reports/` (lista), `POST /api/intel-reports/checkout`, `GET /api/intel-reports/[purchaseId]` (status), `GET /api/intel-reports/[purchaseId]/download` (PDF). Página de sucesso `/intel-reports/[sessionId]` com polling 3s × 40 iterações (120s max). Página de cancelamento `/intel-reports/cancelado`. Unauthenticated click → redirect `/signup?intent=intel_report`.
@@ -15,11 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — Backend / Health
 - **Check de conectividade OpenAI com cache 5min (TD-BE-025 #214)** — `check_openai_health()` em `health.py` usa `models.list(limit=1)` (sem tokens) para probar reachability da API. Cache em memória 300s evita overhead de quota. Integrado em `get_system_health()`: OpenAI degraded → status do sistema `degraded` (não unhealthy). Retorna `{status, latency_ms, cached}`. Tests em `test_health_openai.py` (4 cenários: ok, degraded, not_configured, cache).
 
+### Fixed — Backend / Security
+- **Rejeição de webhooks Stripe malformados antes do DB (#204)** — `_validate_event_envelope()` valida `event.id` (prefixo `evt_`), `event.type` e `event.data.object` logo após `construct_event()`. Payloads inválidos ou assinaturas forjadas retornam HTTP 400 sem tocar Supabase/idempotency. `_safe_log_value()` sanitiza todos os valores nos logs de webhook (bounded 80 chars, allowlist alnum). Logger rebaixado de `error` para `warning` em erros de validação. Rollback: reverter commit.
+- **Validação de termos de busca customizados (#212)** — `BuscaRequest.termos_busca` agora valida com allowlist conservadora pt-BR (letras latinas, dígitos, espaços, vírgulas e hífens). Rejeita payloads com `<`, `;`, `/`, `_` e similares. Limite `max_length=500`. Snapshot OpenAPI atualizado. Rollback: reverter commit.
+
 ### Fixed — Backend / Excel
 - **Logging estruturado e validação de tipos para geração de Excel (#180 TD-HP-003)** — `_validate_licitacoes_types()` em `excel.py` escaneia valores de dict antes de geração e loga warning para tipos não-serializáveis (observability-only, não raise). `pipeline/stages/generate.py`: `asyncio.to_thread(create_excel)` envolto em try/except; falha na geração define `excel_status='failed'` com log estruturado em vez de exception não tratada. `routes/sessions.py`: `create_excel` na rota de download envolto em try/except com HTTPException 500 acionável. 3 novos testes em `test_excel.py`.
 
 ### Added — SEO Admin
 - **GSC API sync + dashboard /admin/seo (STORY-SEO-005 #478)** — ARQ cron semanal (dom 06 UTC) sincroniza Google Search Console searchanalytics para `gsc_metrics` (Supabase). Dashboard `/admin/seo` ganhou seção "Query Analytics" com top queries, top pages por CTR e oportunidades CTR <1%. Graceful no-op se `GSC_SERVICE_ACCOUNT_JSON` ausente. Prometheus: `smartlic_gsc_sync_duration_seconds` + `smartlic_gsc_sync_rows_upserted_total`. Migration: `20260422120000_create_gsc_metrics.sql`.
+
+### Fixed — Analytics & Instrumentação
+- **CONV-INST-002: correção de shape dos eventos Mixpanel no signup (#606)** — event properties corrigidas para alinhar com spec AC1-AC4: `signup_form_rendered` ganha `rollout_branch`/`has_referral_code`/`source` (remove `fields_count`); `signup_field_blur` renomeia `field_name → field`, `is_filled → has_value`, adiciona `value_length` e `has_validation_error` (exceto campos `password`/`confirmPassword` onde `value_length` é omitido por privacidade LGPD — credential metadata não vai a analytics de terceiros); `signup_field_error` renomeia `field_name → field`, `error_type → error_code`, substitui `btoa()` (encoding reversível, risco PII) por `hashStr()` (hash hex determinístico 8 chars, sem dep externa); `signup_form_abandoned` substitui `fields_filled: number` por `fields_touched: string[]` + `has_errors: boolean`. **Breaking change Mixpanel:** queries salvas em `field_name`/`is_filled`/`fields_filled` devem ser atualizadas para os novos nomes.
 
 ### Added — Analytics & Instrumentação
 - **Clarity trial+onboarding tagging + first-analysis Mixpanel lifecycle (CONV-INST-005 #572)** — `claritySet('onboarding_step', 'N/3')` nos 3 steps do onboarding; `clarityEvent('trial_started')` + `claritySet('trial_started_at')` pós first-analysis 2xx; eventos Mixpanel `first_analysis_completed/empty/failed` no SSE handler com guard `useRef` anti-double-fire e `viability_high_count` (score ≥ 0.7); `claritySet('trial_days_remaining')` no `AnalyticsProvider` com null-skip para admins.
@@ -94,152 +104,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Repricing** (STORY-277) — R$1.999/mes → R$397/mes (mensal), R$357 (semestral), R$317 (anual)
 - **Trial duration** — 7 days → 30 days → 14 days (STORY-319: shorter trial converts better)
 - **Boleto + PIX** (STORY-280) — additional payment methods via Stripe
-
-### Documentation
-- **STORY-302** — Documentation + stale cleanup (this release)
-- Updated pricing across CLAUDE.md, PRD.md, README.md, system-architecture.md
-- Updated cost-analysis.md with new pricing margins
-
-### Testing
-- Backend: 169 test files, 5131+ tests passing, 0 failures
-- Frontend: 135 test files, 2681+ tests passing, 0 failures
-- E2E: 60 critical user flow tests
-
----
-
-## [0.5.1] - 2026-02-26 - GTM Quick Wins (STORY-284)
-
-### Fixed
-- **Email links** — `/precos` replaced with `/planos` in billing and quota email templates
-- **Help page** — Updated payment FAQ to reflect Boleto support and PIX status
-
-### Changed
-- **CSP documentation** — Documented `unsafe-eval`/`unsafe-inline` as accepted risk in `next.config.js`
-- **`.env.example`** — Added `SUPABASE_JWT_SECRET` with documentation
-
-### Removed
-- **Deprecated banners** — Removed `DegradationBanner`, `CacheBanner`, `OperationalStateBanner` (replaced by `DataQualityBanner`)
-
-### Verified
-- **SENTRY_DSN** — Confirmed active in Railway for both backend and frontend services
-
----
-
-## [0.5.0] - 2026-02-20 - GTM RESILIENCE COMPLETE
-
-### Added — Resilience & Observability
-- **Prometheus metrics exporter** — 11 metrics (histograms, counters, gauges) at `/metrics`
-- **OpenTelemetry distributed tracing** — spans across search pipeline, LLM, cache
-- **ARQ job queue** — background processing for LLM summaries and Excel generation
-- **User feedback loop** — thumbs up/down classification feedback with bi-gram analysis
-- **Viability assessment** — 4-factor scoring (modalidade, timeline, value_fit, geography)
-- **Confidence indicator** — per-result relevance confidence with source badges
-
-### Added — Cache Infrastructure
-- **Two-level cache** — InMemoryCache (4h) + Supabase (24h) with SWR pattern
-- **Hot/Warm/Cold priority** — dynamic cache tier classification with adaptive TTLs
-- **Background revalidation** — stale-while-revalidate with dedup and budget control
-- **Admin cache dashboard** — `/admin/cache` with metrics, inspection, invalidation
-- **Mixpanel analytics events** — fire-and-forget event tracking
-
-### Added — Classification Precision
-- **LLM zero-match classification** — GPT-4.1-nano binary YES/NO for 0-keyword bids
-- **Relevance source tagging** — keyword, llm_standard, llm_conservative, llm_zero_match
-- **Viability badges** — Alta/Media/Baixa with factor breakdown tooltips
-
-### Changed
-- **Search period** — 180 days reduced to 10 days (performance + relevance)
-- **PNCP page size** — 500 reduced to 50 (API limit change)
-- **Default LLM model** — gpt-4o-mini migrated to gpt-4.1-nano (33% cheaper)
-- **PCP integration** — migrated from v1 to v2 public API (no auth needed)
-- **Timeout chain** — fully realigned: FE(480s) > Pipeline(360s) > Consolidation(300s) > PerSource(180s)
-- **UF batching** — phased execution with PNCP_BATCH_SIZE=5, PNCP_BATCH_DELAY_S=2.0
-
-### Fixed
-- Datetime crash: tz-aware vs naive comparison in `filtrar_por_prazo_aberto()`
-- HTTP 422 added to retryable codes with body logging
-- Circuit breaker state tracking for degraded mode
-- Near-timeout-inversion detection with warnings
-
-### Testing
-- Backend: ~3966 tests passing (~34 pre-existing failures)
-- Frontend: ~1921 tests passing (~42 pre-existing failures)
-- 25 GTM-RESILIENCE stories completed (see `docs/gtm-resilience-summary.md`)
-
----
-
-## [0.4.0] - 2026-02-14 - GTM LAUNCH PHASE
-
-### Added
-- **Single subscription model** — SmartLic Pro (3 billing periods, repriced to R$397/mo in v0.5.1)
-- **Onboarding wizard** — 3-step CNAE-based sector mapping with auto-search
-- **Trial conversion flow** — TrialConversionScreen, TrialExpiringBanner, TrialCountdown
-- **Multi-source search** — PNCP + PCP (Portal de Compras Publicas) consolidated results
-- **15 industry sectors** — configurable keyword sets per sector
-- **SSE progress tracking** — real-time per-UF search progress via Server-Sent Events
-- **Pipeline management** — opportunity pipeline with drag-and-drop columns
-
-### Changed
-- Rebranded from BidIQ Uniformes to SmartLic
-- Frontend migrated from Vercel to Railway
-- Production URL: https://smartlic.tech
-
----
-
-## [0.3.0] - 2026-02-03 - MULTI-SECTOR EXPANSION
-
-### Added
-- Plan restructuring (STORY-165) — pricing tiers with Stripe integration
-- Signup with WhatsApp consent
-- Institutional login/signup redesign
-- Landing page redesign with value proposition
-- Lead prospecting module
-- Intelligent keyword filtering with LLM arbiter
-- Google Sheets export
-
-### Testing
-- Backend: ~3300 tests
-- Frontend: ~1700 tests
-
----
-
-## [0.2.0] - 2026-01-28 - PRODUCTION RELEASE
-
-### Deployed
-- **Frontend:** Railway (was Vercel)
-- **Backend:** Railway
-
-### Added
-- Production deployment on Railway
-- E2E test suite with Playwright (25 tests)
-- Automated CI/CD pipeline with GitHub Actions
-- Health check endpoints for monitoring
-
-### Testing
-- Backend coverage: 99.2% (226 tests passing)
-- Frontend coverage: 91.5% (94 tests passing)
-- E2E tests: 25/25 passing
-
----
-
-## [0.1.0] - 2026-01-25 - MVP COMPLETE
-
-### Added
-- Backend FastAPI implementation (PNCP client, filter, Excel, LLM)
-- Frontend Next.js implementation (UF selector, date picker, results, download)
-- Docker Compose setup for local development
-- Comprehensive test suites (226 backend + 94 frontend tests)
-
----
-
-## [0.0.1] - 2026-01-24 - Initial Setup
-
-### Added
-- Project structure and AIOS framework integration
-
----
-
-## Links
-
-- [GitHub Repository](https://github.com/tjsasakifln/PNCP-poc)
-- [Production](https://smartlic.tech)
