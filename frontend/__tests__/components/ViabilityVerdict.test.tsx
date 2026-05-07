@@ -4,7 +4,7 @@
  * Coverage:
  * - score → label auto-mapping (PARTICIPAR / AVALIAR / NÃO RECOMENDADO)
  * - explicit label prop override
- * - disclaimer rendered by default, hidden when disclaimer=false
+ * - disclaimer always present in full mode (non-removable per spec)
  * - compact mode: renders badge only (no reasons, no disclaimer)
  * - reasons: max 3 bullets rendered, 4th truncated
  * - score display format (X.X/10)
@@ -125,23 +125,13 @@ describe("score display", () => {
 // ─── Disclaimer ───────────────────────────────────────────────────────────────
 
 describe("disclaimer", () => {
-  it("renders disclaimer by default", () => {
+  it("always renders disclaimer in full mode (non-removable per spec)", () => {
     render(<ViabilityVerdict score={5} />);
     const disclaimer = screen.getByTestId("viability-verdict-disclaimer");
     expect(disclaimer).toBeInTheDocument();
     expect(disclaimer).toHaveTextContent(
       "Recomendação algorítmica baseada em dados públicos. Não substitui análise jurídica, técnica ou comercial final."
     );
-  });
-
-  it("renders disclaimer when disclaimer=true explicitly", () => {
-    render(<ViabilityVerdict score={5} disclaimer={true} />);
-    expect(screen.getByTestId("viability-verdict-disclaimer")).toBeInTheDocument();
-  });
-
-  it("hides disclaimer when disclaimer=false", () => {
-    render(<ViabilityVerdict score={5} disclaimer={false} />);
-    expect(screen.queryByTestId("viability-verdict-disclaimer")).not.toBeInTheDocument();
   });
 
   it("disclaimer has discrete text-xs text-zinc-500 styling", () => {

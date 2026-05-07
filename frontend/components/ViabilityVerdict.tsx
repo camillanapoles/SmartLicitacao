@@ -16,8 +16,6 @@ export interface ViabilityVerdictProps {
   label?: "PARTICIPAR" | "AVALIAR" | "NÃO RECOMENDADO";
   /** Supporting bullet points (max 3 rendered). */
   reasons?: string[];
-  /** Show advisory disclaimer. Defaults to true. */
-  disclaimer?: boolean;
   /** Compact mode: renders badge only (no reasons, no disclaimer). Defaults to false. */
   compact?: boolean;
 }
@@ -118,7 +116,6 @@ export function ViabilityVerdict({
   score,
   label,
   reasons,
-  disclaimer = true,
   compact = false,
 }: ViabilityVerdictProps): React.ReactElement {
   const resolvedLabel: VerdictLabel = label ?? scoreToLabel(score);
@@ -173,14 +170,12 @@ export function ViabilityVerdict({
         </ul>
       )}
 
-      {disclaimer && (
-        <p
-          data-testid="viability-verdict-disclaimer"
-          className="text-xs text-zinc-500 dark:text-zinc-500 leading-snug"
-        >
-          {DISCLAIMER_TEXT}
-        </p>
-      )}
+      <p
+        data-testid="viability-verdict-disclaimer"
+        className="text-xs text-zinc-500 dark:text-zinc-500 leading-snug"
+      >
+        {DISCLAIMER_TEXT}
+      </p>
     </div>
   );
 }
