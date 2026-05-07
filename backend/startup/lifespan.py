@@ -6,7 +6,6 @@ import os
 import signal
 import time
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI
 
@@ -104,71 +103,6 @@ async def _mark_inflight_sessions_timed_out() -> None:
         logger.error("CRIT-002 AC15: Timeout marking in-flight sessions (5s limit)")
     except Exception as e:
         logger.error(f"CRIT-002 AC15: Failed to mark in-flight sessions: {e}")
-
-
-async def _warmup_cnae_mapping() -> None:
-    """DATA-CNAE-002: Merge ``public.cnae_setores`` rows over the hardcoded
-    CNAE→setor baseline.
-
-    Non-fatal startup guard: any failure (DB unreachable, table missing,
-    PostgREST cache stale, permission denied) logs a WARNING and returns.
-    Lifespan continues with the hardcoded baseline (Gap-8 status quo) —
-    NEVER aborts startup.
-
-    Pattern mirrors :func:`_check_cache_schema` and the Supabase probe
-    further down in this module: every external call wrapped in try/except,
-    bounded by ``asyncio.wait_for`` so a slow query can't wedge startup.
-
-    Why this is the fix for the PR #679 → PR #702 revert:
-      * No daemon thread / Redis pubsub listener (#702 suspect #1)
-      * No ARQ cron registration (#702 suspect #2)
-      * Bare ``except Exception`` swallows PostgREST 404 / cache lag
-        (#702 suspect #3)
-      * Merge (not replace) on the in-memory dict so a failed warmup
-        leaves the hardcoded baseline intact for ``map_cnae_to_setor``.
-    """
-    timeout_s = float(os.getenv("CNAE_WARMUP_TIMEOUT_S", "5.0"))
-    try:
-        from utils import cnae_mapping
-
-        async def _do_load() -> Optional[dict]:
-            return await asyncio.to_thread(cnae_mapping.load_cnae_from_db)
-
-        rows = await asyncio.wait_for(_do_load(), timeout=timeout_s)
-        if rows is None:
-            logger.warning(
-                "DATA-CNAE-002: CNAE warmup returned None (DB load failed) — "
-                "continuing with hardcoded baseline (%d entries)",
-                len(cnae_mapping.CNAE_TO_SETOR),
-            )
-            return
-        if not rows:
-            logger.info(
-                "DATA-CNAE-002: cnae_setores table empty — using hardcoded "
-                "baseline (%d entries)",
-                len(cnae_mapping.CNAE_TO_SETOR),
-            )
-            return
-        before = len(cnae_mapping.CNAE_TO_SETOR)
-        cnae_mapping.CNAE_TO_SETOR.update(rows)
-        after = len(cnae_mapping.CNAE_TO_SETOR)
-        logger.info(
-            "DATA-CNAE-002: CNAE mapping warmed up — %d DB rows merged "
-            "(%d → %d entries total)",
-            len(rows), before, after,
-        )
-    except asyncio.TimeoutError:
-        logger.warning(
-            "DATA-CNAE-002: CNAE warmup timed out after %.1fs — "
-            "using hardcoded fallback (non-fatal)",
-            timeout_s,
-        )
-    except Exception as exc:
-        logger.warning(
-            "DATA-CNAE-002: CNAE warmup failed (%s: %s) — "
-            "using hardcoded fallback (non-fatal)",
-            type(exc).__name__, exc,
-        )
 
 
 _SATURATION_INTERVAL = 30
@@ -415,11 +349,6 @@ async def lifespan(app_instance: FastAPI):
         from redis_pool import is_redis_available
         _redis_status = "OK" if await is_redis_available() else "unavailable"
     logger.info("STARTUP GATE: Redis %s — setting ready=true", _redis_status)
-
-    # DATA-CNAE-002: Merge cnae_setores rows over hardcoded baseline.
-    # Non-fatal: any DB failure logs WARNING + falls back to hardcoded map.
-    # See _warmup_cnae_mapping for rationale (PR #679 → PR #702 revert).
-    await _warmup_cnae_mapping()
 
     _state.startup_time = time.monotonic()
 
