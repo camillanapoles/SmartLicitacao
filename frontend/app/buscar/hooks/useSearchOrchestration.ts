@@ -52,6 +52,8 @@ export function useSearchOrchestration() {
   const searchParamsRaw = useSearchParams();
   const isAutoSearch = searchParamsRaw?.get('auto') === 'true';
   const autoSearchId = searchParamsRaw?.get('search_id') || null;
+  const autoAnalysisCnae = searchParamsRaw?.get('cnae') || null;
+  const autoAnalysisUfs = searchParamsRaw?.get('ufs')?.split(',').filter(Boolean) ?? [];
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(isAutoSearch);
   const [autoSearchDismissed, setAutoSearchDismissed] = useState(false);
   const [shouldSearchAfterRestore, setShouldSearchAfterRestore] = useState(false);
@@ -154,7 +156,14 @@ export function useSearchOrchestration() {
   const clearResultRef = useRef<() => void>(() => {});
   const filters = useSearchFilters(() => clearResultRef.current());
   // AC4: pass auto-analysis flag so SSE handler fires first_analysis_* Mixpanel events
-  const search = useSearch({ ...filters, isAutoAnalysis: isAutoSearch });
+  const search = useSearch({
+    ...filters,
+    isAutoAnalysis: isAutoSearch,
+    autoAnalysisContext: {
+      ufs: autoAnalysisUfs,
+      cnae: autoAnalysisCnae,
+    },
+  });
   clearResultRef.current = () => search.setResult(null);
 
   // ── SSE / Backend Status / Progress ─────────────────────────────────

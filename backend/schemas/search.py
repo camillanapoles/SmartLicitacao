@@ -4,7 +4,7 @@ from datetime import date
 import unicodedata
 
 from pydantic import BaseModel, Field, model_validator, field_validator
-from typing import Dict, List, Literal, Optional, Union
+from typing import ClassVar, Dict, List, Literal, Optional, Union
 
 from schemas.common import (
     StatusLicitacao,
@@ -94,13 +94,13 @@ class BuscaRequest(BaseModel):
     data_inicial: str = Field(
         ...,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
-        description="Start date in YYYY-MM-DD format",
+        description="Start date in YYYY-MM-DD format. The date range may span at most 30 days.",
         examples=["2025-01-01"],
     )
     data_final: str = Field(
         ...,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
-        description="End date in YYYY-MM-DD format",
+        description="End date in YYYY-MM-DD format. The date range may span at most 30 days.",
         examples=["2025-01-31"],
     )
 
@@ -266,7 +266,8 @@ class BuscaRequest(BaseModel):
     # search_sessions.valor_total (PostgreSQL rejects anything with more than
     # 16 integer digits with SQLSTATE 22003). We keep one decade of headroom
     # vs. the column ceiling to avoid sum-overflow when aggregating many rows.
-    _VALOR_MAX_CEILING: float = 1e15  # R$ 1 quatrilhão
+    _VALOR_MAX_CEILING: ClassVar[float] = 1e15  # R$ 1 quatrilhão
+    _MAX_DATE_RANGE_DAYS: ClassVar[int] = 30
 
     @field_validator("valor_maximo", "valor_minimo")
     @classmethod
@@ -327,6 +328,14 @@ class BuscaRequest(BaseModel):
         if d_ini > d_fin:
             raise ValueError(
                 "Data inicial deve ser anterior ou igual à data final"
+            )
+
+        range_days = (d_fin - d_ini).days
+        if range_days > self._MAX_DATE_RANGE_DAYS:
+            raise ValueError(
+                "Intervalo de datas excede o limite máximo de 30 dias "
+                f"(recebido: {range_days} dias). "
+                "Reduza data_inicial/data_final e tente novamente."
             )
 
         # Value range validation

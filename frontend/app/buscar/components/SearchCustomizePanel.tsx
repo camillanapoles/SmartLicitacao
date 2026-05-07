@@ -158,6 +158,7 @@ export default function SearchCustomizePanel({
                   onClick={() => toggleUf(uf)}
                   type="button"
                   title={UF_NAMES[uf]}
+                  aria-label={`${ufsSelecionadas.has(uf) ? 'Remover' : 'Selecionar'} ${UF_NAMES[uf]}`}
                   aria-pressed={ufsSelecionadas.has(uf)}
                   className={`px-1.5 py-2.5 sm:px-4 sm:py-2 rounded-button border text-xs sm:text-base font-medium transition-all duration-200 min-h-[44px] ${
                     ufsSelecionadas.has(uf)

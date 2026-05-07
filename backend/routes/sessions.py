@@ -173,7 +173,25 @@ async def download_session_excel(
         f"results={len(results)} sector={sector_name}"
     )
 
-    excel_buf = create_excel(results)
+    try:
+        excel_buf = create_excel(results)
+    except Exception as exc:
+        logger.error(
+            "excel.generation_failed: grace-period download",
+            extra={
+                "search_id": search_id,
+                "user_id": user.get("id"),
+                "result_count": len(results),
+                "sample_item": results[0] if results else None,
+                "error": str(exc),
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Erro ao gerar Excel. Tente novamente.",
+        )
+
     filename = f"smartlic-{search_id[:8]}.xlsx"
     return StreamingResponse(
         io.BytesIO(excel_buf.getvalue()),

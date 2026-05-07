@@ -380,6 +380,24 @@ export default function PlanosPage() {
           </div>
         )}
 
+        {/* #627: Data-volume trust strip — defensible social proof based on monitored data volume */}
+        <div className="mb-8 flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-[var(--ink-secondary)]" data-testid="volume-trust-strip">
+          <span className="flex items-center gap-1.5">
+            <span className="font-semibold text-[var(--brand-navy)]">+2 milhões</span>
+            <span>contratos públicos monitorados</span>
+          </span>
+          <span className="hidden sm:inline text-[var(--border)]">·</span>
+          <span className="flex items-center gap-1.5">
+            <span className="font-semibold text-[var(--brand-navy)]">27 estados</span>
+            <span>cobertos em tempo real</span>
+          </span>
+          <span className="hidden sm:inline text-[var(--border)]">·</span>
+          <span className="flex items-center gap-1.5">
+            <span className="font-semibold text-[var(--brand-navy)]">R$ 1k – R$ 500M+</span>
+            <span>faixa de valor analisada</span>
+          </span>
+        </div>
+
         {/* Billing Period Toggle */}
         <div className="flex justify-center mb-8">
           <PlanToggle value={billingPeriod} onChange={setBillingPeriod} discounts={{ semiannual: proPricing.semiannual.discount, annual: proPricing.annual.discount }} />

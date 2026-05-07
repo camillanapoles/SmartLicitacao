@@ -9,6 +9,7 @@ Cobertura:
 - Edge cases (valores None, strings vazias)
 """
 
+import logging
 from contextlib import contextmanager
 from datetime import datetime
 from io import BytesIO
@@ -16,7 +17,7 @@ from io import BytesIO
 import pytest
 from openpyxl import load_workbook
 
-from excel import create_excel, parse_datetime, sanitize_for_excel
+from excel import create_excel, parse_datetime, sanitize_for_excel, _validate_licitacoes_types
 
 
 @contextmanager
@@ -696,3 +697,62 @@ class TestSanitizeForExcel:
         assert "AME SUL" in result
         assert "COMESP" in result
         assert "Ambulatório" in result
+
+
+class TestValidateLicitacoesTypes:
+    """Testes para _validate_licitacoes_types() — #180 TD-HP-003."""
+
+    def test_no_warning_for_safe_types(self, caplog):
+        """Não deve logar warning quando todos os valores são tipos seguros."""
+        licitacoes = [
+            {
+                "codigoCompra": "123",
+                "objetoCompra": "Uniformes",
+                "valorTotalEstimado": 50000.0,
+                "uf": None,
+                "status": True,
+            }
+        ]
+        with caplog.at_level(logging.WARNING, logger="excel"):
+            _validate_licitacoes_types(licitacoes)
+
+        assert "unexpected_type" not in caplog.text
+
+    def test_warning_emitted_for_unexpected_type(self, caplog):
+        """Deve logar warning quando um dict contém tipo não-serializável."""
+        class CustomObj:
+            pass
+
+        licitacoes = [
+            {
+                "codigoCompra": "123",
+                "metadados": CustomObj(),
+            }
+        ]
+        with caplog.at_level(logging.WARNING, logger="excel"):
+            _validate_licitacoes_types(licitacoes)
+
+        assert "unexpected_type" in caplog.text
+
+    def test_create_excel_with_unexpected_type_logs_warning_and_succeeds(self, caplog):
+        """create_excel deve logar warning para tipo inesperado mas ainda retornar BytesIO válido.
+
+        openpyxl/sanitize_for_excel coerce via str(), então geração continua.
+        """
+        class CustomObj:
+            def __str__(self):
+                return "custom-value"
+
+        licitacao = {
+            "codigoCompra": "TEST-001",
+            "objetoCompra": "Materiais",
+            "metadados": CustomObj(),
+        }
+        with caplog.at_level(logging.WARNING, logger="excel"):
+            result = create_excel([licitacao])
+
+        # Warning was logged
+        assert "unexpected_type" in caplog.text
+        # Generation still succeeded — result is a valid BytesIO
+        assert isinstance(result, BytesIO)
+        assert result.read(4) == b"PK\x03\x04"  # ZIP magic (xlsx)

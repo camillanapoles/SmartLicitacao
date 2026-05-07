@@ -48,6 +48,21 @@ export default function StatsSection({ className = '' }: StatsSectionProps) {
               </div>
             </div>
           </div>
+          {/* #627: Volume social proof row (noscript mirror) */}
+          <div className="mt-8 grid sm:grid-cols-3 gap-4">
+            <div className="text-center p-5 bg-brand-blue-subtle/30 rounded-card border border-brand-blue/20">
+              <div className="text-2xl sm:text-3xl font-bold text-brand-navy">+2 milh&#245;es</div>
+              <div className="text-sm text-ink-secondary mt-1">contratos p&#250;blicos monitorados</div>
+            </div>
+            <div className="text-center p-5 bg-brand-blue-subtle/30 rounded-card border border-brand-blue/20">
+              <div className="text-2xl sm:text-3xl font-bold text-brand-navy">27 estados</div>
+              <div className="text-sm text-ink-secondary mt-1">cobertos em tempo real</div>
+            </div>
+            <div className="text-center p-5 bg-brand-blue-subtle/30 rounded-card border border-brand-blue/20">
+              <div className="text-2xl sm:text-3xl font-bold text-brand-navy">R$ 1k &#8211; R$ 500M+</div>
+              <div className="text-sm text-ink-secondary mt-1">faixa de valor analisada</div>
+            </div>
+          </div>
         </section>
       </noscript>
 

@@ -344,27 +344,20 @@ async def stage_generate(pipeline, ctx: SearchContext) -> None:
                 "excel.input_count": len(ctx.licitacoes_filtradas),
             }) as excel_span:
                 logger.debug("Generating Excel report")
-                # STORY-290-patch: offload CPU-bound Excel generation to thread pool
-                excel_buffer = await asyncio.to_thread(deps.create_excel, ctx.licitacoes_filtradas)
-                excel_bytes = excel_buffer.read()
-
-                with optional_span(_tracer, "generate.upload"):
-                    # STORY-290-patch: offload sync storage upload to thread pool
-                    storage_result = await asyncio.to_thread(upload_excel, excel_bytes, ctx.request.search_id)
-
-                if storage_result:
-                    ctx.download_url = storage_result["signed_url"]
-                    logger.debug(
-                        f"Excel uploaded to storage: {storage_result['file_path']} "
-                        f"(signed URL valid for {storage_result['expires_in']}s)"
-                    )
-                    ctx.excel_base64 = None
-                    ctx.excel_status = "ready"
-                    excel_span.set_attribute("excel.status", "ready")
-                else:
+                try:
+                    # STORY-290-patch: offload CPU-bound Excel generation to thread pool
+                    excel_buffer = await asyncio.to_thread(deps.create_excel, ctx.licitacoes_filtradas)
+                    excel_bytes = excel_buffer.read()
+                except Exception as exc:
                     logger.error(
-                        "Excel storage upload failed — no fallback. "
-                        "Excel will be unavailable for this search."
+                        "excel.generation_failed: pipeline stage",
+                        extra={
+                            "search_id": ctx.request.search_id,
+                            "item_count": len(ctx.licitacoes_filtradas),
+                            "sample_item": ctx.licitacoes_filtradas[0] if ctx.licitacoes_filtradas else None,
+                            "error": str(exc),
+                        },
+                        exc_info=True,
                     )
                     ctx.excel_base64 = None
                     ctx.download_url = None
@@ -374,6 +367,33 @@ async def stage_generate(pipeline, ctx: SearchContext) -> None:
                     ctx.upgrade_message = (
                         "Erro temporário ao gerar Excel. Tente novamente em alguns instantes."
                     )
+                else:
+                    with optional_span(_tracer, "generate.upload"):
+                        # STORY-290-patch: offload sync storage upload to thread pool
+                        storage_result = await asyncio.to_thread(upload_excel, excel_bytes, ctx.request.search_id)
+
+                    if storage_result:
+                        ctx.download_url = storage_result["signed_url"]
+                        logger.debug(
+                            f"Excel uploaded to storage: {storage_result['file_path']} "
+                            f"(signed URL valid for {storage_result['expires_in']}s)"
+                        )
+                        ctx.excel_base64 = None
+                        ctx.excel_status = "ready"
+                        excel_span.set_attribute("excel.status", "ready")
+                    else:
+                        logger.error(
+                            "Excel storage upload failed — no fallback. "
+                            "Excel will be unavailable for this search."
+                        )
+                        ctx.excel_base64 = None
+                        ctx.download_url = None
+                        ctx.excel_available = False
+                        ctx.excel_status = "failed"
+                        excel_span.set_attribute("excel.status", "failed")
+                        ctx.upgrade_message = (
+                            "Erro temporário ao gerar Excel. Tente novamente em alguns instantes."
+                        )
         else:
             logger.debug("Excel generation skipped (not allowed for user's plan)")
             ctx.excel_status = "skipped"

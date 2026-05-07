@@ -1266,6 +1266,13 @@ smartlic_gsc_sync_rows_upserted_total = _create_counter(
     "Total rows upserted by the GSC weekly sync job",
 )
 
+# Issue #631: Intel Report background generation delivery funnel.
+INTEL_REPORT_GENERATED = _create_counter(
+    "smartlic_intel_report_generated_total",
+    "Intel Report generation outcomes by product type",
+    labelnames=["product_type", "status"],  # success | failed | refunded
+)
+
 # ============================================================================
 # MON-FN-005: Mixpanel init + health check failure counters
 # ============================================================================

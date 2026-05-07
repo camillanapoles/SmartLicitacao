@@ -27,6 +27,8 @@ import logging
 import os
 import time
 import threading
+from html import escape
+from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,8 @@ logger = logging.getLogger(__name__)
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "SmartLic <noreply@smartlic.tech>")
 EMAIL_ENABLED = os.getenv("EMAIL_ENABLED", "true").lower() in ("true", "1", "yes", "on")
+INTEL_REPORT_EMAIL_FROM = "SmartLic <tiago@smartlic.tech>"
+INTEL_REPORT_REPLY_TO = "tiago.sasaki@gmail.com"
 
 # Retry configuration
 MAX_RETRIES = 3
@@ -201,6 +205,7 @@ def send_email_async(
     tags: Optional[list[dict[str, str]]] = None,
     reply_to: Optional[str] = None,
     headers: Optional[dict[str, str]] = None,
+    from_email: Optional[str] = None,
 ) -> None:
     """
     Fire-and-forget email send in a background thread.
@@ -214,7 +219,15 @@ def send_email_async(
     """
     def _send():
         try:
-            send_email(to=to, subject=subject, html=html, tags=tags, reply_to=reply_to, headers=headers)
+            send_email(
+                to=to,
+                subject=subject,
+                html=html,
+                tags=tags,
+                reply_to=reply_to,
+                headers=headers,
+                from_email=from_email,
+            )
         except Exception as e:
             # Belt-and-suspenders: send_email already catches, but just in case
             logger.error(f"Async email send unexpected error: {e}")
@@ -320,3 +333,48 @@ def send_founders_welcome_email(user_email: str, user_name: str) -> Optional[str
             )
 
     return email_id
+
+
+def send_intel_report_ready(
+    user_email: str,
+    name: str,
+    pdf_url: str,
+    product_name: str,
+    purchase_id: str,
+) -> Optional[str]:
+    """Send the Intel Report ready transactional email.
+
+    This path waits for Resend's response so the ARQ job can report delivery
+    failures in logs/tests without requiring a real email service.
+    """
+    from templates.emails.base import FRONTEND_URL, email_base
+
+    template_path = Path(__file__).parent / "templates" / "emails" / "intel_report_ready.html"
+    body_html = template_path.read_text(encoding="utf-8").format(
+        name=escape(name or user_email.split("@")[0]),
+        product_name=escape(product_name),
+        pdf_url=escape(pdf_url, quote=True),
+        trial_url=escape(
+            f"{FRONTEND_URL}/signup?utm_source=intel_report&utm_medium=email"
+            f"&purchase_id={purchase_id}",
+            quote=True,
+        ),
+    )
+    html = email_base(
+        title="Seu Raio-X do Concorrente está pronto — SmartLic",
+        body_html=body_html,
+        is_transactional=True,
+    )
+
+    return send_email(
+        to=user_email,
+        subject="Seu Raio-X do Concorrente está pronto — SmartLic",
+        html=html,
+        reply_to=INTEL_REPORT_REPLY_TO,
+        from_email=INTEL_REPORT_EMAIL_FROM,
+        tags=[
+            {"name": "category", "value": "intel_report"},
+            {"name": "status", "value": "ready"},
+            {"name": "purchase_id", "value": purchase_id[:32]},
+        ],
+    )

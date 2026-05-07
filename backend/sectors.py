@@ -9,6 +9,7 @@ Sector data is loaded from sectors_data.yaml at startup.
 
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
@@ -136,6 +137,89 @@ class SectorConfig:
     zero_match_acceptance_cap: Optional[float] = None
 
 
+def _validate_sector_keywords(sectors_data: dict) -> list[str]:
+    """TD-BE-015: Validate sector keyword lists for normalization duplicates.
+
+    Applies the same ``normalize_text`` transformation used at query time to
+    every keyword entry and detects cases where two distinct raw strings
+    collapse to the same normalised form (e.g. "café" and "cafe", or
+    "boné" and "bone").  Such duplicates are silently harmless at runtime
+    (set membership deduplicates them) but indicate copy-paste errors in the
+    YAML that are worth surfacing early.
+
+    Checked fields per sector:
+      - ``keywords``
+      - ``exclusions``
+      - ``context_required_keywords`` (values are lists)
+
+    Args:
+        sectors_data: Raw dict loaded from sectors_data.yaml (must contain a
+            top-level ``sectors`` key).
+
+    Returns:
+        List of human-readable warning strings — one per duplicate found.
+        Empty list means no duplicates detected.
+    """
+    # Lazy import to avoid circular dependency: filter/ imports sectors.py
+    from filter.keywords import normalize_text  # noqa: PLC0415
+
+    warnings: list[str] = []
+
+    for sector_id, cfg in sectors_data.get("sectors", {}).items():
+        # --- keywords ---
+        raw_keywords: list[str] = cfg.get("keywords", [])
+        _check_list_for_duplicates(
+            raw_keywords, sector_id, "keywords", normalize_text, warnings
+        )
+
+        # --- exclusions ---
+        raw_exclusions: list[str] = cfg.get("exclusions", [])
+        _check_list_for_duplicates(
+            raw_exclusions, sector_id, "exclusions", normalize_text, warnings
+        )
+
+        # --- context_required_keywords (dict[str, list[str]]) ---
+        crk: dict[str, list[str]] = cfg.get("context_required_keywords", {})
+        for trigger_kw, ctx_list in crk.items():
+            _check_list_for_duplicates(
+                ctx_list,
+                sector_id,
+                f"context_required_keywords['{trigger_kw}']",
+                normalize_text,
+                warnings,
+            )
+
+    return warnings
+
+
+def _check_list_for_duplicates(
+    items: list[str],
+    sector_id: str,
+    field_name: str,
+    normalize_fn: "Callable[[str], str]",
+    warnings: list[str],
+) -> None:
+    """Append a warning for each pair of items that normalise to the same string.
+
+    Args:
+        items: Raw keyword list to inspect.
+        sector_id: Sector identifier (for warning messages).
+        field_name: Name of the field being checked (for warning messages).
+        normalize_fn: Normalisation function to apply to each item.
+        warnings: List to append warning strings to (mutated in-place).
+    """
+    seen: dict[str, str] = {}  # normalised → first raw value
+    for raw in items:
+        norm = normalize_fn(raw)
+        if norm in seen:
+            warnings.append(
+                f"Sector '{sector_id}' {field_name}: '{raw}' normalises to "
+                f"'{norm}' which is already present as '{seen[norm]}'"
+            )
+        else:
+            seen[norm] = raw
+
+
 def _load_sectors_from_yaml() -> Dict[str, SectorConfig]:
     """Load sector configurations from the YAML data file.
 
@@ -156,6 +240,12 @@ def _load_sectors_from_yaml() -> Dict[str, SectorConfig]:
             "TD-SYS-020: sectors_data.yaml failed Pydantic validation at startup: %s", e
         )
         raise RuntimeError(f"Invalid sectors_data.yaml structure: {e}") from e
+
+    # TD-BE-015: Validate keyword normalisation duplicates at load time.
+    # Warnings only — never raises, never blocks startup.
+    dup_warnings = _validate_sector_keywords(data)
+    for w in dup_warnings:
+        _logger.warning("TD-BE-015 keyword duplicate: %s", w)
 
     sectors: Dict[str, SectorConfig] = {}
     for sector_id, cfg in data["sectors"].items():

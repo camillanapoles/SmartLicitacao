@@ -7,15 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Backend / Founders
+- **Founders welcome email template + ARQ job + founding_leads tracking fields (#791)** — `templates/emails/founders_welcome.py` com HTML + plain text, tom pessoal direto de Tiago. `send_founders_welcome_email()` em `email_service.py` com gate de idempotência via `founding_leads.welcome_sent_at`. `send_founders_welcome` ARQ job (despacha email + Mixpanel people.set). Migration `20260507130000_founding_leads_tracking_fields.sql`: adiciona `welcome_sent_at`, `checkout_source`, `offer_version` à tabela `founding_leads`. Índice parcial `idx_founding_leads_welcome_pending` para queries de idempotência. 19 testes unitários. Rollback: `20260507130000_founding_leads_tracking_fields.down.sql`.
+
+### Added — Database / Billing
+- **Campos de fundador no perfil de usuário (#784)** — Migration `20260507100000_profiles_founder_fields.sql` adiciona 5 colunas à tabela `profiles`: `is_founder` (boolean, default false — marcado `true` pelo webhook `checkout.session.completed` para compras lifetime v2), `founder_since` (timestamptz da compra), `founder_offer_version` (ex: `v2_lifetime` para distinguir versões futuras), `founder_checkout_source` (utm_source/checkout param para atribuição), e `consulting_discount_pct` (int 0-100, `null` = sem desconto Consultoria). Fundadores v1 (assinatura mensal -50%) NÃO recebem `is_founder=true` — permanecem como assinantes Pro regulares. Índice parcial `idx_profiles_founders` em `is_founder=true` (máx 50 linhas por design do cap de fundadores). Permite verificação de direito lifetime sem JOIN em `founding_leads`. Rollback: `20260507100000_profiles_founder_fields.down.sql`.
+
+### Changed — Backend / Founding
+- **Pivot founding_policy para one-time lifetime R$997 + deadline 2026-06-30 (BIZ-FOUND-002 v2 #782)** — Adiciona 3 colunas à tabela `founding_policy`: `offer_mode TEXT NOT NULL DEFAULT 'lifetime'` (CHECK subscription|lifetime), `price_brl_cents INT NOT NULL DEFAULT 99700`, `consulting_discount_pct INT NOT NULL DEFAULT 50`. Atualiza linha canônica id=1: deadline 2026-06-30T23:59:59-03:00, offer_mode=lifetime, price_brl_cents=99700. Recria RPC `check_founding_availability()` com 2 novas colunas de retorno (`offer_mode`, `price_brl_cents`) para o frontend renderizar copy de preço sem queries extras. Atualiza `FoundingAvailabilityResponse` Pydantic com `offer_mode` e `price_brl_cents`. Atualiza `FoundingPolicySnapshot` (admin) com os 3 novos campos. Snapshot OpenAPI e `api-types.generated.ts` atualizados. Migration: `20260507100100_founding_policy_lifetime_pivot.sql` + `.down.sql` pareado. Rollback: executar `20260507100100_founding_policy_lifetime_pivot.down.sql`.
+
+### Fixed — Database / Migrations
+- **RLS policy gsc_metrics corrigida + 14 migrations aplicadas (#796)** — `20260422120000_create_gsc_metrics.sql` referenciava `profiles.is_master` como coluna (inexistente — é computado em Python); corrigido para `profiles.plan_type = 'master'`. 14 migrations pendentes aplicadas ao DB de produção via Management API. Resolve falha crônica em `migration-check.yml`. Rollback: `supabase db push` com `.down.sql` dos arquivos afetados.
+
+### Added — Frontend / Marketing
+- `/fundadores` landing page with founders offer copy, Calendly CTA, and availability gate
+- 301 permanent redirect from `/founding` → `/fundadores`
+
+### Added — Frontend / Founders
+- `FoundersTopBanner` component with availability gate and countdown (#787)
+- `FoundersRibbon` component (inline variant) for embedding in page sections (#787)
+
+### Added — Frontend / Legal
+- **Página de termos do Plano Fundadores (#793)** — `frontend/app/termos/fundadores/page.tsx` criado com 9 seções legais cobrindo escopo vitalício, fair use, sem garantia de êxito, período de resfriamento (CDC art. 49) e disclaimer de parceria governamental. `frontend/app/termos/page.tsx` atualizado com link para `/termos/fundadores`. Protege juridicamente o SmartLic e informa fundadores sobre os exatos direitos adquiridos.
+
+### Fixed — Backend / Analytics
+- **Auditoria de cobertura CNAE→Setor + warning em fallback (#599)** — `backend/utils/cnae_mapping.py` ganha comentário de cobertura (`59/1300 ≈4.5%` dos CNAEs mapeados explicitamente). `logger.warning("cnae_not_mapped ...")` emitido quando CNAE não está no mapeamento explícito e ativa o fallback padrão. Remove `load_cnae_from_db()` e `_warmup_cnae_mapping()` — merge DB não validado. Docstring corrigida. Teste estendido para assert do warning em fallback. Rollback: reverter commit.
+
+### Added — Frontend / Intel Reports
+- **Intel Reports frontend layer: CTA + checkout + polling + download (#632)** — Adiciona camada frontend completa para Intel Reports (one-time purchase): `IntelReportCTA` "use client" component em `/cnpj/[cnpj]` (parent Server Component com ISR); 4 API proxy routes (`/api/intel-reports/checkout`, `/api/intel-reports/`, `/api/intel-reports/[purchaseId]`, `/api/intel-reports/[purchaseId]/download`); página de sucesso pós-Stripe com polling até 120s (40×3s, `useRef` anti-stale-closure); página de cancelamento. Proxy routes usam factory `createProxyRoute` para rotas simples e padrão manual `getRefreshedToken` + `sanitizeProxyError` para rotas dinâmicas. PDF streaming com `Content-Disposition: attachment`. 6 testes unitários (CTA behavior, 401→signup redirect, checkout_url redirect, Mixpanel events, loading state). Rollback: remover seção #632 de `page.tsx` e deletar arquivos novos.
+
+### Added — Docs / Founders
+- **Política interna Plano Fundadores (#795)** — `docs/founders-policy.md` criado com escopo v2 lifetime R$997 one-time, checklist go-live, plano de rollback e diretrizes de comunicação (BIZ-FOUND-002). Revoga modelo v1 de subscription com 50% off.
+
+### Added — Docs / Partners
+- **ADR de política do programa de parceiros (#597)** — `docs/adr/partner-program.md` formaliza a política canônica: comissão 20% lifetime, pagamento mensal via Pix no dia 5, atribuição last-click 30 dias, onboarding exige CPF/CNPJ. Default `revenue_share_pct` em `CreatePartnerRequest`, `create_partner()` e `create_partner_referral()` alinhado de 25% para 20%. Valores explícitos em parceiros existentes não são alterados. Snapshot OpenAPI e testes atualizados. Rollback: reverter PR #743.
+
+### Added — Backend / Intel Reports
+- **Entrega de Intel Reports via ARQ job (#631)** — `generate_intel_report(ctx, purchase_id)` ARQ job implementado: busca purchase/profile, gera PDFs de Raio-X do concorrente, faz upload para bucket Supabase Storage `intel-reports`, cria signed URLs 30 dias, marca purchase como `ready`, e envia email transacional Resend via novo template `intel_report_ready.html`. Tratamento de falhas com retry/backoff ARQ, status `failed`, refund Stripe automático e email de notificação de falha. Prometheus: `smartlic_intel_report_generated_total{product_type,status}`. Mixpanel: `intel_report_generated`. Job registrado em `WorkerSettings` e em `job_queue.py`. Rollback: reverter commit e desabilitar enqueue no webhook Stripe.
+
+### Fixed — Docs / Tech Debt
+- **Auditoria e fechamento do Gap-7: contagem de setores (#798)** — Auditoria empírica confirmou 20 setores em `backend/sectors_data.yaml` (CLAUDE.md já correto). Fechadas Inc-1 e Gap-7 em `_reversa_sdd/review-report.md` com contagem confirmada e lista completa dos IDs de setor.
+
 ### Added — Tests
-- **Cobertura do módulo health.py — TD-TEST-004 (#202)** — 26 testes unitários cobrindo `HealthStatus` enum, `SourceHealthResult.to_dict()`, `SystemHealth.to_dict()`, `initialize_health_tracking()` / `get_uptime_seconds()`, `check_source_health()` (ConnectError + exceção genérica), `get_health_status()` (integração com mock de rede) e `get_system_health()` (Redis down, circuit breaker degradado). `health.py` (1100+ linhas) tinha cobertura zero antes desta PR.
 - **Idempotência payment_intent.succeeded + runbook ops Intel Reports (#718)** — `TestIdempotency::test_payment_intent_succeeded_replay_is_deduped_before_delivery` verifica que replay do mesmo event-id retorna `already_processed` sem tocar tabelas de purchase/subscription. Documenta guardrails para implementação futura de one-time purchases em `purchases` table. Runbook em `docs/runbooks/issue-718-intel-reports-ops-validation.md`.
+- **Edge case tests para keyword density pipeline — TD-BE-023 (#249)** — 71 testes cobrindo `normalize_text`, `match_keywords`, `validate_terms`, `_strip_org_context`, `has_red_flags`, `has_sector_red_flags`, `check_proximity_context` e `check_co_occurrence` para inputs que aparecem em dados reais do PNCP: strings vazias, whitespace-only, strings muito longas (10k tokens), caracteres especiais, Unicode/acentuado português, RTL (árabe), emojis, texto numérico, null bytes e scripts mistos. Nenhuma alteração no código de produção necessária — funções já tratam esses inputs defensivamente. Rollback: reverter commit.
+- **Cobertura do módulo health.py — TD-TEST-004 (#202)** — 26 testes unitários cobrindo `HealthStatus` enum, `SourceHealthResult.to_dict()`, `SystemHealth.to_dict()`, `initialize_health_tracking()` / `get_uptime_seconds()`, `check_source_health()` (ConnectError + exceção genérica), `get_health_status()` (integração com mock de rede) e `get_system_health()` (Redis down, circuit breaker degradado). `health.py` (1100+ linhas) tinha cobertura zero antes desta PR.
+
+### Fixed — Backend / Tech Debt
+- **Validação de duplicatas de keywords por normalização em sectors_data.yaml (TD-BE-015 #210)** — `_validate_sector_keywords()` e `_check_list_for_duplicates()` adicionados a `backend/sectors.py`. Detecta keywords que colapsam para a mesma forma após `normalize_text()` (ex: "café" e "cafe"). Log de warnings apenas — nunca levanta exceção, nunca bloqueia startup. Checa `keywords`, `exclusions` e `context_required_keywords` por setor. 20 novos testes. Rollback: reverter commit.
+
+### Fixed — Frontend / Accessibility
+- **Associação programática de mensagens de erro a inputs via aria-describedby (TD-FE-022 #272)** — `aria-describedby` apontando para IDs únicos nas mensagens de erro adicionado em `SignupForm`, `OnboardingStep2`, `ValueRangeSelector`, `conta-fields` (SelectField + NumberField) e `perfil/page`. `aria-invalid` togula em função do estado de erro. Grupos UF ganham `role="group"` + `aria-labelledby`. Screen readers anunciam erros quando o input recebe foco. Somente atributos aditivos — sem mudança comportamental. Rollback: reverter commit.
+- **Atributos aria-label em botões de seleção de UF (TD-UX-001 #194, TD-UX-003 #196)** — `aria-label` dinâmico (`"Selecionar {estado}"` / `"Remover {estado}"`) adicionado aos botões de toggle de UF em `SearchCustomizePanel`. Screen readers agora anunciam o nome completo do estado em vez de soletrar a sigla. Complementa `aria-pressed` já existente. Atributos ARIA do `SavedSearchesDropdown`, `RegionSelector` e focus-trap/autoFocus/Escape do modal Save Search foram implementados em commits anteriores (TD-005 Dialog, WCAG 2.2 AAA). Rollback: reverter commit.
 
 ### Added — Frontend / GTM
+- **Social proof de volume na landing e /planos (#627)** — `StatsClientIsland.tsx` ganhou linha de métricas de volume estática ("+2 milhões contratos · 27 estados · R$1k–R$500M+") abaixo dos contadores animados existentes. `StatsSection.tsx` espelha a linha no fallback noscript/SSR para SEO. `/planos` ganhou trust strip compacto acima do toggle de billing period. Dados factualmente ancorados no DataLake (`pncp_supplier_contracts` ~2M rows, `pncp_raw_bids` 27 UFs). Rollback: reverter commit `86b20bb00`.
+- **Intel Reports: CTA + checkout + polling + download (#632)** — `IntelReportCTA.tsx` client component em `/cnpj/[cnpj]` page (Server Component ISR). Proxies Next.js: `GET /api/intel-reports/` (lista), `POST /api/intel-reports/checkout`, `GET /api/intel-reports/[purchaseId]` (status), `GET /api/intel-reports/[purchaseId]/download` (PDF). Página de sucesso `/intel-reports/[sessionId]` com polling 3s × 40 iterações (120s max). Página de cancelamento `/intel-reports/cancelado`. Unauthenticated click → redirect `/signup?intent=intel_report`.
 - **CTA de trial em /observatorio (#619)** — `ObservatorioCTA` client component adicionado ao hub do observatório. Usuários não autenticados veem link `/signup?ref=observatorio-hub`; autenticados veem link `/buscar`. Empty-state de relatórios agora inclui link ativo para `/licitacoes`.
 
+### Added — Backend / Health
+- **Check de conectividade OpenAI com cache 5min (TD-BE-025 #214)** — `check_openai_health()` em `health.py` usa `models.list(limit=1)` (sem tokens) para probar reachability da API. Cache em memória 300s evita overhead de quota. Integrado em `get_system_health()`: OpenAI degraded → status do sistema `degraded` (não unhealthy). Retorna `{status, latency_ms, cached}`. Tests em `test_health_openai.py` (4 cenários: ok, degraded, not_configured, cache).
+
 ### Fixed — Backend / Security
+- **Limite de intervalo de datas PNCP (#206)** — `BuscaRequest` agora rejeita payloads com `data_final - data_inicial > 30 dias` em nível de schema (antes de qualquer chamada downstream). Retorna HTTP 400 com `error_code=date_range_exceeded` e mensagem descritiva em português. Campo `_MAX_DATE_RANGE_DAYS: ClassVar[int] = 30` + `ClassVar` typing em `_VALOR_MAX_CEILING`. Handler `_validation_error_messages()` em `exception_handlers.py` extrai mensagens sem vazar input bruto. OpenAPI snapshot e `api-types.generated.ts` atualizados. 17 testes. Rollback: reverter commit.
+- **Rejeição de webhooks Stripe malformados antes do DB (#204)** — `_validate_event_envelope()` valida `event.id` (prefixo `evt_`), `event.type` e `event.data.object` logo após `construct_event()`. Payloads inválidos ou assinaturas forjadas retornam HTTP 400 sem tocar Supabase/idempotency. `_safe_log_value()` sanitiza todos os valores nos logs de webhook (bounded 80 chars, allowlist alnum). Logger rebaixado de `error` para `warning` em erros de validação. Rollback: reverter commit.
 - **Validação de termos de busca customizados (#212)** — `BuscaRequest.termos_busca` agora valida com allowlist conservadora pt-BR (letras latinas, dígitos, espaços, vírgulas e hífens). Rejeita payloads com `<`, `;`, `/`, `_` e similares. Limite `max_length=500`. Snapshot OpenAPI atualizado. Rollback: reverter commit.
+
+### Fixed — Backend / Excel
+- **Logging estruturado e validação de tipos para geração de Excel (#180 TD-HP-003)** — `_validate_licitacoes_types()` em `excel.py` escaneia valores de dict antes de geração e loga warning para tipos não-serializáveis (observability-only, não raise). `pipeline/stages/generate.py`: `asyncio.to_thread(create_excel)` envolto em try/except; falha na geração define `excel_status='failed'` com log estruturado em vez de exception não tratada. `routes/sessions.py`: `create_excel` na rota de download envolto em try/except com HTTPException 500 acionável. 3 novos testes em `test_excel.py`.
 
 ### Fixed — Analytics
 - **Extração do multiplicador hours-saved para constante nomeada (#598)** — `2.5` extraído para `ESTIMATED_HOURS_SAVED_PER_SEARCH = 2.5` em `backend/routes/analytics.py` (Gap-6 do audit brownfield). Valor é supersedido em runtime por `DEFAULT_HOURS_SAVED_PER_SEARCH` de `utils/app_config` (TTL-cached 5 min). TODO `BIZ-METRIC-001` referencia story de validação empírica futura. Rollback: reverter commit.
@@ -28,8 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — Analytics & Instrumentação
 - **Clarity trial+onboarding tagging + first-analysis Mixpanel lifecycle (CONV-INST-005 #572)** — `claritySet('onboarding_step', 'N/3')` nos 3 steps do onboarding; `clarityEvent('trial_started')` + `claritySet('trial_started_at')` pós first-analysis 2xx; eventos Mixpanel `first_analysis_completed/empty/failed` no SSE handler com guard `useRef` anti-double-fire e `viability_high_count` (score ≥ 0.7); `claritySet('trial_days_remaining')` no `AnalyticsProvider` com null-skip para admins.
+- **CONV-INST-005 story execution: cnae+ufs context em first-analysis redirect + hashErrorMessage refactor (#608)** — onboarding redirect para `/buscar` inclui `cnae` e `ufs` como query params, passados via `autoAnalysisContext` até o SSE handler para enriquecer payload de `first_analysis_empty`; `hashErrorMessage` extraído para função top-level (elimina duplicação); `first_analysis_failed` usa `search_id` do evento SSE quando disponível. Story file CONV-INST-005 recriado com registro de execução completo.
 
 ### Fixed — SEO
+- **HTTP 410 Gone para rota raiz órfã `/contratos/orgao` (#612)** — middleware retorna 410 exato para `/contratos/orgao` sem afetar a rota dinâmica `/contratos/orgao/[cnpj]`. Discovery spike documenta análise do export GSC local (44 hits eram CNPJs com artefatos de scrape, não a raiz). Regressão coberta por `contratos-orgao-root-gone.test.ts` e `sitemap-coverage.test.ts`.
+- **Redirects 301 para setores legados `/blog/licitacoes` (#613)** — `frontend/lib/legacy-licitacoes-redirects.js` mapeia 7 IDs de setores legados (underscore/renomeados) para slugs canônicos: `materiais_hidraulicos`, `engenharia_rodoviaria`, `manutencao_predial`, `software_desenvolvimento`, `software_licencas`, `medicamentos`, `frota_veicular`. Integrado em `next.config.js` como redirects 301 com UF regex (27 UFs). Não cria catch-all nem redireciona para homepage. 3 testes Jest determinísticos. Rollback: reverter PR ou remover mapeamentos específicos.
 - **Sitemap dedup: remover sitemap-blog.xml legado + cobrir /blog/programmatic/{setor}/{uf} no shard id:1 (#661)** — removida rota legada `/sitemap-blog.xml` (103 linhas) que duplicava shards id:1/id:3; adicionados 540 combos (20 setores × 27 UFs) ao shard id:1 via `generateSectorUfParams()`.
 - **Meta descriptions CTR (#641)** — 5 páginas GSC P0 (>200 impressões, CTR <1%) reescritas com copy data-driven: número real + benefício + CTA implícito, 120–155 chars. Afeta `/blog/pncp-guia-completo-empresas`, `/blog/licitacoes-engenharia-2026`, `/blog/como-consultar-contratos-publicos-pncp`, `/blog/subcontratacao-licitacoes-regras-lei-14133`, `/perguntas/prazo-publicacao-edital`.
 
@@ -99,152 +161,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Repricing** (STORY-277) — R$1.999/mes → R$397/mes (mensal), R$357 (semestral), R$317 (anual)
 - **Trial duration** — 7 days → 30 days → 14 days (STORY-319: shorter trial converts better)
 - **Boleto + PIX** (STORY-280) — additional payment methods via Stripe
-
-### Documentation
-- **STORY-302** — Documentation + stale cleanup (this release)
-- Updated pricing across CLAUDE.md, PRD.md, README.md, system-architecture.md
-- Updated cost-analysis.md with new pricing margins
-
-### Testing
-- Backend: 169 test files, 5131+ tests passing, 0 failures
-- Frontend: 135 test files, 2681+ tests passing, 0 failures
-- E2E: 60 critical user flow tests
-
----
-
-## [0.5.1] - 2026-02-26 - GTM Quick Wins (STORY-284)
-
-### Fixed
-- **Email links** — `/precos` replaced with `/planos` in billing and quota email templates
-- **Help page** — Updated payment FAQ to reflect Boleto support and PIX status
-
-### Changed
-- **CSP documentation** — Documented `unsafe-eval`/`unsafe-inline` as accepted risk in `next.config.js`
-- **`.env.example`** — Added `SUPABASE_JWT_SECRET` with documentation
-
-### Removed
-- **Deprecated banners** — Removed `DegradationBanner`, `CacheBanner`, `OperationalStateBanner` (replaced by `DataQualityBanner`)
-
-### Verified
-- **SENTRY_DSN** — Confirmed active in Railway for both backend and frontend services
-
----
-
-## [0.5.0] - 2026-02-20 - GTM RESILIENCE COMPLETE
-
-### Added — Resilience & Observability
-- **Prometheus metrics exporter** — 11 metrics (histograms, counters, gauges) at `/metrics`
-- **OpenTelemetry distributed tracing** — spans across search pipeline, LLM, cache
-- **ARQ job queue** — background processing for LLM summaries and Excel generation
-- **User feedback loop** — thumbs up/down classification feedback with bi-gram analysis
-- **Viability assessment** — 4-factor scoring (modalidade, timeline, value_fit, geography)
-- **Confidence indicator** — per-result relevance confidence with source badges
-
-### Added — Cache Infrastructure
-- **Two-level cache** — InMemoryCache (4h) + Supabase (24h) with SWR pattern
-- **Hot/Warm/Cold priority** — dynamic cache tier classification with adaptive TTLs
-- **Background revalidation** — stale-while-revalidate with dedup and budget control
-- **Admin cache dashboard** — `/admin/cache` with metrics, inspection, invalidation
-- **Mixpanel analytics events** — fire-and-forget event tracking
-
-### Added — Classification Precision
-- **LLM zero-match classification** — GPT-4.1-nano binary YES/NO for 0-keyword bids
-- **Relevance source tagging** — keyword, llm_standard, llm_conservative, llm_zero_match
-- **Viability badges** — Alta/Media/Baixa with factor breakdown tooltips
-
-### Changed
-- **Search period** — 180 days reduced to 10 days (performance + relevance)
-- **PNCP page size** — 500 reduced to 50 (API limit change)
-- **Default LLM model** — gpt-4o-mini migrated to gpt-4.1-nano (33% cheaper)
-- **PCP integration** — migrated from v1 to v2 public API (no auth needed)
-- **Timeout chain** — fully realigned: FE(480s) > Pipeline(360s) > Consolidation(300s) > PerSource(180s)
-- **UF batching** — phased execution with PNCP_BATCH_SIZE=5, PNCP_BATCH_DELAY_S=2.0
-
-### Fixed
-- Datetime crash: tz-aware vs naive comparison in `filtrar_por_prazo_aberto()`
-- HTTP 422 added to retryable codes with body logging
-- Circuit breaker state tracking for degraded mode
-- Near-timeout-inversion detection with warnings
-
-### Testing
-- Backend: ~3966 tests passing (~34 pre-existing failures)
-- Frontend: ~1921 tests passing (~42 pre-existing failures)
-- 25 GTM-RESILIENCE stories completed (see `docs/gtm-resilience-summary.md`)
-
----
-
-## [0.4.0] - 2026-02-14 - GTM LAUNCH PHASE
-
-### Added
-- **Single subscription model** — SmartLic Pro (3 billing periods, repriced to R$397/mo in v0.5.1)
-- **Onboarding wizard** — 3-step CNAE-based sector mapping with auto-search
-- **Trial conversion flow** — TrialConversionScreen, TrialExpiringBanner, TrialCountdown
-- **Multi-source search** — PNCP + PCP (Portal de Compras Publicas) consolidated results
-- **15 industry sectors** — configurable keyword sets per sector
-- **SSE progress tracking** — real-time per-UF search progress via Server-Sent Events
-- **Pipeline management** — opportunity pipeline with drag-and-drop columns
-
-### Changed
-- Rebranded from BidIQ Uniformes to SmartLic
-- Frontend migrated from Vercel to Railway
-- Production URL: https://smartlic.tech
-
----
-
-## [0.3.0] - 2026-02-03 - MULTI-SECTOR EXPANSION
-
-### Added
-- Plan restructuring (STORY-165) — pricing tiers with Stripe integration
-- Signup with WhatsApp consent
-- Institutional login/signup redesign
-- Landing page redesign with value proposition
-- Lead prospecting module
-- Intelligent keyword filtering with LLM arbiter
-- Google Sheets export
-
-### Testing
-- Backend: ~3300 tests
-- Frontend: ~1700 tests
-
----
-
-## [0.2.0] - 2026-01-28 - PRODUCTION RELEASE
-
-### Deployed
-- **Frontend:** Railway (was Vercel)
-- **Backend:** Railway
-
-### Added
-- Production deployment on Railway
-- E2E test suite with Playwright (25 tests)
-- Automated CI/CD pipeline with GitHub Actions
-- Health check endpoints for monitoring
-
-### Testing
-- Backend coverage: 99.2% (226 tests passing)
-- Frontend coverage: 91.5% (94 tests passing)
-- E2E tests: 25/25 passing
-
----
-
-## [0.1.0] - 2026-01-25 - MVP COMPLETE
-
-### Added
-- Backend FastAPI implementation (PNCP client, filter, Excel, LLM)
-- Frontend Next.js implementation (UF selector, date picker, results, download)
-- Docker Compose setup for local development
-- Comprehensive test suites (226 backend + 94 frontend tests)
-
----
-
-## [0.0.1] - 2026-01-24 - Initial Setup
-
-### Added
-- Project structure and AIOS framework integration
-
----
-
-## Links
-
-- [GitHub Repository](https://github.com/tjsasakifln/PNCP-poc)
-- [Production](https://smartlic.tech)

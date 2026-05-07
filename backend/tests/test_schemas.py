@@ -56,6 +56,23 @@ class TestBuscaRequest:
         )
         assert request.data_inicial == "2025-12-31"
 
+    def test_accepts_maximum_30_day_date_range(self):
+        """Date range with a 30-day delta should be accepted."""
+        request = BuscaRequest(
+            ufs=["SP"], data_inicial="2025-01-01", data_final="2025-01-31"
+        )
+        assert request.data_final == "2025-01-31"
+
+    def test_rejects_date_range_above_30_days(self):
+        """Date range above 30 days should be rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            BuscaRequest(
+                ufs=["SP"], data_inicial="2025-01-01", data_final="2025-02-01"
+            )
+
+        assert "Intervalo de datas excede o limite máximo de 30 dias" in str(exc_info.value)
+        assert "recebido: 31 dias" in str(exc_info.value)
+
     def test_invalid_date_format_rejected(self):
         """Invalid date formats should be rejected."""
         invalid_formats = [

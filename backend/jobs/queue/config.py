@@ -42,6 +42,13 @@ try:
     except ImportError:  # cron_monitor optional — skip if module unavailable in test env
         pass
 
+    # epic:fundadores — hourly auto-disable check: disables founding offer 1 day after deadline.
+    try:
+        from jobs.cron.founders_auto_disable import founders_auto_disable_check
+        _worker_cron_jobs.append(_arq_cron(founders_auto_disable_check, minute={0}, timeout=60))
+    except ImportError:
+        pass
+
     # STORY-SEO-005: weekly GSC sync job (Sun 03:00 BRT = 06:00 UTC).
     # Graceful no-op if GSC_SERVICE_ACCOUNT_JSON env var missing — safe to register always.
     try:
@@ -125,6 +132,7 @@ class WorkerSettings:
         daily_digest_job, email_alerts_job,
         reclassify_pending_bids_job, classify_zero_match_job,
         send_founders_welcome,
+        generate_intel_report,
     )
     from jobs.queue.search import search_job
 
@@ -156,13 +164,22 @@ class WorkerSettings:
     except ImportError:
         _monitoring_functions = []
 
+    # epic:fundadores: auto-disable cron function.
+    try:
+        from jobs.cron.founders_auto_disable import founders_auto_disable_check as _founders_auto_disable_check
+        _founders_functions = [_founders_auto_disable_check]
+    except ImportError:
+        _founders_functions = []
+
     functions = [
         llm_summary_job, excel_generation_job, search_job,
         bid_analysis_job, daily_digest_job, email_alerts_job,
         reclassify_pending_bids_job, classify_zero_match_job,
         send_founders_welcome,
+        generate_intel_report,
         *_ingestion_functions,
         *_monitoring_functions,
+        *_founders_functions,
     ]
     cron_jobs = _worker_cron_jobs
     on_startup = _worker_on_startup

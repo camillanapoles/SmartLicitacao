@@ -504,7 +504,7 @@ describe('OnboardingPage', () => {
       await completeAndSubmit();
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/buscar?auto=true&search_id=search-abc');
+        expect(mockPush).toHaveBeenCalledWith('/buscar?auto=true&search_id=search-abc&cnae=Uniformes+escolares&ufs=SP');
       });
     });
 

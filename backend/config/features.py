@@ -171,6 +171,9 @@ ATESTADOS_DISPONIVEIS: list[dict] = [
     {"id": "crt", "label": "CRT (Técnico)", "sectors": ["informatica", "software_desenvolvimento", "software_licencas"]},
 ]
 
+# Plano Fundadores v2 (epic:fundadores) — kill switch for the lifetime offer
+FOUNDERS_OFFER_ENABLED: bool = str_to_bool(os.getenv("FOUNDERS_OFFER_ENABLED", "true"))
+
 # A/B Testing
 AB_EXPERIMENTS_ENABLED: bool = str_to_bool(os.getenv("AB_EXPERIMENTS_ENABLED", "false"))
 AB_ACTIVE_EXPERIMENTS: str = os.getenv("AB_ACTIVE_EXPERIMENTS", "{}")
@@ -245,6 +248,8 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     # --- Trial & Billing ---
     "TRIAL_EMAILS_ENABLED": ("TRIAL_EMAILS_ENABLED", "true"),
     "TRIAL_PAYWALL_ENABLED": ("TRIAL_PAYWALL_ENABLED", "true"),
+    # --- Founding / Billing ---
+    "FOUNDERS_OFFER_ENABLED": ("FOUNDERS_OFFER_ENABLED", "true"),
     # --- A/B Testing ---
     "ab_experiments_enabled": ("AB_EXPERIMENTS_ENABLED", "false"),
     # --- Feature Gates (unreleased features) ---

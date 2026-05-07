@@ -137,6 +137,40 @@ export default function StatsClientIsland() {
           </div>
         </div>
       </div>
+
+      {/* #627: Volume social proof row — static display, no counter animation */}
+      <div
+        className={`mt-8 grid sm:grid-cols-3 gap-4 transition-all duration-500 delay-400 ${
+          isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`}
+      >
+        <div
+          role="text"
+          aria-label="Mais de 2 milhões de contratos públicos monitorados"
+          className="text-center p-5 bg-brand-blue-subtle/30 rounded-card border border-brand-blue/20 hover:-translate-y-0.5 hover:shadow-md transition-transform duration-200"
+        >
+          <div aria-hidden="true" className="text-2xl sm:text-3xl font-bold text-brand-navy">+2 milhões</div>
+          <div aria-hidden="true" className="text-sm text-ink-secondary mt-1">contratos públicos monitorados</div>
+        </div>
+
+        <div
+          role="text"
+          aria-label="27 estados cobertos em tempo real"
+          className="text-center p-5 bg-brand-blue-subtle/30 rounded-card border border-brand-blue/20 hover:-translate-y-0.5 hover:shadow-md transition-transform duration-200"
+        >
+          <div aria-hidden="true" className="text-2xl sm:text-3xl font-bold text-brand-navy">27 estados</div>
+          <div aria-hidden="true" className="text-sm text-ink-secondary mt-1">cobertos em tempo real</div>
+        </div>
+
+        <div
+          role="text"
+          aria-label="Licitações de R$ 1 mil a R$ 500 milhões analisadas"
+          className="text-center p-5 bg-brand-blue-subtle/30 rounded-card border border-brand-blue/20 hover:-translate-y-0.5 hover:shadow-md transition-transform duration-200"
+        >
+          <div aria-hidden="true" className="text-2xl sm:text-3xl font-bold text-brand-navy">R$ 1k – R$ 500M+</div>
+          <div aria-hidden="true" className="text-sm text-ink-secondary mt-1">faixa de valor analisada</div>
+        </div>
+      </div>
     </section>
   );
 }

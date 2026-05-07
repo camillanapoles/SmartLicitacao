@@ -17,6 +17,7 @@ Exemplo de uso:
     ...     f.write(buffer.getvalue())
 """
 
+import logging
 import re
 from datetime import datetime, timezone
 from io import BytesIO
@@ -27,9 +28,49 @@ from openpyxl.utils import get_column_letter
 
 from utils.value_sanitizer import sanitize_valor, compute_robust_total
 
+logger = logging.getLogger(__name__)
+
 # Regex matching illegal XML characters that openpyxl rejects
 # Includes: \x00-\x08, \x0b-\x0c, \x0e-\x1f (control chars except tab, LF, CR)
 ILLEGAL_CHARACTERS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+
+# Types considered safe to pass directly to openpyxl cell values
+_SAFE_CELL_TYPES = (str, int, float, bool, datetime, type(None))
+
+
+def _validate_licitacoes_types(licitacoes: list[dict]) -> None:
+    """
+    Scan dict values in licitacoes for non-serializable types and log warnings.
+
+    Does NOT raise — validation is observability only. The existing sanitize_for_excel
+    path coerces unexpected types via str(), so generation continues. This function
+    surfaces the anomaly so operators can diagnose upstream data issues.
+
+    Args:
+        licitacoes: List of bid dicts to validate.
+    """
+    unexpected_fields: list[dict] = []
+    for idx, item in enumerate(licitacoes):
+        if not isinstance(item, dict):
+            continue
+        for key, val in item.items():
+            if not isinstance(val, _SAFE_CELL_TYPES):
+                unexpected_fields.append({
+                    "item_index": idx,
+                    "field": key,
+                    "type": type(val).__name__,
+                })
+
+    if unexpected_fields:
+        sample = unexpected_fields[:3]
+        logger.warning(
+            "excel.unexpected_type: non-serializable dict values detected",
+            extra={
+                "total_items": len(licitacoes),
+                "unexpected_count": len(unexpected_fields),
+                "sample": sample,
+            },
+        )
 
 
 def sanitize_for_excel(value: str | None) -> str:
@@ -79,6 +120,8 @@ def create_excel(licitacoes: list[dict], paywall_preview: bool = False, total_be
     """
     if not isinstance(licitacoes, list):
         raise ValueError("licitacoes deve ser uma lista")
+
+    _validate_licitacoes_types(licitacoes)
 
     wb = Workbook()
     ws = wb.active

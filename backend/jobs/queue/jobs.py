@@ -4,9 +4,381 @@ from __future__ import annotations
 import json
 import logging
 import time
+import asyncio
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+INTEL_REPORT_BUCKET = "intel-reports"
+INTEL_REPORT_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 30
+INTEL_REPORT_RETRY_BACKOFF_SECONDS = (30, 60, 120)
+
+
+def _sentry_breadcrumb(message: str, **data: Any) -> None:
+    try:
+        import sentry_sdk
+        sentry_sdk.add_breadcrumb(
+            category="intel_report_job",
+            message=message,
+            level="info",
+            data=data,
+        )
+    except Exception:
+        pass
+
+
+async def _execute_supabase(query: Any) -> Any:
+    return await asyncio.to_thread(lambda: query.execute())
+
+
+def _first_row(result: Any) -> dict | None:
+    data = getattr(result, "data", None)
+    if isinstance(data, list):
+        return data[0] if data else None
+    return data if isinstance(data, dict) else None
+
+
+def _signed_url_from_response(response: Any) -> str:
+    if isinstance(response, dict):
+        return (
+            response.get("signedURL")
+            or response.get("signedUrl")
+            or response.get("signed_url")
+            or response.get("url")
+            or ""
+        )
+    return (
+        getattr(response, "signedURL", "")
+        or getattr(response, "signedUrl", "")
+        or getattr(response, "signed_url", "")
+        or getattr(response, "url", "")
+    )
+
+
+async def _fetch_intel_report_purchase(db: Any, purchase_id: str) -> dict | None:
+    result = await _execute_supabase(
+        db.table("intel_report_purchases")
+        .select(
+            "id, user_id, product_type, entity_key, status, pdf_url, "
+            "stripe_payment_intent_id"
+        )
+        .eq("id", purchase_id)
+        .single()
+    )
+    return _first_row(result)
+
+
+async def _fetch_profile(db: Any, user_id: str) -> dict | None:
+    result = await _execute_supabase(
+        db.table("profiles")
+        .select("email, full_name")
+        .eq("id", user_id)
+        .single()
+    )
+    return _first_row(result)
+
+
+async def _update_intel_report_purchase(
+    db: Any,
+    purchase_id: str,
+    values: dict[str, Any],
+) -> None:
+    payload = {
+        **values,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        await _execute_supabase(
+            db.table("intel_report_purchases")
+            .update(payload)
+            .eq("id", purchase_id)
+        )
+    except Exception as exc:
+        if "updated_at" not in str(exc):
+            raise
+        fallback_payload = dict(values)
+        await _execute_supabase(
+            db.table("intel_report_purchases")
+            .update(fallback_payload)
+            .eq("id", purchase_id)
+        )
+
+
+async def _generate_cnpj_report_pdf(db: Any, entity_key: str) -> bytes:
+    result = await _execute_supabase(
+        db.rpc(
+            "cnpj_supplier_intel",
+            {"p_cnpj": entity_key, "p_window_months": 36},
+        )
+    )
+    payload = getattr(result, "data", None)
+    if not payload:
+        raise ValueError("cnpj_supplier_intel returned no data")
+
+    from pdf_generator_intel_report import generate_cnpj_report
+
+    buffer = generate_cnpj_report(payload)
+    return buffer.getvalue() if hasattr(buffer, "getvalue") else buffer.read()
+
+
+async def _generate_sector_uf_report_pdf(db: Any, entity_key: str) -> bytes:
+    try:
+        from pdf_generator_sector_uf_report import generate_sector_uf_report
+    except ImportError as exc:
+        raise NotImplementedError("sector_uf report generator is not available") from exc
+
+    buffer = generate_sector_uf_report(db=db, entity_key=entity_key)
+    if asyncio.iscoroutine(buffer):
+        buffer = await buffer
+    return buffer.getvalue() if hasattr(buffer, "getvalue") else buffer.read()
+
+
+async def _generate_intel_report_pdf(db: Any, purchase: dict) -> bytes:
+    product_type = purchase.get("product_type")
+    entity_key = purchase.get("entity_key") or ""
+    if product_type == "cnpj":
+        return await asyncio.wait_for(
+            _generate_cnpj_report_pdf(db, entity_key),
+            timeout=90,
+        )
+    if product_type == "sector_uf":
+        return await asyncio.wait_for(
+            _generate_sector_uf_report_pdf(db, entity_key),
+            timeout=90,
+        )
+    raise ValueError(f"unsupported intel report product_type={product_type!r}")
+
+
+def _is_duplicate_storage_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return any(token in message for token in ("already exists", "duplicate", "exists"))
+
+
+async def _upload_intel_report_pdf(db: Any, purchase_id: str, pdf_bytes: bytes) -> str:
+    def _upload_and_sign() -> str:
+        storage = db.storage
+        try:
+            buckets = storage.list_buckets()
+            bucket_names = [
+                getattr(bucket, "name", None) if not isinstance(bucket, dict) else bucket.get("name")
+                for bucket in (buckets or [])
+            ]
+            if INTEL_REPORT_BUCKET not in bucket_names:
+                storage.create_bucket(
+                    INTEL_REPORT_BUCKET,
+                    options={
+                        "public": False,
+                        "file_size_limit": 50 * 1024 * 1024,
+                    },
+                )
+        except Exception as exc:
+            logger.debug("Intel Report bucket ensure skipped: %s", exc)
+
+        bucket = storage.from_(INTEL_REPORT_BUCKET)
+        path = f"{purchase_id}.pdf"
+        try:
+            bucket.upload(
+                path=path,
+                file=pdf_bytes,
+                file_options={"content-type": "application/pdf", "upsert": "false"},
+            )
+        except Exception as exc:
+            if not _is_duplicate_storage_error(exc):
+                raise
+            logger.info("Intel Report PDF already exists in storage: %s", path)
+
+        signed_response = bucket.create_signed_url(
+            path=path,
+            expires_in=INTEL_REPORT_SIGNED_URL_TTL_SECONDS,
+        )
+        signed_url = _signed_url_from_response(signed_response)
+        if not signed_url:
+            raise RuntimeError("Supabase Storage returned empty signed URL")
+        return signed_url
+
+    return await asyncio.wait_for(asyncio.to_thread(_upload_and_sign), timeout=10)
+
+
+def _intel_report_product_name(product_type: str) -> str:
+    if product_type == "sector_uf":
+        return "Relatório Setor/UF SmartLic"
+    return "Raio-X do Concorrente SmartLic"
+
+
+def _refund_intel_report_purchase(purchase: dict) -> bool:
+    payment_intent = purchase.get("stripe_payment_intent_id")
+    if not payment_intent:
+        logger.warning("Intel Report refund skipped: purchase has no payment_intent")
+        return False
+    try:
+        import os
+        import stripe as stripe_lib
+
+        stripe_lib.Refund.create(
+            payment_intent=payment_intent,
+            reason="requested_by_customer",
+            metadata={
+                "source": "intel_report_job",
+                "purchase_id": purchase.get("id", ""),
+            },
+            api_key=os.getenv("STRIPE_SECRET_KEY") or None,
+        )
+        return True
+    except Exception as exc:
+        logger.error("Intel Report refund failed: purchase_id=%s error=%s", purchase.get("id"), exc)
+        return False
+
+
+def _send_intel_report_failed_email(profile: dict | None, purchase: dict) -> None:
+    if not profile or not profile.get("email"):
+        return
+    try:
+        from templates.emails.base import email_base
+        from email_service import send_email_async
+
+        body = """
+        <h1 style="color: #333; font-size: 24px; margin: 0 0 16px;">
+          Não conseguimos gerar seu relatório
+        </h1>
+        <p style="color: #555; font-size: 16px; line-height: 1.6;">
+          Tivemos uma falha ao gerar o relatório comprado. Já iniciamos o
+          reembolso automático e, se precisar, responda este email para falar
+          com nosso suporte.
+        </p>
+        """
+        send_email_async(
+            to=profile["email"],
+            subject="Não conseguimos gerar seu relatório — SmartLic",
+            html=email_base(
+                title="Não conseguimos gerar seu relatório — SmartLic",
+                body_html=body,
+                is_transactional=True,
+            ),
+            reply_to="tiago.sasaki@gmail.com",
+            tags=[
+                {"name": "category", "value": "intel_report"},
+                {"name": "status", "value": "failed"},
+                {"name": "purchase_id", "value": str(purchase.get("id", ""))[:32]},
+            ],
+        )
+    except Exception:
+        logger.exception("Intel Report failure email failed: purchase_id=%s", purchase.get("id"))
+
+
+async def generate_intel_report(ctx: dict, purchase_id: str) -> dict:
+    """Generate, upload, and deliver an Intel Report PDF for a paid purchase."""
+    start = time.monotonic()
+    attempt = int(ctx.get("job_try") or 1) if isinstance(ctx, dict) else 1
+
+    from supabase_client import get_supabase
+    from metrics import INTEL_REPORT_GENERATED
+
+    db = get_supabase()
+    _sentry_breadcrumb("lookup", purchase_id=purchase_id, attempt=attempt)
+    purchase = await _fetch_intel_report_purchase(db, purchase_id)
+    if not purchase:
+        INTEL_REPORT_GENERATED.labels(product_type="unknown", status="failed").inc()
+        return {"status": "not_found", "purchase_id": purchase_id}
+
+    product_type = purchase.get("product_type") or "unknown"
+    if purchase.get("status") == "ready" and purchase.get("pdf_url"):
+        return {"status": "already_ready", "purchase_id": purchase_id}
+    if purchase.get("status") != "pending":
+        return {
+            "status": "skipped",
+            "purchase_id": purchase_id,
+            "purchase_status": purchase.get("status"),
+        }
+
+    profile = await _fetch_profile(db, purchase.get("user_id", ""))
+
+    try:
+        await _update_intel_report_purchase(db, purchase_id, {"status": "generating"})
+
+        _sentry_breadcrumb("generation", purchase_id=purchase_id, product_type=product_type)
+        pdf_bytes = await _generate_intel_report_pdf(db, purchase)
+
+        _sentry_breadcrumb(
+            "upload",
+            purchase_id=purchase_id,
+            product_type=product_type,
+            pdf_size_bytes=len(pdf_bytes),
+        )
+        signed_url = await _upload_intel_report_pdf(db, purchase_id, pdf_bytes)
+
+        await _update_intel_report_purchase(
+            db,
+            purchase_id,
+            {"status": "ready", "pdf_url": signed_url},
+        )
+
+        _sentry_breadcrumb("email", purchase_id=purchase_id, product_type=product_type)
+        if profile and profile.get("email"):
+            from email_service import send_intel_report_ready
+
+            send_intel_report_ready(
+                user_email=profile["email"],
+                name=profile.get("full_name") or profile["email"].split("@")[0],
+                pdf_url=signed_url,
+                product_name=_intel_report_product_name(product_type),
+                purchase_id=purchase_id,
+            )
+
+        duration_ms = int((time.monotonic() - start) * 1000)
+        INTEL_REPORT_GENERATED.labels(product_type=product_type, status="success").inc()
+        try:
+            from analytics_events import track_event
+            track_event(
+                "intel_report_generated",
+                {
+                    "user_id": purchase.get("user_id"),
+                    "product_type": product_type,
+                    "entity_key": purchase.get("entity_key"),
+                    "generation_time_ms": duration_ms,
+                    "pdf_size_bytes": len(pdf_bytes),
+                },
+            )
+        except Exception:
+            pass
+
+        return {
+            "status": "ready",
+            "purchase_id": purchase_id,
+            "product_type": product_type,
+            "pdf_size_bytes": len(pdf_bytes),
+            "generation_time_ms": duration_ms,
+        }
+    except Exception as exc:
+        logger.error(
+            "Intel Report generation failed: purchase_id=%s attempt=%s error=%s",
+            purchase_id,
+            attempt,
+            exc,
+            exc_info=True,
+        )
+        await _update_intel_report_purchase(db, purchase_id, {"status": "pending"})
+
+        if attempt < 3:
+            try:
+                from arq import Retry
+                raise Retry(defer=INTEL_REPORT_RETRY_BACKOFF_SECONDS[attempt - 1]) from exc
+            except ImportError:
+                raise exc
+
+        await _update_intel_report_purchase(db, purchase_id, {"status": "failed"})
+        INTEL_REPORT_GENERATED.labels(product_type=product_type, status="failed").inc()
+        refunded = _refund_intel_report_purchase(purchase)
+        if refunded:
+            INTEL_REPORT_GENERATED.labels(product_type=product_type, status="refunded").inc()
+        _send_intel_report_failed_email(profile, purchase)
+        return {
+            "status": "failed",
+            "purchase_id": purchase_id,
+            "product_type": product_type,
+            "refunded": refunded,
+            "error": str(exc),
+        }
 
 
 async def send_founders_welcome(ctx: dict, user_email: str, user_name: str) -> dict:

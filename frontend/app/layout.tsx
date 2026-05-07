@@ -14,6 +14,7 @@ import { TrialProgressBar } from "../components/TrialProgressBar";
 import { BackendStatusProvider } from "./components/BackendStatusIndicator";
 import { SWRProvider } from "../components/SWRProvider";
 import { UserProvider } from "../contexts/UserContext";
+import { FoundersTopBanner } from "../components/banners/FoundersTopBanner";
 import { StructuredData } from "./components/StructuredData";
 import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import { ClarityAnalytics } from "./components/ClarityAnalytics";
@@ -194,6 +195,7 @@ export default function RootLayout({
                 <BackendStatusProvider>
                   <SessionExpiredBanner />
                   <PaymentFailedBanner />
+                  <FoundersTopBanner />
                   <TrialProgressBar />
                   <NavigationShell>
                     {children}

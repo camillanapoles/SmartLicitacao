@@ -296,6 +296,19 @@ export default function TermosPage() {
               </div>
             </section>
 
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">
+                Termos Específicos
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                Para o Plano Fundadores (oferta vitalícia one-time), consulte os{' '}
+                <a href="/termos/fundadores" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  Termos do Plano Fundadores
+                </a>
+                .
+              </p>
+            </section>
+
             <section className="mt-12 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                 <strong>⚠️ IMPORTANTE:</strong> Ao utilizar a SmartLic, você reconhece ter lido, compreendido e

@@ -20,7 +20,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
 
 import httpx
@@ -405,6 +405,58 @@ async def get_detailed_health() -> Dict[str, Any]:
     return result
 
 
+# ---------------------------------------------------------------------------
+# TD-BE-025: OpenAI connectivity health check with 5-minute memory cache
+# ---------------------------------------------------------------------------
+
+# Cache entry: (result_dict, expiry_timestamp)
+_openai_health_cache: Optional[Tuple[Dict[str, Any], float]] = None
+_OPENAI_HEALTH_CACHE_TTL_S = 300  # 5 minutes
+
+
+async def check_openai_health() -> Dict[str, Any]:
+    """TD-BE-025: Check OpenAI API connectivity with a 5-minute memory cache.
+
+    Uses ``models.list(limit=1)`` — the cheapest possible probe (no tokens consumed).
+
+    Returns:
+        Dict with keys:
+          - ``status``: ``"ok"`` | ``"degraded"`` | ``"not_configured"``
+          - ``latency_ms``: float (only present when status is ``"ok"`` or ``"degraded"`` from a timeout)
+          - ``cached``: bool — True when the result comes from the in-memory cache
+    """
+    global _openai_health_cache
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return {"status": "not_configured"}
+
+    now = time.monotonic()
+    # Serve from cache when entry is still fresh
+    if _openai_health_cache is not None:
+        cached_result, expiry = _openai_health_cache
+        if now < expiry:
+            return {**cached_result, "cached": True}
+
+    start = time.monotonic()
+    try:
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=api_key, timeout=5.0, max_retries=0)
+        await client.models.list()
+        latency_ms = round((time.monotonic() - start) * 1000, 1)
+        result: Dict[str, Any] = {"status": "ok", "latency_ms": latency_ms}
+    except Exception as exc:
+        latency_ms = round((time.monotonic() - start) * 1000, 1)
+        err_type = type(exc).__name__
+        logger.warning("TD-BE-025: OpenAI health probe failed (%s): %s", err_type, str(exc)[:100])
+        result = {"status": "degraded", "latency_ms": latency_ms, "error": err_type}
+
+    # Store in cache
+    _openai_health_cache = (result, now + _OPENAI_HEALTH_CACHE_TTL_S)
+    return {**result, "cached": False}
+
+
 async def get_system_health() -> Dict[str, Any]:
     """GTM-STAB-008 AC3: Comprehensive system health check.
 
@@ -447,6 +499,13 @@ async def get_system_health() -> Dict[str, Any]:
     except Exception:
         components["arq_worker"] = {"status": "unknown"}
 
+    # TD-BE-025: OpenAI connectivity check (optional, cached 5 min)
+    try:
+        openai_health = await check_openai_health()
+        components["openai"] = openai_health
+    except Exception as e:
+        components["openai"] = {"status": "degraded", "error": str(e)[:100]}
+
     # STORY-305 AC4/AC11: Circuit breaker health for all 3 sources — includes try_recover canary
     try:
         from pncp_client import get_circuit_breaker
@@ -469,10 +528,12 @@ async def get_system_health() -> Dict[str, Any]:
         components.get(src, {}).get("status") == "degraded"
         for src in ("pncp", "pcp", "comprasgov")
     )
+    # TD-BE-025: OpenAI degraded → system degraded (not unhealthy — graceful degradation)
+    openai_degraded = components.get("openai", {}).get("status") == "degraded"
 
     if redis_down or supabase_down:
         overall = "unhealthy"
-    elif any_source_degraded:
+    elif any_source_degraded or openai_degraded:
         overall = "degraded"
     else:
         overall = "healthy"

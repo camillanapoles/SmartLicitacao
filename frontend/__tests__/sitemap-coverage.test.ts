@@ -157,4 +157,25 @@ describe('sitemap() — coverage thresholds (STORY-SEO-001 AC7)', () => {
     const unique = new Set(allUrls);
     expect(allUrls.length).toBe(unique.size);
   });
+
+  it('STORY-SEO-027 regression: sitemap nao emite /contratos/orgao raiz', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url.toString();
+      const endpoint = ENTITY_ENDPOINTS.find((e) => urlStr.includes(e));
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(endpoint ? buildShard4Payload(endpoint, 1) : {}),
+      } as Response);
+    });
+
+    const sitemap = await importSitemapFresh();
+    const allUrls: string[] = [];
+    for (let id = 0; id <= 4; id++) {
+      const entries = await sitemap({ id });
+      allUrls.push(...entries.map((e) => e.url));
+    }
+
+    const exactRootUrls = allUrls.filter((url) => new URL(url).pathname === '/contratos/orgao');
+    expect(exactRootUrls).toEqual([]);
+  });
 });

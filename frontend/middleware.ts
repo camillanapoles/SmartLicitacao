@@ -195,6 +195,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
+  // STORY-SEO-027: orphan root URL. Keep /contratos/orgao/[cnpj] untouched.
+  if (pathname === "/contratos/orgao") {
+    return addSecurityHeaders(new NextResponse("Gone", { status: 410 }));
+  }
+
   // Allow API routes first (includes /api/health for Railway healthcheck)
   if (pathname.startsWith("/api/")) {
     return addSecurityHeaders(NextResponse.next());

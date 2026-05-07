@@ -1,5 +1,6 @@
 const path = require("path");
 const { withSentryConfig } = require("@sentry/nextjs");
+const { buildLegacyLicitacoesRedirects } = require("./lib/legacy-licitacoes-redirects");
 
 // STORY-5.10 (TD-FE-012): Opt-in bundle analyzer. Run via `npm run analyze`,
 // which sets ANALYZE=true. Reports are written under .next/analyze/*.html.
@@ -55,6 +56,7 @@ const nextConfig = {
   // SEO: Consolidar pricing pages — /pricing → /planos (ISSUE-SEO-005)
   async redirects() {
     return [
+      ...buildLegacyLicitacoesRedirects(),
       {
         source: '/gloss%C3%A1rio',
         destination: '/glossario',

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import CnpjPerfilClient from './CnpjPerfilClient';
 import InlineTrialCTA from '../../components/InlineTrialCTA';
+import IntelReportCTA from './IntelReportCTA';
 import { LeadCapture } from '@/components/LeadCapture';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
@@ -186,6 +187,27 @@ export default async function CnpjPerfilPage({
       />
 
       <CnpjPerfilClient perfil={perfil} />
+
+      {/* #632: Intel Report one-time purchase CTA */}
+      <section className="mt-8 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
+        <h2 className="mb-2 text-xl font-bold text-gray-900">
+          Inteligência Competitiva
+        </h2>
+        <p className="mb-1 font-semibold text-gray-600">
+          Raio-X Completo do Concorrente
+        </p>
+        <p className="mb-4 text-sm text-gray-500">
+          8–12 páginas: histórico de contratos, órgãos compradores, evolução temporal, análise IA
+        </p>
+        <div className="mb-4 text-2xl font-bold text-gray-900">
+          R$197{" "}
+          <span className="text-sm font-normal text-gray-500">— download imediato</span>
+        </div>
+        <IntelReportCTA cnpj={cnpj} />
+        <p className="mt-3 text-xs text-gray-400">
+          ✓ PDF imediato &nbsp; ✓ 30 dias de acesso &nbsp; ✓ Dados PNCP atualizados
+        </p>
+      </section>
 
       {/* #652: Inline trial CTA after contratos section */}
       <InlineTrialCTA
