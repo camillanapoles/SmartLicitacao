@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Tests
+- **Suporte a TOTP/MFA no fixture `logged_in_driver` do Selenium (#654)** — fixture detecta tela "Verificação em dois fatores" (wait 5s) após submit do login. Se `ADMIN_TOTP_SECRET` configurado: gera código TOTP via `pyotp.TOTP` e submete; se não configurado: `pytest.skip` gracioso. Contas sem MFA continuam funcionando sem alteração (bloco `except Exception: pass`). Adiciona `pyotp>=2.9.0` a `tests/selenium/requirements.txt`. Rollback: reverter commit.
+
 ### Added — Frontend / GTM
 - **CTA de trial em /observatorio (#619)** — `ObservatorioCTA` client component adicionado ao hub do observatório. Usuários não autenticados veem link `/signup?ref=observatorio-hub`; autenticados veem link `/buscar`. Empty-state de relatórios agora inclui link ativo para `/licitacoes`.
 
