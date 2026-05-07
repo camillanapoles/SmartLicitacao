@@ -8076,14 +8076,35 @@ export interface components {
         LeadCaptureRequest: {
             /** Captured At */
             captured_at?: string | null;
+            /** Cnpj */
+            cnpj?: string | null;
             /** Email */
             email: string;
+            /** Empresa */
+            empresa?: string | null;
+            /** Mensagem */
+            mensagem?: string | null;
+            /** Modalidade Interesse */
+            modalidade_interesse?: ("radar" | "report" | "intel" | "nao_sei") | null;
+            /** Nome */
+            nome?: string | null;
+            /** Referer Path */
+            referer_path?: string | null;
             /** Setor */
             setor?: string | null;
-            /** Source */
-            source: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "calculadora" | "cnpj" | "alertas" | "consultoria" | "radar" | "report" | "intel" | "diagnostico";
+            /** Telefone */
+            telefone?: string | null;
             /** Uf */
             uf?: string | null;
+            /** Utm Campaign */
+            utm_campaign?: string | null;
+            /** Utm Source */
+            utm_source?: string | null;
         };
         /** LeadCaptureResponse */
         LeadCaptureResponse: {
