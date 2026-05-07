@@ -6706,7 +6706,7 @@ export interface components {
             name: string;
             /**
              * Revenue Share Pct
-             * @default 25
+             * @default 20
              */
             revenue_share_pct: number;
             /** Slug */
