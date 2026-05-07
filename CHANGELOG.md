@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CTA de trial em /observatorio (#619)** — `ObservatorioCTA` client component adicionado ao hub do observatório. Usuários não autenticados veem link `/signup?ref=observatorio-hub`; autenticados veem link `/buscar`. Empty-state de relatórios agora inclui link ativo para `/licitacoes`.
 
 ### Fixed — Backend / Security
+- **Rejeição de webhooks Stripe malformados antes do DB (#204)** — `_validate_event_envelope()` valida `event.id` (prefixo `evt_`), `event.type` e `event.data.object` logo após `construct_event()`. Payloads inválidos ou assinaturas forjadas retornam HTTP 400 sem tocar Supabase/idempotency. `_safe_log_value()` sanitiza todos os valores nos logs de webhook (bounded 80 chars, allowlist alnum). Logger rebaixado de `error` para `warning` em erros de validação. Rollback: reverter commit.
 - **Validação de termos de busca customizados (#212)** — `BuscaRequest.termos_busca` agora valida com allowlist conservadora pt-BR (letras latinas, dígitos, espaços, vírgulas e hífens). Rejeita payloads com `<`, `;`, `/`, `_` e similares. Limite `max_length=500`. Snapshot OpenAPI atualizado. Rollback: reverter commit.
 
 ### Added — SEO Admin
