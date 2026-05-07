@@ -358,6 +358,16 @@ export default function PlanosPage() {
           </div>
         </div>
 
+        {/* Fundadores cross-sell banner — BIZ-FOUND-002 / feat/#789 */}
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            → Conheça o <strong>Plano Fundadores</strong> — R$997 vitalício, vagas limitadas
+          </p>
+          <Link href="/fundadores" className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline ml-4 whitespace-nowrap">
+            Saiba mais →
+          </Link>
+        </div>
+
         <PlanStatusBanners
           userStatus={userStatus}
           trialDaysRemaining={trialDaysRemaining}
