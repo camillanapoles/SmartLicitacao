@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — Frontend / Founders
 - `FoundersTopBanner` component with availability gate and countdown (#787)
 - `FoundersRibbon` component (inline variant) for embedding in page sections (#787)
+- **FoundersRibbon CTAs em 5 rotas pSEO de alto-intent (#788)** — Integra `FoundersRibbon` (variant `contextual`) nas páginas `/observatorio/[slug]`, `/cnpj/[cnpj]`, `/orgaos/[slug]`, `/licitacoes/[setor]` e `/blog/programmatic/[setor]`. CTA posicionado abaixo do conteúdo principal (sem impacto no SEO acima da dobra). Prop `src` rastreia rota de origem no Mixpanel via evento `founders_pseo_conversion`. Não adiciona `cache:no-store` (SEN-FE-001 safe). Rollback: reverter commit.
 
 ### Added — Frontend / Legal
 - **Página de termos do Plano Fundadores (#793)** — `frontend/app/termos/fundadores/page.tsx` criado com 9 seções legais cobrindo escopo vitalício, fair use, sem garantia de êxito, período de resfriamento (CDC art. 49) e disclaimer de parceria governamental. `frontend/app/termos/page.tsx` atualizado com link para `/termos/fundadores`. Protege juridicamente o SmartLic e informa fundadores sobre os exatos direitos adquiridos.

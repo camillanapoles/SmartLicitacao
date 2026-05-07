@@ -4,6 +4,7 @@ import ContentPageLayout from '../../components/ContentPageLayout';
 import OrgaoPerfilClient from './OrgaoPerfilClient';
 import InlineTrialCTA from '../../components/InlineTrialCTA';
 import { LeadCapture } from '@/components/LeadCapture';
+import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
 
@@ -208,6 +209,13 @@ export default async function OrgaoPerfilPage({
           description={`Novos editais de ${stats.nome}, toda semana no seu email.`}
         />
       </div>
+
+      {/* #788: Founders plan CTA for high-intent organic visitors */}
+      <FoundersRibbon
+        variant="contextual"
+        copy="Transforme dados do PNCP em decisão. Vitalício por R$997."
+        src="pseo_orgao"
+      />
     </ContentPageLayout>
   );
 }

@@ -17,6 +17,7 @@ import { MicroDemo } from "@/components/seo/MicroDemo";
 import { MicroDemoSchema } from "@/components/seo/MicroDemoSchema";
 import StickyTrialCTA from "@/app/components/StickyTrialCTA";
 import { buildDatasetJsonLd } from "./_jsonld";
+import { FoundersRibbon } from "@/components/banners/FoundersRibbon";
 
 /**
  * STORY-324 AC5: SSG with ISR 6h for sector landing pages.
@@ -421,6 +422,15 @@ export default async function SectorPage({
             </Link>
           ))}
         </div>
+      </section>
+
+      {/* #788: Founders plan CTA for high-intent organic visitors */}
+      <section className="max-w-5xl mx-auto px-4 pb-4">
+        <FoundersRibbon
+          variant="contextual"
+          copy="Receba inteligência B2G sem mensalidade. Acesso vitalício R$997."
+          src="pseo_licitacoes"
+        />
       </section>
 
       {/* Footer: All sectors */}
