@@ -272,9 +272,8 @@ export default function Footer() {
             <p className="text-sm text-ink-secondary">
               © 2026 SmartLic.tech. Todos os direitos reservados.
             </p>
-            {/* TODO(REPO-005): replace with truth-source CNPJ once REPO-005 lands */}
             <p className="text-xs text-ink-muted">
-              CONFENGE Avaliações e Inteligência Artificial LTDA — CNPJ 56.688.745/0001-00 — Av. Pref. Osmar Cunha, 416 - Centro, Florianópolis - SC, 88015-100
+              CONFENGE Avaliações e Inteligência Artificial LTDA — CNPJ 52.407.089/0001-09 — Av. Pref. Osmar Cunha, 416 - Centro, Florianópolis - SC, 88015-100
             </p>
 
             {/* LGPD Badge */}
