@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Frontend / Pricing
+- **Tabela de comparação de preços com coluna Fundadores (#789)** — `frontend/components/pricing/PricingComparisonTable.tsx` adicionado: tabela 3 colunas (Plano Fundadores × SmartLic Pro Mensal × Anual) com colapso automático para 2 colunas quando `available=false` ou vagas esgotadas. Busca `/api/founding/availability` no mount com fail-open (erro de API mantém coluna visível). Deadline formatado em pt-BR `dd/mm/yyyy` com fallback `"30/06"`. Coluna Fundadores mostra R$997 pagamento único (modelo vitalício v2). Integrado em `/planos` e `/pricing`. Testes unitários cobrindo collapse, fail-open, formatação de deadline e CTAs. Rollback: remover `PricingComparisonTable.tsx` e reverter `planos/page.tsx` e `pricing/page.tsx`.
+
 ### Added — Frontend / Legal
 - **Página de termos do Plano Fundadores (#793)** — `frontend/app/termos/fundadores/page.tsx` criado com 9 seções legais cobrindo escopo vitalício, fair use, sem garantia de êxito, período de resfriamento (CDC art. 49) e disclaimer de parceria governamental. `frontend/app/termos/page.tsx` atualizado com link para `/termos/fundadores`. Protege juridicamente o SmartLic e informa fundadores sobre os exatos direitos adquiridos.
 
