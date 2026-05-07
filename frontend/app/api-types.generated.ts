@@ -10539,6 +10539,11 @@ export interface components {
                 [key: string]: unknown;
             };
             /**
+             * Consulting Discount Pct
+             * @description Consultoria discount % granted to this founder (default 50 for v2_lifetime). NULL = no consulting discount.
+             */
+            consulting_discount_pct?: number | null;
+            /**
              * Days Since Failure
              * @description STORY-309: Days since first payment failure (null if no failure)
              */
@@ -10552,11 +10557,32 @@ export interface components {
             /** Email */
             email: string;
             /**
+             * Founder Checkout Source
+             * @description utm_source or checkout source param from founding checkout metadata.
+             */
+            founder_checkout_source?: string | null;
+            /**
+             * Founder Offer Version
+             * @description Offer version string from checkout metadata (e.g. 'v2_lifetime').
+             */
+            founder_offer_version?: string | null;
+            /**
+             * Founder Since
+             * @description Timestamp of checkout.session.completed for the lifetime purchase.
+             */
+            founder_since?: string | null;
+            /**
              * Is Admin
              * @description Whether user has admin privileges
              * @default false
              */
             is_admin: boolean;
+            /**
+             * Is Founder
+             * @description TRUE if user purchased the v2 lifetime Plano Fundadores (R$997). NOT set for v1 subscription founders (-50% monthly).
+             * @default false
+             */
+            is_founder: boolean;
             /**
              * Plan Id
              * @description Plan ID (e.g., 'consultor_agil')
