@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Database / Migrations
+- **RLS policy gsc_metrics corrigida + 14 migrations aplicadas (#796)** — `20260422120000_create_gsc_metrics.sql` referenciava `profiles.is_master` como coluna (inexistente — é computado em Python); corrigido para `profiles.plan_type = 'master'`. 14 migrations pendentes aplicadas ao DB de produção via Management API. Resolve falha crônica em `migration-check.yml`. Rollback: `supabase db push` com `.down.sql` dos arquivos afetados.
+
 ### Added — Frontend / Legal
 - **Página de termos do Plano Fundadores (#793)** — `frontend/app/termos/fundadores/page.tsx` criado com 9 seções legais cobrindo escopo vitalício, fair use, sem garantia de êxito, período de resfriamento (CDC art. 49) e disclaimer de parceria governamental. `frontend/app/termos/page.tsx` atualizado com link para `/termos/fundadores`. Protege juridicamente o SmartLic e informa fundadores sobre os exatos direitos adquiridos.
 
