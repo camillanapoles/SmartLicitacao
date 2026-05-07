@@ -32,13 +32,13 @@
 
 ## 2. Inconsistências Detectadas
 
-### Inc-1: 15 vs 20 setores 🔴
+### Inc-1: 15 vs 20 setores 🟢 RESOLVIDO
 
-**Source A** (`CLAUDE.md`): "**15 Setores:** Definidos em `backend/sectors_data.yaml`"
+**Source A** (`CLAUDE.md`): "**15 Setores:** Definidos em `backend/sectors_data.yaml`" *(era 15 quando este report foi gerado — já corrigido para 20 Setores)*
 **Source B** (`.reversa/context/modules.json`): "20 setores configurados"
 **Source C** (`code-analysis.md` Module 3): "20 setores configurados"
 
-**Resolução**: Inspecionar `backend/sectors_data.yaml` real. Atualizar CLAUDE.md ou code-analysis.
+**Resolução (PR #798 — 2026-05-07)**: Auditoria empírica confirmou `len(yaml.safe_load(open('backend/sectors_data.yaml'))['sectors']) == 20`. Os 20 IDs são: vestuario, alimentos, informatica, mobiliario, papelaria, engenharia, software_desenvolvimento, software_licencas, servicos_prediais, produtos_limpeza, medicamentos, equipamentos_medicos, insumos_hospitalares, vigilancia, transporte_servicos, frota_veicular, manutencao_predial, engenharia_rodoviaria, materiais_eletricos, materiais_hidraulicos. CLAUDE.md já reflete "**20 Setores**" corretamente. Sem ação residual.
 
 ### Inc-2: Cache warming deprecation context 🟢
 
@@ -117,9 +117,9 @@
 
 **Pergunta ao user**: É possível medir empiricamente para validar/atualizar?
 
-### Gap-7: 15 vs 20 setores 🔴
+### Gap-7: 15 vs 20 setores 🟢 RESOLVIDO (PR #798 — 2026-05-07)
 
-Ver Inc-1 acima.
+Ver Inc-1 acima. Auditoria empírica confirmou 20 setores em `backend/sectors_data.yaml`. CLAUDE.md já correto.
 
 ### Gap-8: CNAE→Setor mapping completeness 🟡
 
@@ -271,7 +271,7 @@ Ready para handoff:
 ### 8.4 Cross-Check Empírico
 
 - 9 claims verificados; 1 corrigido: `OBS-001 file = backend/middleware/bot_detection.py` (não `bot_rate_limit.py` — rename forçado por collision com `middleware.py` pós PR #562)
-- Inconsistência Gap-7 (15 vs 20 setores em CLAUDE.md) persistente — não-investigado neste refresh
+- Inconsistência Gap-7 (15 vs 20 setores em CLAUDE.md) resolvida via PR #798 (2026-05-07) — auditoria empírica confirmou 20 setores
 
 ---
 
@@ -326,7 +326,7 @@ Ready para handoff:
 |-----|-----------|-------|--------|
 | CRIT-084 | Worker sem timeout — uvicorn RUNNER não recicla worker travado | RES-BE-016 | InProgress (commits parciais; middleware AC4 merged PR #588) |
 | POOL-LEAK-001 | Pool leak root cause — `asyncio.wait_for` + thread cleanup inline | RES-BE-017 | Ready (Sprint 2) |
-| Gap-7 (setores) | 20 setores em `sectors_data.yaml` vs "20 Setores" em CLAUDE.md — verificar contagem atual | — | Não-investigado |
+| Gap-7 (setores) | Auditoria empírica confirmou 20 setores em `sectors_data.yaml`. CLAUDE.md já reflete "20 Setores". | PR #798 | ✅ RESOLVIDO 2026-05-07 |
 | CONV-DIAG (CRO) | Instrumentação completa SEO → trial não finalizada (CONV-INST- stories InReview) | CONV-INST-001/002/003/005 | InReview |
 
 ### 9.5 Score 2026-05-02

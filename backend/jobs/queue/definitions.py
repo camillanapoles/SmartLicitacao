@@ -11,5 +11,6 @@ from jobs.queue.jobs import (  # noqa: F401
     llm_summary_job, excel_generation_job, bid_analysis_job,
     daily_digest_job, email_alerts_job,
     reclassify_pending_bids_job, classify_zero_match_job,
+    send_founders_welcome,
 )
 from jobs.queue.search import search_job  # noqa: F401

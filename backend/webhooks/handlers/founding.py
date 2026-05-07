@@ -1,6 +1,7 @@
-"""STORY-BIZ-001 + BIZ-FOUND-002: side-effect handlers that keep
+"""STORY-BIZ-001 + BIZ-FOUND-002 + #785: side-effect handlers that keep
 ``founding_leads`` in sync with Stripe checkout-session lifecycle events,
-plus the cap-violation race guard introduced by BIZ-FOUND-002.
+plus the cap-violation race guard introduced by BIZ-FOUND-002, and lifetime
+entitlement activation (#785).
 
 Invoked from ``webhooks.handlers.checkout.handle_checkout_session_completed``
 and from the webhook dispatcher in ``webhooks.stripe`` when session metadata
@@ -17,6 +18,12 @@ BIZ-FOUND-002 race guard:
 - We do the re-check after marking completed (not before) because the cap
   count is based on completed rows; if we re-checked before flipping, the
   current event itself would not be visible to the count.
+
+#785 Lifetime entitlement:
+- After the race guard confirms the checkout is valid (not cap_violated),
+  the handler activates the lifetime founder entitlement on ``profiles``.
+- If the user hasn't signed up yet (founding is sold to unauthenticated
+  visitors), the activation is gracefully deferred with a log entry.
 """
 
 from __future__ import annotations
@@ -26,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from log_sanitizer import get_sanitized_logger
+from metrics import founders_checkout_success, founders_checkout_failed
 
 logger = get_sanitized_logger(__name__)
 
@@ -164,6 +172,116 @@ def _send_cap_violation_email(sb, session: Any) -> None:
         logger.warning(f"founding race guard: email queue failed — session_id={sid} err={e}")
 
 
+def _resolve_email_from_session(session: Any) -> str | None:
+    """Extract customer email from a Stripe checkout session object."""
+    if not hasattr(session, "get"):
+        return None
+    email = session.get("customer_email")
+    if not email:
+        customer_details = session.get("customer_details") or {}
+        email = customer_details.get("email") if isinstance(customer_details, dict) else None
+    return email or None
+
+
+def _resolve_user_id_from_email(sb, email: str) -> str | None:
+    """Look up profiles.id by email. Returns None if not found or on DB error."""
+    try:
+        res = (
+            sb.table("profiles")
+            .select("id")
+            .eq("email", email)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+        if rows:
+            return rows[0].get("id")
+        return None
+    except Exception as e:
+        logger.error(f"founding lifetime: failed to resolve user_id for email={email} — {e}")
+        return None
+
+
+def _read_consulting_discount_pct(sb) -> int:
+    """Read consulting_discount_pct from the active founding_policy row.
+
+    Falls back to 50 (default) if the table is empty, the column is absent,
+    or any DB error occurs — so the entitlement is never blocked by infra issues.
+    """
+    try:
+        res = (
+            sb.table("founding_policy")
+            .select("consulting_discount_pct")
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+        if rows and rows[0].get("consulting_discount_pct") is not None:
+            return int(rows[0]["consulting_discount_pct"])
+    except Exception as e:
+        logger.warning(f"founding lifetime: failed to read consulting_discount_pct — {e} — using default 50")
+    return 50
+
+
+def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None) -> None:
+    """Upsert the lifetime founder entitlement on ``profiles``.
+
+    Sets is_founder=True, founder_since, founder_offer_version,
+    founder_checkout_source, consulting_discount_pct, plan_type,
+    and clears trial_expires_at.
+
+    Gracefully defers if the user profile does not exist yet (founding is
+    sold to unauthenticated visitors who sign up after payment).
+
+    Never raises — a failure here must not break the 200 response to Stripe.
+    """
+    sid = _session_id(session)
+    metadata = (session.get("metadata") or {}) if hasattr(session, "get") else {}
+
+    email = _resolve_email_from_session(session)
+    if not email:
+        logger.warning(
+            f"founding lifetime: cannot activate — no email in session_id={sid}"
+        )
+        return
+
+    user_id = _resolve_user_id_from_email(sb, email)
+    if not user_id:
+        logger.info(
+            f"founding lifetime activation deferred — user signup pending "
+            f"(session_id={sid} email={email} lead_id={lead_id})"
+        )
+        return
+
+    consulting_discount_pct = _read_consulting_discount_pct(sb)
+
+    offer_version = metadata.get("offer_version") or "v2"
+    checkout_source = metadata.get("checkout_source") or "founding_page"
+
+    entitlement_payload: dict[str, Any] = {
+        "is_founder": True,
+        "founder_since": datetime.now(timezone.utc).isoformat(),
+        "founder_offer_version": offer_version,
+        "founder_checkout_source": checkout_source,
+        "consulting_discount_pct": consulting_discount_pct,
+        "plan_type": "smartlic_pro",
+        "trial_expires_at": None,
+    }
+
+    try:
+        sb.table("profiles").update(entitlement_payload).eq("id", user_id).execute()
+        logger.info(
+            f"founding lifetime activated — user_id={user_id} lead_id={lead_id} "
+            f"session_id={sid} offer_version={offer_version} "
+            f"consulting_discount_pct={consulting_discount_pct}"
+        )
+    except Exception as e:
+        logger.error(
+            f"founding lifetime: profiles upsert failed — user_id={user_id} "
+            f"session_id={sid} err={e}"
+        )
+
+
 def mark_founding_lead_completed(sb, session: Any) -> None:
     """Update founding_leads row when Stripe confirms checkout completion.
 
@@ -191,6 +309,7 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
         "stripe_customer_id": session.get("customer"),
     }
 
+    lead_id: str | None = None
     try:
         result = (
             sb.table("founding_leads")
@@ -206,9 +325,14 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
             )
             return
 
+        # Capture lead_id for downstream logging if the update returned the row.
+        if result.data and isinstance(result.data, list) and result.data[0].get("id"):
+            lead_id = str(result.data[0]["id"])
+
         logger.info(f"Founding lead marked completed: session_id={sid} rows={updated}")
     except Exception as e:
         logger.error(f"Failed to mark founding lead completed: session_id={sid} err={e}")
+        founders_checkout_failed.labels(reason="db_error").inc()
         return
 
     # BIZ-FOUND-002 race guard — re-check availability AFTER the flip so the
@@ -218,6 +342,7 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
         # Fail safe: never auto-refund a paying customer when the DB is
         # uncooperative. Operator alerting (Sentry) can catch the gap.
         logger.warning(f"founding race guard: RPC unavailable, skipping cap re-check — session_id={sid}")
+        founders_checkout_success.labels(offer_version="v2_lifetime").inc()
         return
 
     reason = snapshot.get("reason") or ""
@@ -226,6 +351,9 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
         # (paused/disabled/deadline). In all those cases we already accepted
         # this checkout legitimately before the structural change — do NOT
         # refund post-hoc.
+        # #785: activate lifetime founder entitlement on the happy path.
+        _activate_lifetime_founder_entitlement(sb, session, lead_id)
+        founders_checkout_success.labels(offer_version="v2_lifetime").inc()
         return
 
     # The only "race" we need to refund for is founding_cap_reached. For
@@ -235,6 +363,7 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
         logger.warning(
             f"founding race guard: unexpected post-completion reason={reason} session_id={sid}"
         )
+        founders_checkout_success.labels(offer_version="v2_lifetime").inc()
         return
 
     logger.error(
@@ -243,6 +372,7 @@ def mark_founding_lead_completed(sb, session: Any) -> None:
         f"{snapshot.get('seats_total', 0)} — initiating refund + email."
     )
 
+    founders_checkout_failed.labels(reason="cap_violated").inc()
     refunded = _refund_session_charge(session)
 
     try:

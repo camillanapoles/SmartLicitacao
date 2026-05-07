@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import * as Sentry from '@sentry/nextjs';
 import ObservatorioRelatorioClient from './ObservatorioRelatorioClient';
+import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
@@ -228,6 +229,13 @@ export default async function RelatorioPage({
         ano={ano}
         mes={mes}
       />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <FoundersRibbon
+          variant="contextual"
+          copy="Receba inteligência B2G sem mensalidade. Acesso vitalício R$997."
+          src="pseo_observatorio"
+        />
+      </div>
     </>
   );
 }

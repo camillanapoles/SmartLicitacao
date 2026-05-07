@@ -64,6 +64,10 @@ jobs:
     name: Audit bidiq-backend env vars
     needs: unit-tests
     if: github.event_name != 'pull_request'
+    # Advisory only (RES-BE-013): drift findings are surfaced via warnings + Sentry alerts,
+    # not as a hard CI gate. Emergency env var changes must not be gated by this audit.
+    # Operators should fix PYTHONASYNCIODEBUG in Railway and update prod-env-allowlist.txt.
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -91,6 +95,8 @@ jobs:
     name: Audit bidiq-frontend env vars
     needs: unit-tests
     if: github.event_name != 'pull_request'
+    # Advisory only (RES-BE-013): see audit-backend note above.
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

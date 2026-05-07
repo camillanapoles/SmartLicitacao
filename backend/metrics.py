@@ -1291,6 +1291,23 @@ HEALTH_CHECK_FAILURES = _create_counter(
 
 
 # ============================================================================
+# Plano Fundadores metrics (epic:fundadores)
+# ============================================================================
+
+founders_checkout_success = _create_counter(
+    "smartlic_founders_checkout_success_total",
+    "Successful founding lifetime checkouts",
+    labelnames=["offer_version"],
+)
+
+founders_checkout_failed = _create_counter(
+    "smartlic_founders_checkout_failed_total",
+    "Failed founding checkout attempts",
+    labelnames=["reason"],
+)
+
+
+# ============================================================================
 # ASGI app factory for /metrics endpoint
 # ============================================================================
 

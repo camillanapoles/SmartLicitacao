@@ -364,11 +364,11 @@ class TestAC8CrossWorkerSSE:
 class TestAC9GracefulTimeout:
     """AC9: graceful shutdown timeout aligned with Railway drainingSeconds=120s."""
 
-    def test_start_sh_uvicorn_has_graceful_shutdown_120(self):
+    def test_start_sh_uvicorn_has_graceful_shutdown_configurable(self):
         content = _read_start_sh()
-        assert "--timeout-graceful-shutdown 120" in content, (
-            "start.sh uvicorn block must set --timeout-graceful-shutdown 120 "
-            "to align with Railway drainingSeconds=120 (CRIT-083 AC9)"
+        assert '--timeout-graceful-shutdown "${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}"' in content, (
+            "start.sh uvicorn block must use configurable --timeout-graceful-shutdown "
+            "via UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN env var with default 120s (CRIT-084 AC2, #799)"
         )
 
     def test_railway_toml_has_draining_120(self):
@@ -377,10 +377,11 @@ class TestAC9GracefulTimeout:
             "railway.toml must have drainingSeconds = 120 (CRIT-083 AC9)"
         )
 
-    def test_railway_toml_startcommand_has_graceful_shutdown_120(self):
+    def test_railway_toml_startcommand_has_graceful_shutdown_configurable(self):
         content = _read_railway_toml()
-        assert "--timeout-graceful-shutdown 120" in content, (
-            "railway.toml startCommand must include --timeout-graceful-shutdown 120"
+        assert "${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}" in content, (
+            "railway.toml startCommand must use configurable --timeout-graceful-shutdown "
+            "via UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN env var with default 120s (#799)"
         )
 
 

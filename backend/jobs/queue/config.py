@@ -131,6 +131,7 @@ class WorkerSettings:
         llm_summary_job, excel_generation_job, bid_analysis_job,
         daily_digest_job, email_alerts_job,
         reclassify_pending_bids_job, classify_zero_match_job,
+        send_founders_welcome,
         generate_intel_report,
     )
     from jobs.queue.search import search_job
@@ -174,6 +175,7 @@ class WorkerSettings:
         llm_summary_job, excel_generation_job, search_job,
         bid_analysis_job, daily_digest_job, email_alerts_job,
         reclassify_pending_bids_job, classify_zero_match_job,
+        send_founders_welcome,
         generate_intel_report,
         *_ingestion_functions,
         *_monitoring_functions,

@@ -1,5 +1,6 @@
 """User profile, onboarding, and auth-related schemas."""
 
+from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, EmailStr, Field, model_validator, field_validator
 from typing import Any, Dict, List, Optional
@@ -282,6 +283,35 @@ class UserProfileResponse(BaseModel):
     subscription_end_date: Optional[str] = Field(
         default=None,
         description="ISO 8601 — data real de renovação Stripe (current_period_end), null para trial/admin"
+    )
+    # ── Founder fields (#784 — BIZ-FOUND-002 v2 lifetime) ──────────────────
+    is_founder: bool = Field(
+        default=False,
+        description=(
+            "TRUE if user purchased the v2 lifetime Plano Fundadores (R$997). "
+            "NOT set for v1 subscription founders (-50% monthly)."
+        ),
+    )
+    founder_since: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp of checkout.session.completed for the lifetime purchase.",
+    )
+    founder_offer_version: Optional[str] = Field(
+        default=None,
+        description="Offer version string from checkout metadata (e.g. 'v2_lifetime').",
+    )
+    founder_checkout_source: Optional[str] = Field(
+        default=None,
+        description="utm_source or checkout source param from founding checkout metadata.",
+    )
+    consulting_discount_pct: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description=(
+            "Consultoria discount % granted to this founder (default 50 for v2_lifetime). "
+            "NULL = no consulting discount."
+        ),
     )
 
 

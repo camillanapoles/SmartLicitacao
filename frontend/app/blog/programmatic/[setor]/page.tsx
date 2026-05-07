@@ -6,6 +6,7 @@ import Footer from '../../../components/Footer';
 import SchemaMarkup from '@/components/blog/SchemaMarkup';
 import BlogCTA from '@/components/blog/BlogCTA';
 import RelatedPages from '@/components/blog/RelatedPages';
+import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 import {
   generateSectorParams,
   fetchSectorBlogStats,
@@ -280,6 +281,13 @@ export default async function SectorProgrammaticPage({
             setor={sector.name}
             count={stats?.total_editais}
             slug={slug}
+          />
+
+          {/* #788: Founders plan CTA for high-intent organic visitors */}
+          <FoundersRibbon
+            variant="contextual"
+            copy="Acesso vitalício durante a fase inicial do SmartLic — vagas limitadas."
+            src="pseo_blog"
           />
 
           {/* Related Pages */}

@@ -49,6 +49,9 @@ class FoundingPolicySnapshot(BaseModel):
     seats_taken: int
     seats_remaining: int
     completion_pct: float
+    offer_mode: str = "lifetime"
+    price_brl_cents: int = 99700
+    consulting_discount_pct: int = 50
 
 
 class FoundingLeadEntry(BaseModel):
@@ -153,6 +156,9 @@ async def get_founding_policy(_admin=Depends(require_admin)) -> Any:
         seats_taken=seats_taken,
         seats_remaining=max(0, seat_limit - seats_taken),
         completion_pct=completion_pct,
+        offer_mode=str(row.get("offer_mode") or "lifetime"),
+        price_brl_cents=int(row.get("price_brl_cents") or 99700),
+        consulting_discount_pct=int(row.get("consulting_discount_pct") or 50),
     )
 
 
