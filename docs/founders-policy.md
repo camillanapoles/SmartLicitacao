@@ -118,7 +118,7 @@ Se necessário reverter a oferta após ativação:
 3. Rollback migrations se necessário: `supabase db push` com `.down.sql`
 4. Comunicar fundadores ativos por email (não remover acesso retroativamente)
 
-Ver `docs/runbooks/rollback-procedure.md` para o procedimento geral de rollback.
+Ver `docs/runbooks/founders-rollback.md` para o procedimento completo de rollback.
 
 ---
 
