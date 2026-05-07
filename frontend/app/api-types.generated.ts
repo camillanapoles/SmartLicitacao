@@ -7625,8 +7625,20 @@ export interface components {
             deadline_at: string | null;
             /** Discount Pct */
             discount_pct: number;
+            /**
+             * Offer Mode
+             * @description 'lifetime' or 'subscription'
+             * @default lifetime
+             */
+            offer_mode: string;
             /** Paused */
             paused: boolean;
+            /**
+             * Price Brl Cents
+             * @description Price in BRL cents
+             * @default 99700
+             */
+            price_brl_cents: number;
             /** Reason */
             reason: string;
             /** Seats Remaining */
@@ -7710,12 +7722,22 @@ export interface components {
             active: boolean;
             /** Completion Pct */
             completion_pct: number;
+            /**
+             * Consulting Discount Pct
+             * @default 50
+             */
+            consulting_discount_pct: number;
             /** Coupon Code */
             coupon_code: string;
             /** Deadline At */
             deadline_at: string;
             /** Discount Pct */
             discount_pct: number;
+            /**
+             * Offer Mode
+             * @default lifetime
+             */
+            offer_mode: string;
             /** Paused */
             paused: boolean;
             /** Paused At */
@@ -7724,6 +7746,11 @@ export interface components {
             paused_by: string | null;
             /** Paused Reason */
             paused_reason: string | null;
+            /**
+             * Price Brl Cents
+             * @default 99700
+             */
+            price_brl_cents: number;
             /** Seat Limit */
             seat_limit: number;
             /** Seats Remaining */
