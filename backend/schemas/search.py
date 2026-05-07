@@ -1,6 +1,8 @@
 """Search-related schemas: BuscaRequest, BuscaResponse, LicitacaoItem, etc."""
 
 from datetime import date
+import unicodedata
+
 from pydantic import BaseModel, Field, model_validator, field_validator
 from typing import Dict, List, Literal, Optional, Union
 
@@ -8,6 +10,8 @@ from schemas.common import (
     StatusLicitacao,
     EsferaGovernamental,
 )
+
+SEARCH_TERMS_MAX_LENGTH = 500
 
 
 class SearchQueuedResponse(BaseModel):
@@ -111,6 +115,7 @@ class BuscaRequest(BaseModel):
     )
     termos_busca: Optional[str] = Field(
         default=None,
+        max_length=SEARCH_TERMS_MAX_LENGTH,
         description="Custom search terms. Use commas to separate multi-word phrases "
                     "(e.g., 'levantamento topográfico, terraplenagem, drenagem'). "
                     "Without commas, spaces separate individual keywords (legacy mode).",
@@ -281,6 +286,29 @@ class BuscaRequest(BaseModel):
                 "STORY-419: se o edital realmente é maior, contate o suporte."
             )
         return v
+
+    @field_validator("termos_busca")
+    @classmethod
+    def validate_termos_busca(cls, v: Optional[str]) -> Optional[str]:
+        """Validate custom search terms using a conservative pt-BR allowlist."""
+        if v is None:
+            return v
+
+        normalized = unicodedata.normalize("NFC", v.strip())
+        if not normalized:
+            return None
+
+        for char in normalized:
+            is_latin_letter = char.isalpha() and "LATIN" in unicodedata.name(char, "")
+            is_digit = "0" <= char <= "9"
+            if is_latin_letter or is_digit or char in {" ", ",", "-"}:
+                continue
+            raise ValueError(
+                "termos_busca contém caracteres inválidos. Use apenas letras, "
+                "números, espaços, vírgulas e hífens."
+            )
+
+        return normalized
 
     @model_validator(mode="after")
     def validate_dates_and_values(self) -> "BuscaRequest":

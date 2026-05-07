@@ -88,6 +88,51 @@ class TestBuscaRequest:
         errors = exc_info.value.errors()
         assert any(error["loc"] == ("data_final",) for error in errors)
 
+    def test_termos_busca_accepts_pt_br_terms(self):
+        """Custom search terms should accept pt-BR accents, numbers, spaces, commas, and hyphens."""
+        request = BuscaRequest(
+            ufs=["SP"],
+            data_inicial="2025-01-01",
+            data_final="2025-01-31",
+            termos_busca="levantamento topográfico, pavimentação, CA-50 número 2",
+        )
+
+        assert (
+            request.termos_busca
+            == "levantamento topográfico, pavimentação, CA-50 número 2"
+        )
+
+    def test_termos_busca_rejects_more_than_500_chars(self):
+        """Custom search terms should be capped at 500 chars."""
+        with pytest.raises(ValidationError) as exc_info:
+            BuscaRequest(
+                ufs=["SP"],
+                data_inicial="2025-01-01",
+                data_final="2025-01-31",
+                termos_busca="a" * 501,
+            )
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"] == ("termos_busca",) for error in errors)
+
+    def test_termos_busca_rejects_unsafe_characters(self):
+        """Custom search terms should reject punctuation used for injection payloads."""
+        invalid_terms = [
+            "<script>alert(1)</script>",
+            "software; DROP TABLE search_sessions",
+            "uniforme_escolar",
+            "drenagem/pluvial",
+        ]
+
+        for termos_busca in invalid_terms:
+            with pytest.raises(ValidationError):
+                BuscaRequest(
+                    ufs=["SP"],
+                    data_inicial="2025-01-01",
+                    data_final="2025-01-31",
+                    termos_busca=termos_busca,
+                )
+
 
 class TestResumoLicitacoes:
     """Test ResumoLicitacoes schema validation."""
