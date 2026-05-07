@@ -30,7 +30,7 @@ import os
 from pipeline.budget import _run_with_budget
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
 from rate_limiter import require_rate_limit
@@ -292,6 +292,39 @@ async def founding_availability(response: Response) -> Any:
     )
 
 
+@router.get("/checkout/status")
+async def founding_checkout_status(
+    session_id: str = Query(..., min_length=8),
+    _rl=Depends(require_rate_limit(30, 60)),
+) -> dict:
+    """Return Stripe checkout session status for the founding purchase confirmation page.
+
+    No auth required — Stripe ``cs_*`` session IDs are long random tokens that
+    are unguessable. Only ``status`` and ``payment_status`` are returned so no
+    PII is exposed. Used by ``/fundadores/obrigado`` to poll until payment is
+    confirmed (max 20 × 3 s = 60 s).
+    """
+    stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
+    if not stripe_key:
+        logger.warning("founding: checkout/status called but STRIPE_SECRET_KEY not set")
+        return {"status": "unknown", "payment_status": "unpaid"}
+
+    try:
+        import stripe as stripe_lib  # local import to keep module testable without Stripe
+
+        session = stripe_lib.checkout.Session.retrieve(
+            session_id,
+            api_key=stripe_key,
+        )
+        return {
+            "status": session.status,
+            "payment_status": session.payment_status,
+        }
+    except Exception as exc:
+        logger.warning(f"founding: checkout/status retrieval failed — session_id_prefix={session_id[:8]} err={exc}")
+        return {"status": "unknown", "payment_status": "unpaid"}
+
+
 @router.post("/checkout", response_model=FoundingCheckoutResponse)
 async def founding_checkout(
     payload: FoundingCheckoutRequest,
@@ -417,7 +450,7 @@ async def founding_checkout(
         "payment_method_types": ["card"],
         "line_items": [{"price": stripe_price_id, "quantity": 1}],
         "mode": "subscription",
-        "success_url": f"{frontend_url}/founding/obrigado?session_id={{CHECKOUT_SESSION_ID}}",
+        "success_url": f"{frontend_url}/fundadores/obrigado?session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{frontend_url}/founding?cancelled=true",
         "customer_email": payload.email,
         "metadata": {

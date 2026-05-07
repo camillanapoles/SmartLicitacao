@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 type Status = 'loading' | 'success' | 'pending' | 'error';
+
+const MAX_POLLS = 20;
+const POLL_INTERVAL_MS = 3000;
 
 export function FundadoresObrigadoClient() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const [status, setStatus] = useState<Status>('loading');
-  const [pollCount, setPollCount] = useState(0);
+  const pollCountRef = useRef(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -17,37 +21,41 @@ export function FundadoresObrigadoClient() {
       return;
     }
 
-    // Poll backend for checkout status (max 20 times × 3s = 60s)
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+
+    // Poll backend for checkout status (max MAX_POLLS × POLL_INTERVAL_MS)
     const poll = async () => {
       try {
-        const res = await fetch(`/api/founding/checkout/status?session_id=${sessionId}`);
+        const res = await fetch(`/api/founding/checkout/status?session_id=${encodeURIComponent(sessionId)}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.status === 'complete' || data.checkout_status === 'completed') {
+          if (data.status === 'complete' || data.payment_status === 'paid') {
+            stopPolling();
             setStatus('success');
             return;
           }
         }
-        setPollCount(c => c + 1);
       } catch {
-        setPollCount(c => c + 1);
+        // swallow fetch errors — keep polling
+      }
+
+      pollCountRef.current += 1;
+      if (pollCountRef.current >= MAX_POLLS) {
+        stopPolling();
+        setStatus('pending');
       }
     };
 
+    pollCountRef.current = 0;
     poll();
-    const interval = setInterval(() => {
-      setPollCount(c => {
-        if (c >= 20) {
-          clearInterval(interval);
-          setStatus('pending');
-          return c;
-        }
-        return c;
-      });
-      poll();
-    }, 3000);
+    intervalRef.current = setInterval(poll, POLL_INTERVAL_MS);
 
-    return () => clearInterval(interval);
+    return stopPolling;
   }, [sessionId]);
 
   if (status === 'loading') {

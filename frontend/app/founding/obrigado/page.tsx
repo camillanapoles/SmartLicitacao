@@ -1,10 +1,19 @@
-import { permanentRedirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
+
+interface Props {
+  searchParams: Promise<{ session_id?: string }>;
+}
 
 /**
- * 301 redirect to the canonical post-purchase page.
- * The new /fundadores/obrigado page handles Stripe session_id polling.
- * permanentRedirect uses HTTP 308 in Next.js App Router (permanent, preserves method).
+ * Temporary 307 redirect: /founding/obrigado → /fundadores/obrigado
+ * Preserves session_id query string so the Stripe checkout confirmation works.
+ * Uses redirect (temporary/307) not permanentRedirect so browsers don't cache it.
  */
-export default function FoundingObrigadoPage() {
-  permanentRedirect('/fundadores/obrigado');
+export default async function FoundingObrigadoPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const sessionId = params.session_id;
+  const target = sessionId
+    ? `/fundadores/obrigado?session_id=${encodeURIComponent(sessionId)}`
+    : '/fundadores/obrigado';
+  redirect(target);
 }
