@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import HeroSection from '@/app/components/landing/HeroSection';
 
 // Mock next/image — render as plain img with all props
@@ -19,52 +18,47 @@ jest.mock('next/image', () => {
   };
 });
 
+// Mock next/link — render as plain anchor
+jest.mock('next/link', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: ({ href, children, ...rest }: { href: string; children: React.ReactNode; [key: string]: unknown }) =>
+      React.createElement('a', { href, ...rest }, children),
+  };
+});
+
 describe('HeroSection', () => {
-  it('renders headline with financial impact positioning (GTM-COPY-001 AC1)', () => {
+  it('renders headline with B2G intelligence positioning (REPO-006)', () => {
     render(<HeroSection />);
 
-    expect(screen.getByText(/Pare de perder dinheiro/i)).toBeInTheDocument();
-    expect(screen.getByText(/com licitações erradas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Decisão comercial em licitação não nasce de PDF/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nasce de inteligência/i)).toBeInTheDocument();
   });
 
-  it('renders subheadline explaining filtering mechanism (GTM-COPY-001 AC2)', () => {
+  it('renders subheadline with go/no-go decision framing (REPO-006)', () => {
     render(<HeroSection />);
 
-    expect(screen.getByText(/O SmartLic analisa cada edital contra o perfil da sua empresa/i)).toBeInTheDocument();
-    expect(screen.getByText(/justificativa objetiva/i)).toBeInTheDocument();
+    expect(screen.getByText(/SmartLic lê o edital, mapeia o concorrente, calcula a chance real/i)).toBeInTheDocument();
+    expect(screen.getByText(/go\/no-go em minutos/i)).toBeInTheDocument();
   });
 
-  it('renders primary CTA with action verb (GTM-COPY-002 AC1)', () => {
+  it('renders primary CTA with correct data-testid and href (REPO-006)', () => {
     render(<HeroSection />);
 
-    const primaryCTA = screen.getByRole('button', { name: /Ver oportunidades para meu setor/i });
+    const primaryCTA = screen.getByTestId('hero-cta-primary');
     expect(primaryCTA).toBeInTheDocument();
+    expect(primaryCTA).toHaveAttribute('href', '/signup?source=hero-primary');
+    expect(primaryCTA).toHaveTextContent('Testar plataforma');
   });
 
-  it('renders secondary CTA linking to como-funciona (SAB-006 AC1)', () => {
+  it('renders secondary CTA with correct data-testid and href (REPO-006)', () => {
     render(<HeroSection />);
 
-    const secondaryCTA = screen.getByRole('button', { name: /Ver como funciona/i });
+    const secondaryCTA = screen.getByTestId('hero-cta-secondary');
     expect(secondaryCTA).toBeInTheDocument();
-  });
-
-  it('scrolls to como-funciona section when secondary CTA is clicked', async () => {
-    const user = userEvent.setup();
-
-    const mockScrollIntoView = jest.fn();
-    const mockElement = { scrollIntoView: mockScrollIntoView };
-    jest.spyOn(document, 'getElementById').mockReturnValue(mockElement as any);
-
-    render(<HeroSection />);
-
-    const secondaryCTA = screen.getByRole('button', { name: /Ver como funciona/i });
-    await user.click(secondaryCTA);
-
-    expect(document.getElementById).toHaveBeenCalledWith('como-funciona');
-    expect(mockScrollIntoView).toHaveBeenCalledWith({
-      behavior: 'smooth',
-      block: 'start',
-    });
+    expect(secondaryCTA).toHaveAttribute('href', '/consultoria-b2g#diagnostico');
+    expect(secondaryCTA).toHaveTextContent('Solicitar diagnóstico B2G');
   });
 
   it('does NOT use forbidden terms (AC11)', () => {
@@ -76,7 +70,6 @@ describe('HeroSection', () => {
     expect(text).not.toMatch(/ferramenta de busca/i);
     expect(text).not.toMatch(/planilha automatizada/i);
     expect(text).not.toMatch(/10h\/semana/i);
-    // GTM-COPY-001 banned phrases
     expect(text).not.toMatch(/inteligência automatizada/i);
     expect(text).not.toMatch(/inovador/i);
   });
@@ -92,7 +85,6 @@ describe('HeroSection', () => {
     const { container } = render(<HeroSection />);
     const text = container.textContent || '';
 
-    // Stats badges removed — these values should NOT appear in HeroSection
     expect(text).not.toMatch(/87%/);
     expect(text).not.toMatch(/UFs cobertas/i);
   });
@@ -108,7 +100,6 @@ describe('HeroSection', () => {
       });
       expect(img).toBeInTheDocument();
 
-      // 50/50 layout uses flex-row on lg breakpoint
       const flexContainer = container.querySelector('.lg\\:flex-row');
       expect(flexContainer).toBeInTheDocument();
     });
@@ -147,7 +138,6 @@ describe('HeroSection', () => {
       const img = screen.getByRole('img', {
         name: /Tela de resultados do SmartLic/i,
       });
-      // dark:brightness-[0.85] dark:contrast-[1.1]
       expect(img.className).toContain('dark:brightness-');
       expect(img.className).toContain('dark:contrast-');
     });
@@ -155,10 +145,8 @@ describe('HeroSection', () => {
     it('renders browser chrome frame around screenshot', () => {
       const { container } = render(<HeroSection />);
 
-      // Browser URL bar text
       expect(screen.getByText('smartlic.tech/buscar')).toBeInTheDocument();
 
-      // Browser dots (red, yellow, green)
       const dots = container.querySelectorAll('.rounded-full');
       // 3 browser dots + 3 trust indicator dots = 6
       expect(dots.length).toBeGreaterThanOrEqual(6);
@@ -186,7 +174,6 @@ describe('HeroSection', () => {
     it('AC2: mobile layout stacks screenshot below headline (flex-col default)', () => {
       const { container } = render(<HeroSection />);
 
-      // Default is flex-col (mobile), lg:flex-row (desktop)
       const flexContainer = container.querySelector('.flex-col.lg\\:flex-row');
       expect(flexContainer).toBeInTheDocument();
     });

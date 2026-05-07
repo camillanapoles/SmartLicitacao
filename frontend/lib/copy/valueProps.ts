@@ -16,20 +16,21 @@ import { Target, Globe, Bot, Search, ShieldCheck } from '@/lib/icons';
 // ============================================================================
 
 export const hero = {
-  // GTM-COPY-001: Financial impact positioning
+  // REPO-006: Copymasters consensus v1 — B2G intelligence positioning
   headlines: {
+    b2gIntelligence: "Decisão comercial em licitação não nasce de PDF. Nasce de inteligência.",
     financialImpact: "Pare de perder dinheiro com licitações erradas.",
     filterFocus: "Só o que vale a pena chega até você.",
     wasteCut: "Licitações que realmente pagam. O resto, a gente descarta.",
-    // Recommended for GTM-COPY-001
-    default: "Pare de perder dinheiro com licitações erradas.",
+    default: "Decisão comercial em licitação não nasce de PDF. Nasce de inteligência.",
   },
 
-  // GTM-COPY-001 AC2: Mechanism of value (not abstract)
+  // REPO-006: Copymasters consensus v1 subheadline
   subheadlines: {
+    b2gIntelligence: "SmartLic lê o edital, mapeia o concorrente, calcula a chance real. Sua empresa decide go/no-go em minutos — não em três dias de leitura.",
     mechanism: "O SmartLic analisa cada edital contra o perfil da sua empresa. Elimina o que não faz sentido. Entrega só o que tem chance real de retorno — com justificativa objetiva.",
     filter: "Cada edital passa por análise de compatibilidade com seu perfil. Você só vê o que merece investimento de tempo e proposta.",
-    default: "O SmartLic analisa cada edital contra o perfil da sua empresa. Elimina o que não faz sentido. Entrega só o que tem chance real de retorno — com justificativa objetiva.",
+    default: "SmartLic lê o edital, mapeia o concorrente, calcula a chance real. Sua empresa decide go/no-go em minutos — não em três dias de leitura.",
   },
 
   // GTM-COPY-001 AC3: Trust badges — practical confidence, not abstract metrics
@@ -51,12 +52,14 @@ export const hero = {
     },
   ],
 
-  // GTM-COPY-002: Action-oriented CTAs
+  // GTM-COPY-002: Action-oriented CTAs. REPO-006: dual-CTA with diagnostico secondary
   cta: {
-    primary: "Ver oportunidades para meu setor",
-    secondary: "Ver exemplo de análise real",
+    primary: "Testar plataforma",
+    primaryHref: "/signup?source=hero-primary",
+    secondary: "Solicitar diagnóstico B2G",
+    secondaryHref: "/consultoria-b2g#diagnostico",
     pricing: "Começar a filtrar oportunidades",
-    default: "Ver oportunidades para meu setor",
+    default: "Testar plataforma",
   },
 };
 

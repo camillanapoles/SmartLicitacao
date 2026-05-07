@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
 import { GradientButton } from '@/app/components/ui/GradientButton';
 import { useScrollAnimation } from '@/lib/animations';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
@@ -19,16 +19,10 @@ const HERO_SCREENSHOT_BLUR =
  * STORY-174 AC1: Hero Section Redesign - Premium SaaS Aesthetic
  * SAB-006 AC2/AC5: Removed stats badges (consolidated into StatsSection), CTA above fold
  * DEBT-125: 50/50 layout with annotated product screenshot
+ * REPO-006: Copymasters consensus v1 — B2G intelligence positioning
  */
 export default function HeroSection({ className = '' }: HeroSectionProps) {
   const { ref, isVisible } = useScrollAnimation(0.1);
-
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   return (
     <section
@@ -76,11 +70,11 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             variants={fadeInUp}
           >
             <span className="text-ink">
-              Pare de perder dinheiro
+              Decisão comercial em licitação não nasce de PDF.
             </span>
             <br />
             <span className="text-gradient">
-              com licitações erradas.
+              Nasce de inteligência.
             </span>
           </motion.h1>
 
@@ -97,7 +91,7 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             "
             variants={fadeInUp}
           >
-            O SmartLic analisa cada edital contra o perfil da sua empresa. Elimina o que não faz sentido. Entrega só o que tem chance real de retorno — com justificativa objetiva.
+            SmartLic lê o edital, mapeia o concorrente, calcula a chance real. Sua empresa decide go/no-go em minutos — não em três dias de leitura.
           </motion.p>
 
           {/* CTA Buttons — AC5: Primary CTA visible above the fold */}
@@ -105,24 +99,25 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mt-10"
             variants={fadeInUp}
           >
-            <GradientButton
-              variant="primary"
-              size="lg"
-              glow={true}
-              onClick={() => window.location.href = '/signup?source=landing-cta'}
-            >
-              Ver oportunidades para meu setor
-            </GradientButton>
+            <Link href="/signup?source=hero-primary" data-testid="hero-cta-primary">
+              <GradientButton
+                variant="primary"
+                size="lg"
+                glow={true}
+              >
+                Testar plataforma
+              </GradientButton>
+            </Link>
 
-            <GradientButton
-              variant="secondary"
-              size="lg"
-              glow={false}
-              onClick={() => scrollToSection('como-funciona')}
-            >
-              Ver como funciona
-              <ChevronDown size={20} className="ml-2 transition-transform" aria-hidden="true" />
-            </GradientButton>
+            <Link href="/consultoria-b2g#diagnostico" data-testid="hero-cta-secondary">
+              <GradientButton
+                variant="secondary"
+                size="lg"
+                glow={false}
+              >
+                Solicitar diagnóstico B2G
+              </GradientButton>
+            </Link>
           </motion.div>
 
           {/* Trust indicators */}
