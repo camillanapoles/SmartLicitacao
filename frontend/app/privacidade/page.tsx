@@ -25,7 +25,7 @@ export default function PrivacidadePage() {
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 A <strong>CONFENGE Avaliacoes e Inteligencia Artificial LTDA</strong> (&quot;SmartLic&quot;, &quot;nos&quot; ou &quot;empresa&quot;),
-                inscrita no CNPJ sob o n. 56.528.581/0001-00, com sede na cidade de Sao Paulo/SP,
+                inscrita no CNPJ sob o n. 52.407.089/0001-09, com sede na cidade de Florianopolis/SC,
                 respeita sua privacidade e esta comprometida em proteger seus dados pessoais em conformidade com
                 a <strong>Lei Geral de Protecao de Dados (LGPD - Lei 13.709/2018)</strong>.
                 Esta Politica de Privacidade descreve como coletamos, usamos, armazenamos e protegemos suas informacoes
