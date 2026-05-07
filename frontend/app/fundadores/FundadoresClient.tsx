@@ -207,7 +207,7 @@ export default function FundadoresClient() {
           className="mt-16 rounded-xl border border-blue-200 bg-blue-50 p-8"
         >
           <h2 id="cta-final-heading" className="text-2xl font-semibold text-slate-900 mb-2">
-            Garanta sua vaga agora
+            Reserve sua vaga agora
           </h2>
           <p className="text-slate-700 mb-6">
             Acesso vitalício por {price}. Pagamento único via Stripe — cartão de crédito ou boleto.
