@@ -15,6 +15,10 @@ interface HeroSectionProps {
 const HERO_SCREENSHOT_BLUR =
   'data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAADQAgCdASoUAA0ALvmczmclLy8vDwD4SzgGWWK505WAAP7wLrgqjz50IhRgDbeGwhDdH55pOuyAD9i3oi0FuVjIAAA=';
 
+// REPO-007: Founding disclaimer — locked copy v1
+const HERO_DISCLAIMER =
+  'Criado por servidor público com mais de 10 anos em licitações. Plataforma independente, sem vínculo com órgãos governamentais.';
+
 /**
  * STORY-174 AC1: Hero Section Redesign - Premium SaaS Aesthetic
  * SAB-006 AC2/AC5: Removed stats badges (consolidated into StatsSection), CTA above fold
@@ -119,6 +123,14 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
               </GradientButton>
             </Link>
           </motion.div>
+
+          {/* REPO-007: Founding disclaimer — below CTAs, non-competitive */}
+          <motion.p
+            className="text-sm text-zinc-400 dark:text-zinc-500 max-w-md mx-auto lg:mx-0 text-center lg:text-left mt-4"
+            variants={fadeInUp}
+          >
+            {HERO_DISCLAIMER}
+          </motion.p>
 
           {/* Trust indicators */}
           <motion.div

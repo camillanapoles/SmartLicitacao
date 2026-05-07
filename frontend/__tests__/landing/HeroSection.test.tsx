@@ -61,6 +61,17 @@ describe('HeroSection', () => {
     expect(secondaryCTA).toHaveTextContent('Solicitar diagnóstico B2G');
   });
 
+  it('renders founding disclaimer below CTA buttons (REPO-007)', () => {
+    render(<HeroSection />);
+
+    expect(
+      screen.getByText(/Criado por servidor público com mais de 10 anos em licitações/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Plataforma independente, sem vínculo com órgãos governamentais/i)
+    ).toBeInTheDocument();
+  });
+
   it('does NOT use forbidden terms (AC11)', () => {
     const { container } = render(<HeroSection />);
     const text = container.textContent || '';
