@@ -14,6 +14,7 @@ import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
+import AdvisoryDisclaimer from '@/components/legal/AdvisoryDisclaimer';
 
 
 export const revalidate = 86400; // 24h ISR — alinhado com blog/contratos; reduz wave de re-validation que satura backend WC=1 (incident 2026-04-29)
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (total < minBids) {
     return {
       title: `Alertas de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
-      description: `Alertas de licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}. Dados do PNCP atualizados a cada hora.`,
+      description: `Alertas de licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}. Dados de fontes oficiais atualizados a cada hora.`,
       robots: { index: false, follow: false },
       // SEO-440: canonical self-referencial evita herdar o canonical da homepage (layout.tsx)
       alternates: { canonical: buildCanonical(`/alertas-publicos/${setor}/${uf}`) },
@@ -51,7 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `Alertas de Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} — ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`,
-    description: `Acompanhe as licitações mais recentes de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}. Dados atualizados do PNCP. Feed RSS disponível.`,
+    description: `Acompanhe as licitações mais recentes de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}. Dados atualizados de fontes oficiais. Feed RSS disponível.`,
     alternates: {
       canonical: buildCanonical(`/alertas-publicos/${setor}/${uf}`),
       types: {
@@ -60,12 +61,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     openGraph: {
       title: `Alertas: ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
-      description: `Licitações recentes de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} — dados ao vivo do PNCP`,
+      description: `Licitações recentes de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} — dados ao vivo de fontes oficiais`,
       type: 'website',
       locale: 'pt_BR',
       images: [
         {
-          url: `/api/og?title=${encodeURIComponent(`Alertas: ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`)}&subtitle=${encodeURIComponent(`Licitações recentes — PNCP`)}`,
+          url: `/api/og?title=${encodeURIComponent(`Alertas: ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`)}&subtitle=${encodeURIComponent(`Licitações recentes — fontes oficiais`)}`,
           width: 1200,
           height: 630,
           alt: `Alertas de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} | SmartLic`,
@@ -100,7 +101,7 @@ export default async function AlertasPage({ params }: Props) {
     '@context': 'https://schema.org',
     '@type': 'DataFeed',
     name: `Alertas de Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
-    description: `Licitações recentes de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} — dados ao vivo do PNCP`,
+    description: `Licitações recentes de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} — dados ao vivo de fontes oficiais`,
     url: `https://smartlic.tech/alertas-publicos/${setor}/${uf}`,
     dateModified: data?.last_updated || new Date().toISOString(),
     provider: { '@type': 'Organization', name: 'SmartLic', url: 'https://smartlic.tech' },
@@ -149,7 +150,7 @@ export default async function AlertasPage({ params }: Props) {
               }
             </h1>
             <p className="text-white/80 text-lg mb-4">
-              Editais publicados nos últimos 10 dias no PNCP. Atualizado a cada hora.
+              Editais publicados nos últimos 10 dias em fontes oficiais. Atualizado a cada hora.
             </p>
             <div className="flex flex-wrap gap-4 items-center">
               {freshness && (
@@ -173,7 +174,7 @@ export default async function AlertasPage({ params }: Props) {
                 Nenhuma licitação de {sector.name} publicada {getUfPrep(ufUpper)} {ufName} nos últimos 10 dias.
               </p>
               <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                Volte em breve — novos editais são publicados diariamente no PNCP.
+                Volte em breve — novos editais são publicados diariamente nas fontes oficiais.
               </p>
             </div>
           ) : (
@@ -215,7 +216,7 @@ export default async function AlertasPage({ params }: Props) {
                       rel="nofollow noopener noreferrer"
                       className="inline-block mt-2 text-sm text-brand-blue hover:underline"
                     >
-                      Ver no PNCP →
+                      Ver edital →
                     </a>
                   )}
                 </article>
@@ -268,6 +269,11 @@ export default async function AlertasPage({ params }: Props) {
             </Link>
           </div>
         </section>
+
+        {/* Advisory disclaimer — algorithmic recommendation context */}
+        <div className="max-w-5xl mx-auto px-4 pb-6">
+          <AdvisoryDisclaimer variant="compact" />
+        </div>
 
         <Footer />
       </main>
