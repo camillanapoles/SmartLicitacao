@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export interface PricingComparisonTableProps {
   /** When false the Fundadores column is hidden. Default true until fetch resolves. */
@@ -108,25 +109,26 @@ export default function PricingComparisonTable({
   const [deadline, setDeadline] = useState<string | null>(foundersDeadline ?? null);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch('/api/founding/availability', { cache: 'no-store' })
+    const controller = new AbortController();
+    fetch('/api/founding/availability', { cache: 'no-store', signal: controller.signal })
       .then((res) => {
         if (!res.ok) return null;
         return res.json() as Promise<AvailabilitySnapshot>;
       })
       .then((data) => {
-        if (cancelled || !data) return;
+        if (!data) return;
         if (!data.available || data.seats_remaining === 0) {
           setShowFounders(false);
         }
         setSeatsRemaining(data.seats_remaining);
         setDeadline(data.deadline_at);
       })
-      .catch(() => {
-        // Fail-open: keep showing founders column on transient errors
+      .catch((err) => {
+        // Fail-open: keep showing founders column on transient errors or abort
+        if (err instanceof Error && err.name === 'AbortError') return;
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, []);
 
@@ -143,12 +145,12 @@ export default function PricingComparisonTable({
           {/* Header */}
           <thead>
             <tr className="border-b border-[var(--border)]">
-              <th className="px-4 py-4 text-left font-semibold text-[var(--ink)] w-[30%] min-w-[140px]">
+              <th scope="col" className="px-4 py-4 text-left font-semibold text-[var(--ink)] w-[30%] min-w-[140px]">
                 Funcionalidade
               </th>
 
               {showFounders && (
-                <th className="px-4 py-4 text-center bg-amber-50 dark:bg-amber-950/30 border-l border-amber-200 dark:border-amber-800 min-w-[180px]">
+                <th scope="col" className="px-4 py-4 text-center bg-amber-50 dark:bg-amber-950/30 border-l border-amber-200 dark:border-amber-800 min-w-[180px]">
                   <div className="flex flex-col items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200 leading-none">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
@@ -162,33 +164,34 @@ export default function PricingComparisonTable({
                         {seatsRemaining} {seatsRemaining === 1 ? 'vaga restante' : 'vagas restantes'}
                       </span>
                     )}
-                    <a
+                    <Link
                       href="/fundadores"
                       className="mt-1 inline-block rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1"
                     >
                       Garantir vitalício por R$997
-                    </a>
+                    </Link>
                   </div>
                 </th>
               )}
 
               <th
+                scope="col"
                 className={`px-4 py-4 text-center min-w-[150px] ${showFounders ? 'border-l border-[var(--border)]' : ''}`}
               >
                 <div className="flex flex-col items-center gap-1">
                   <span className="font-bold text-base text-[var(--ink)]">SmartLic Pro</span>
                   <span className="text-xs text-[var(--ink-muted)]">Mensal</span>
                   <span className="text-sm font-semibold text-[var(--brand-blue)]">R$397/mês</span>
-                  <a
+                  <Link
                     href="/planos?billing=monthly"
                     className="mt-1 inline-block rounded-lg bg-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/90 text-white text-xs font-semibold px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-1"
                   >
                     Assinar agora
-                  </a>
+                  </Link>
                 </div>
               </th>
 
-              <th className="px-4 py-4 text-center border-l border-[var(--border)] min-w-[150px]">
+              <th scope="col" className="px-4 py-4 text-center border-l border-[var(--border)] min-w-[150px]">
                 <div className="flex flex-col items-center gap-1">
                   <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-300 leading-none mb-0.5">
                     25% off
@@ -196,12 +199,12 @@ export default function PricingComparisonTable({
                   <span className="font-bold text-base text-[var(--ink)]">SmartLic Pro</span>
                   <span className="text-xs text-[var(--ink-muted)]">Anual</span>
                   <span className="text-sm font-semibold text-[var(--brand-blue)]">R$297/mês</span>
-                  <a
+                  <Link
                     href="/planos?billing=annual"
                     className="mt-1 inline-block rounded-lg bg-[var(--brand-blue)] hover:bg-[var(--brand-blue)]/90 text-white text-xs font-semibold px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-1"
                   >
                     Assinar agora
-                  </a>
+                  </Link>
                 </div>
               </th>
             </tr>

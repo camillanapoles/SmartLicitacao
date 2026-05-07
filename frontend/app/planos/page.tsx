@@ -363,9 +363,9 @@ export default function PlanosPage() {
           <p className="text-sm text-amber-800 dark:text-amber-200">
             → Conheça o <strong>Plano Fundadores</strong> — R$997 vitalício, vagas limitadas
           </p>
-          <a href="/fundadores" className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline ml-4 whitespace-nowrap">
+          <Link href="/fundadores" className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline ml-4 whitespace-nowrap">
             Saiba mais →
-          </a>
+          </Link>
         </div>
 
         <PlanStatusBanners
