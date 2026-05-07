@@ -7,14 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Database / Billing
+- **Campos de fundador no perfil de usuário (#784)** — Migration `20260507100000_profiles_founder_fields.sql` adiciona 5 colunas à tabela `profiles`: `is_founder` (boolean, default false — marcado `true` pelo webhook `checkout.session.completed` para compras lifetime v2), `founder_since` (timestamptz da compra), `founder_offer_version` (ex: `v2_lifetime` para distinguir versões futuras), `founder_checkout_source` (utm_source/checkout param para atribuição), e `consulting_discount_pct` (int 0-100, `null` = sem desconto Consultoria). Fundadores v1 (assinatura mensal -50%) NÃO recebem `is_founder=true` — permanecem como assinantes Pro regulares. Índice parcial `idx_profiles_founders` em `is_founder=true` (máx 50 linhas por design do cap de fundadores). Permite verificação de direito lifetime sem JOIN em `founding_leads`. Rollback: `20260507100000_profiles_founder_fields.down.sql`.
+
+### Changed — Backend / Founding
+- **Pivot founding_policy para one-time lifetime R$997 + deadline 2026-06-30 (BIZ-FOUND-002 v2 #782)** — Adiciona 3 colunas à tabela `founding_policy`: `offer_mode TEXT NOT NULL DEFAULT 'lifetime'` (CHECK subscription|lifetime), `price_brl_cents INT NOT NULL DEFAULT 99700`, `consulting_discount_pct INT NOT NULL DEFAULT 50`. Atualiza linha canônica id=1: deadline 2026-06-30T23:59:59-03:00, offer_mode=lifetime, price_brl_cents=99700. Recria RPC `check_founding_availability()` com 2 novas colunas de retorno (`offer_mode`, `price_brl_cents`) para o frontend renderizar copy de preço sem queries extras. Atualiza `FoundingAvailabilityResponse` Pydantic com `offer_mode` e `price_brl_cents`. Atualiza `FoundingPolicySnapshot` (admin) com os 3 novos campos. Snapshot OpenAPI e `api-types.generated.ts` atualizados. Migration: `20260507100100_founding_policy_lifetime_pivot.sql` + `.down.sql` pareado. Rollback: executar `20260507100100_founding_policy_lifetime_pivot.down.sql`.
+
+### Fixed — Database / Migrations
+- **RLS policy gsc_metrics corrigida + 14 migrations aplicadas (#796)** — `20260422120000_create_gsc_metrics.sql` referenciava `profiles.is_master` como coluna (inexistente — é computado em Python); corrigido para `profiles.plan_type = 'master'`. 14 migrations pendentes aplicadas ao DB de produção via Management API. Resolve falha crônica em `migration-check.yml`. Rollback: `supabase db push` com `.down.sql` dos arquivos afetados.
+
+### Added — Frontend / Marketing
+- `/fundadores` landing page with founders offer copy, Calendly CTA, and availability gate
+- 301 permanent redirect from `/founding` → `/fundadores`
+
+### Added — Frontend / Founders
+- `FoundersTopBanner` component with availability gate and countdown (#787)
+- `FoundersRibbon` component (inline variant) for embedding in page sections (#787)
+
 ### Added — Frontend / Legal
 - **Página de termos do Plano Fundadores (#793)** — `frontend/app/termos/fundadores/page.tsx` criado com 9 seções legais cobrindo escopo vitalício, fair use, sem garantia de êxito, período de resfriamento (CDC art. 49) e disclaimer de parceria governamental. `frontend/app/termos/page.tsx` atualizado com link para `/termos/fundadores`. Protege juridicamente o SmartLic e informa fundadores sobre os exatos direitos adquiridos.
 
 ### Fixed — Backend / Infra
 - **Graceful shutdown uvicorn configurável via env var (#799)** — `--timeout-graceful-shutdown` em `backend/start.sh` e `backend/railway.toml` usa `${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}` (padrão 120s, alinhado com Railway drainingSeconds=120). Override via Railway env var sem redeploy. Teste `TestAC9GracefulTimeout` atualizado para verificar novo padrão parametrizado.
 
+### Fixed — Backend / Analytics
+- **Auditoria de cobertura CNAE→Setor + warning em fallback (#599)** — `backend/utils/cnae_mapping.py` ganha comentário de cobertura (`59/1300 ≈4.5%` dos CNAEs mapeados explicitamente). `logger.warning("cnae_not_mapped ...")` emitido quando CNAE não está no mapeamento explícito e ativa o fallback padrão. Remove `load_cnae_from_db()` e `_warmup_cnae_mapping()` — merge DB não validado. Docstring corrigida. Teste estendido para assert do warning em fallback. Rollback: reverter commit.
+
 ### Added — Frontend / Intel Reports
 - **Intel Reports frontend layer: CTA + checkout + polling + download (#632)** — Adiciona camada frontend completa para Intel Reports (one-time purchase): `IntelReportCTA` "use client" component em `/cnpj/[cnpj]` (parent Server Component com ISR); 4 API proxy routes (`/api/intel-reports/checkout`, `/api/intel-reports/`, `/api/intel-reports/[purchaseId]`, `/api/intel-reports/[purchaseId]/download`); página de sucesso pós-Stripe com polling até 120s (40×3s, `useRef` anti-stale-closure); página de cancelamento. Proxy routes usam factory `createProxyRoute` para rotas simples e padrão manual `getRefreshedToken` + `sanitizeProxyError` para rotas dinâmicas. PDF streaming com `Content-Disposition: attachment`. 6 testes unitários (CTA behavior, 401→signup redirect, checkout_url redirect, Mixpanel events, loading state). Rollback: remover seção #632 de `page.tsx` e deletar arquivos novos.
+
+### Added — Docs / Founders
+- **Política interna Plano Fundadores (#795)** — `docs/founders-policy.md` criado com escopo v2 lifetime R$997 one-time, checklist go-live, plano de rollback e diretrizes de comunicação (BIZ-FOUND-002). Revoga modelo v1 de subscription com 50% off.
 
 ### Added — Docs / Partners
 - **ADR de política do programa de parceiros (#597)** — `docs/adr/partner-program.md` formaliza a política canônica: comissão 20% lifetime, pagamento mensal via Pix no dia 5, atribuição last-click 30 dias, onboarding exige CPF/CNPJ. Default `revenue_share_pct` em `CreatePartnerRequest`, `create_partner()` e `create_partner_referral()` alinhado de 25% para 20%. Valores explícitos em parceiros existentes não são alterados. Snapshot OpenAPI e testes atualizados. Rollback: reverter PR #743.
@@ -22,10 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — Backend / Intel Reports
 - **Entrega de Intel Reports via ARQ job (#631)** — `generate_intel_report(ctx, purchase_id)` ARQ job implementado: busca purchase/profile, gera PDFs de Raio-X do concorrente, faz upload para bucket Supabase Storage `intel-reports`, cria signed URLs 30 dias, marca purchase como `ready`, e envia email transacional Resend via novo template `intel_report_ready.html`. Tratamento de falhas com retry/backoff ARQ, status `failed`, refund Stripe automático e email de notificação de falha. Prometheus: `smartlic_intel_report_generated_total{product_type,status}`. Mixpanel: `intel_report_generated`. Job registrado em `WorkerSettings` e em `job_queue.py`. Rollback: reverter commit e desabilitar enqueue no webhook Stripe.
 
+### Fixed — Docs / Tech Debt
+- **Auditoria e fechamento do Gap-7: contagem de setores (#798)** — Auditoria empírica confirmou 20 setores em `backend/sectors_data.yaml` (CLAUDE.md já correto). Fechadas Inc-1 e Gap-7 em `_reversa_sdd/review-report.md` com contagem confirmada e lista completa dos IDs de setor.
+
 ### Added — Tests
-- **Cobertura do módulo health.py — TD-TEST-004 (#202)** — 26 testes unitários cobrindo `HealthStatus` enum, `SourceHealthResult.to_dict()`, `SystemHealth.to_dict()`, `initialize_health_tracking()` / `get_uptime_seconds()`, `check_source_health()` (ConnectError + exceção genérica), `get_health_status()` (integração com mock de rede) e `get_system_health()` (Redis down, circuit breaker degradado). `health.py` (1100+ linhas) tinha cobertura zero antes desta PR.
 - **Idempotência payment_intent.succeeded + runbook ops Intel Reports (#718)** — `TestIdempotency::test_payment_intent_succeeded_replay_is_deduped_before_delivery` verifica que replay do mesmo event-id retorna `already_processed` sem tocar tabelas de purchase/subscription. Documenta guardrails para implementação futura de one-time purchases em `purchases` table. Runbook em `docs/runbooks/issue-718-intel-reports-ops-validation.md`.
 - **Edge case tests para keyword density pipeline — TD-BE-023 (#249)** — 71 testes cobrindo `normalize_text`, `match_keywords`, `validate_terms`, `_strip_org_context`, `has_red_flags`, `has_sector_red_flags`, `check_proximity_context` e `check_co_occurrence` para inputs que aparecem em dados reais do PNCP: strings vazias, whitespace-only, strings muito longas (10k tokens), caracteres especiais, Unicode/acentuado português, RTL (árabe), emojis, texto numérico, null bytes e scripts mistos. Nenhuma alteração no código de produção necessária — funções já tratam esses inputs defensivamente. Rollback: reverter commit.
+- **Cobertura do módulo health.py — TD-TEST-004 (#202)** — 26 testes unitários cobrindo `HealthStatus` enum, `SourceHealthResult.to_dict()`, `SystemHealth.to_dict()`, `initialize_health_tracking()` / `get_uptime_seconds()`, `check_source_health()` (ConnectError + exceção genérica), `get_health_status()` (integração com mock de rede) e `get_system_health()` (Redis down, circuit breaker degradado). `health.py` (1100+ linhas) tinha cobertura zero antes desta PR.
 
 ### Fixed — Backend / Tech Debt
 - **Validação de duplicatas de keywords por normalização em sectors_data.yaml (TD-BE-015 #210)** — `_validate_sector_keywords()` e `_check_list_for_duplicates()` adicionados a `backend/sectors.py`. Detecta keywords que colapsam para a mesma forma após `normalize_text()` (ex: "café" e "cafe"). Log de warnings apenas — nunca levanta exceção, nunca bloqueia startup. Checa `keywords`, `exclusions` e `context_required_keywords` por setor. 20 novos testes. Rollback: reverter commit.

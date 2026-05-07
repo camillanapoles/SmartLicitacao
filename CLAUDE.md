@@ -550,7 +550,7 @@ Supabase Auth with RLS on all tables. Input validation via Pydantic (backend) an
 
 | Category | Files |
 |----------|-------|
-| **Docs** | `PRD.md`, `ROADMAP.md`, `CHANGELOG.md`, `docs/summaries/gtm-resilience-summary.md`, `docs/summaries/gtm-fixes-summary.md` |
+| **Docs** | `PRD.md`, `ROADMAP.md`, `CHANGELOG.md`, `docs/founders-policy.md`, `docs/summaries/gtm-resilience-summary.md`, `docs/summaries/gtm-fixes-summary.md` |
 | **Config** | `.env.example`, `backend/requirements.txt`, `frontend/package.json`, `backend/sectors_data.yaml`, `backend/config.py` |
 | **Database** | `supabase/migrations/` (~183 migrations, 48 tables, 13+ RPCs — source of truth, paired `.down.sql` mandatory STORY-6.2), `backend/migrations/` (12 legacy Alembic — audit only, do NOT add new) |
 | **Ingestion** | `backend/ingestion/` (config, crawler, transformer, loader, checkpoint, scheduler), `backend/datalake_query.py` |

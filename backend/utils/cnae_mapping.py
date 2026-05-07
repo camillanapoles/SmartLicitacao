@@ -4,44 +4,17 @@ CNAE to SmartLic sector mapping.
 Maps Brazilian CNAE (Classificação Nacional de Atividades Econômicas)
 codes to SmartLic sector IDs used by the search pipeline.
 
-Lookup architecture (DATA-CNAE-002 — re-implementation after PR #679 revert):
-    L1: ``CNAE_TO_SETOR`` — module-level dict, hardcoded baseline + DB merge.
-        Updated in-place by :func:`load_cnae_from_db` (called from
-        ``startup.lifespan``). Never replaced — DB rows merge over the
-        hardcoded baseline so unmapped keys still resolve via the legacy
-        snapshot even if the DB is unreachable.
-    L2: ``public.cnae_setores`` table (Supabase) — optional override.
-        If the table is empty, missing, or unreachable, lookups answer
-        from the hardcoded baseline (Gap-8 status quo).
-
-Why no listener / no ARQ cron / no TTL cache (DATA-CNAE-002 vs #679):
-    PR #679 was reverted (#702) because its lazily-spawned daemon thread
-    (Redis pubsub listener with its own event loop) blocked the Railway
-    healthcheck on cold start. This re-implementation deliberately omits:
-      * the Redis pubsub listener (PR #702 suspect cause #1)
-      * the ARQ cron registration `start_cnae_coverage_task` (suspect #2)
-      * the admin CRUD surface (would require PostgREST cache propagation
-        — suspect #3)
-    Instead, the warmup is a one-shot synchronous-style merge during
-    ``lifespan`` startup, wrapped in a non-fatal try/except guard.
+Coverage snapshot (2026-05-07): 59 CNAEs mapped across 9 sectors.
+IBGE CNAE 2.3 has ~1300 active subclasses. Coverage = 59/1300 = ~4.5%.
+Full migration to DB tracked in story DATA-CNAE-001.
 """
 
-from __future__ import annotations
-
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-
 # CNAE→sector mappings
 # Format: CNAE 4-digit prefix → sector_id
-#
-# This dict is the source of truth for `map_cnae_to_setor`. It is populated
-# at import time with the hardcoded baseline (below) and may be MERGED with
-# rows from `public.cnae_setores` during startup via :func:`load_cnae_from_db`.
-# DB rows override the hardcoded baseline; missing keys fall through to the
-# baseline so the function never raises on cold start or DB outage.
 CNAE_TO_SETOR: dict[str, str] = {
     # Engenharia / Construção Civil
     "4120": "engenharia",    # Construção de edifícios
@@ -137,13 +110,14 @@ def map_cnae_to_setor(cnae: str) -> str:
     - "4781-4/00" → "vestuario"
     - "47814" → "vestuario"
 
-    Falls back to "vestuario" if CNAE not recognized.
+    Falls back to "geral" if CNAE is not recognized or cannot be parsed.
+    Emits a warning log when falling back so gaps can be tracked.
 
     Args:
         cnae: CNAE code or prefix string
 
     Returns:
-        Sector ID string (e.g., "vestuario", "servicos_prediais")
+        Sector ID string (e.g., "vestuario", "servicos_prediais", "geral")
     """
     # Extract 4-digit prefix: handle "4781-4/00", "4781400", "4781" formats
     cleaned = cnae.strip().replace(" ", "")
@@ -156,58 +130,16 @@ def map_cnae_to_setor(cnae: str) -> str:
                 break
 
     if not prefix or len(prefix) < 4:
+        logger.warning("cnae_not_mapped cnae=%r fallback=geral", cnae)
         return "geral"  # Default fallback for unknown/unparseable CNAE
 
-    return CNAE_TO_SETOR.get(prefix, "geral")
+    result = CNAE_TO_SETOR.get(prefix)
+    if result is None:
+        logger.warning("cnae_not_mapped cnae=%s fallback=geral", prefix)
+        return "geral"
+    return result
 
 
 def get_setor_name(setor_id: str) -> str:
     """Get human-readable sector name."""
     return SETOR_NAMES.get(setor_id, setor_id.replace("_", " ").title())
-
-
-def load_cnae_from_db() -> Optional[dict[str, str]]:
-    """Load CNAE→setor overrides from ``public.cnae_setores``.
-
-    Called once at startup from ``startup.lifespan`` (DATA-CNAE-002).
-    Returns a fresh dict on success (possibly empty if the table exists
-    but has no rows) or ``None`` on any failure — caller is expected to
-    log a warning and proceed with the hardcoded baseline.
-
-    Failure modes that MUST NOT raise:
-      * Supabase unreachable (network / DNS)
-      * Table missing (PostgREST PGRST205 — schema cache stale)
-      * Permission denied (RLS misconfigured)
-      * Malformed rows
-    All collapse to ``None`` — a non-fatal signal to the caller.
-    """
-    try:
-        from supabase_client import get_supabase  # local import: keep tests fast
-    except Exception as exc:  # pragma: no cover — import-time failure
-        logger.debug("cnae_mapping: supabase_client import failed: %s", exc)
-        return None
-
-    try:
-        sb = get_supabase()
-        result = (
-            sb.table("cnae_setores")
-            .select("codigo_cnae,setor")
-            .execute()
-        )
-    except Exception as exc:
-        logger.debug(
-            "cnae_mapping: DB load failed (%s) — caller should fall back",
-            exc,
-        )
-        return None
-
-    rows = getattr(result, "data", None) or []
-    out: dict[str, str] = {}
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        codigo = row.get("codigo_cnae")
-        setor = row.get("setor")
-        if isinstance(codigo, str) and isinstance(setor, str) and codigo and setor:
-            out[codigo] = setor
-    return out

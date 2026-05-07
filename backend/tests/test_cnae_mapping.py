@@ -1,5 +1,7 @@
 """Tests for CNAE to sector mapping (GTM-004 AC6)."""
 
+import logging
+
 import pytest
 from utils.cnae_mapping import map_cnae_to_setor, get_setor_name
 
@@ -58,6 +60,20 @@ class TestMapCnaeToSetor:
         """Unknown CNAE falls back to geral (not vestuario)."""
         assert map_cnae_to_setor("9999") == "geral"
         assert map_cnae_to_setor("0000") == "geral"
+
+    def test_unknown_cnae_emits_warning(self, caplog):
+        """Unknown CNAE emits a warning log so gaps can be tracked (#599)."""
+        with caplog.at_level(logging.WARNING, logger="utils.cnae_mapping"):
+            result = map_cnae_to_setor("9999")
+        assert result == "geral"
+        assert any("cnae_not_mapped" in record.message for record in caplog.records)
+
+    def test_unparseable_cnae_emits_warning(self, caplog):
+        """Unparseable CNAE (too short / no digits) emits a warning log."""
+        with caplog.at_level(logging.WARNING, logger="utils.cnae_mapping"):
+            result = map_cnae_to_setor("abc")
+        assert result == "geral"
+        assert any("cnae_not_mapped" in record.message for record in caplog.records)
 
     def test_empty_input(self):
         """Empty or very short input falls back to geral."""

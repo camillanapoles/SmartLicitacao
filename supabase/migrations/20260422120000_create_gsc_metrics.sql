@@ -33,7 +33,7 @@ CREATE POLICY "admin_read_gsc_metrics" ON gsc_metrics
     EXISTS (
       SELECT 1 FROM profiles
       WHERE profiles.id = auth.uid()
-        AND (profiles.is_admin = true OR profiles.is_master = true)
+        AND (profiles.is_admin = true OR profiles.plan_type = 'master')
     )
   );
 
