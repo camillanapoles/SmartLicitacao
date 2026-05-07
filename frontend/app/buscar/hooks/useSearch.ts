@@ -71,6 +71,10 @@ interface UseSearchParams {
   setMunicipios: (m: Municipio[]) => void;
   // AC4: first-analysis auto flow flag
   isAutoAnalysis?: boolean;
+  autoAnalysisContext?: {
+    ufs: string[];
+    cnae?: string | null;
+  };
 }
 
 /**
@@ -251,6 +255,10 @@ export function useSearch(filters: UseSearchParams): UseSearchReturn {
     setLiveFetchInProgress: execution.setLiveFetchInProgress,
     liveFetchSearchIdRef: execution.liveFetchSearchIdRef,
     isAutoAnalysis: filters.isAutoAnalysis,
+    autoAnalysisContext: filters.autoAnalysisContext ?? {
+      ufs: Array.from(filters.ufsSelecionadas),
+      cnae: filters.searchMode === "setor" ? filters.setorId : null,
+    },
   });
 
   // ── 5. SSE connection ──

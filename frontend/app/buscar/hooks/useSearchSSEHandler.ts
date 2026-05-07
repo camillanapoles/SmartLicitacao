@@ -38,6 +38,10 @@ interface UseSearchSSEHandlerParams {
   liveFetchSearchIdRef: React.MutableRefObject<string | null>;
   // AC4: first-analysis auto flow detection
   isAutoAnalysis?: boolean;
+  autoAnalysisContext?: {
+    ufs: string[];
+    cnae?: string | null;
+  };
 }
 
 export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
@@ -50,6 +54,7 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
     handleExcelFailureRef, excelFailCountRef, excelToastFiredRef,
     setLiveFetchInProgress, liveFetchSearchIdRef,
     isAutoAnalysis = false,
+    autoAnalysisContext,
   } = params;
 
   const { refresh: refreshQuota } = useQuota();
@@ -163,6 +168,8 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
         trackEvent('first_analysis_empty', {
           search_id: sid,
           time_total_ms: Date.now() - startTs,
+          ufs: autoAnalysisContext?.ufs ?? event.detail.ufs_completed ?? [],
+          cnae: autoAnalysisContext?.cnae ?? null,
         });
       }
       setAsyncSearchActive(false);
@@ -273,8 +280,9 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
       if (isAutoAnalysis && !firstAnalysisFiredRef.current) {
         firstAnalysisFiredRef.current = true;
         const startTs = firstAnalysisStartRef.current ?? Date.now();
+        const sid = event.detail.search_id || asyncSearchIdRef.current || searchId;
         trackEvent('first_analysis_failed', {
-          search_id: searchId,
+          search_id: sid,
           error_code: event.detail.error_code || null,
           time_total_ms: Date.now() - startTs,
         });
@@ -302,7 +310,7 @@ export function useSearchSSEHandler(params: UseSearchSSEHandlerParams) {
     setRetryCountdown, setRetryMessage, setRetryExhausted, retryTimerRef,
     handleExcelFailureRef, excelFailCountRef, excelToastFiredRef,
     setLiveFetchInProgress, liveFetchSearchIdRef,
-    isAutoAnalysis,
+    isAutoAnalysis, autoAnalysisContext,
   ]);
 
   return { handleSseEvent };

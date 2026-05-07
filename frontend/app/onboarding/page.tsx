@@ -27,6 +27,19 @@ import type { OnboardingData } from "./components/types";
 // Main Onboarding Page
 // ============================================================================
 
+async function hashErrorMessage(message: string): Promise<string> {
+  try {
+    const encoded = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    return hashHex.slice(0, 8);
+  } catch {
+    return message.length.toString(16).padStart(8, '0').slice(0, 8);
+  }
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, session, loading: authLoading } = useAuth();
@@ -214,6 +227,9 @@ export default function OnboardingPage() {
           return;
         }
         // Other errors: still redirect with graceful degradation
+        const errorMessageHash = await hashErrorMessage(`first-analysis-http-${analysisRes.status}`);
+        trackEvent('onboarding_first_analysis_error', { error_message_hash: errorMessageHash });
+        clarityEvent('first_analysis_error');
         toast.success("Perfil salvo! Redirecionando...");
         router.push(`/buscar?ufs=${data.ufs_atuacao.join(",")}`);
         return;
@@ -231,7 +247,13 @@ export default function OnboardingPage() {
 
       // 3. Redirect to search with auto flag
       toast.success("Perfil salvo! Analisando suas oportunidades...");
-      router.push(`/buscar?auto=true&search_id=${search_id}`);
+      const redirectParams = new URLSearchParams({
+        auto: 'true',
+        search_id,
+        cnae: data.cnae,
+        ufs: data.ufs_atuacao.join(","),
+      });
+      router.push(`/buscar?${redirectParams.toString()}`);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         // AC5: timeout error tracking
@@ -243,14 +265,7 @@ export default function OnboardingPage() {
         setAnalysisError("generic");
         // AC5: generic error tracking with hashed message
         const errorMessage = err instanceof Error ? err.message : String(err);
-        let errorHash = '';
-        try {
-          const encoded = new TextEncoder().encode(errorMessage);
-          const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
-          errorHash = Array.from(new Uint8Array(hashBuffer)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
-        } catch {
-          errorHash = errorMessage.length.toString(16);
-        }
+        const errorHash = await hashErrorMessage(errorMessage);
         trackEvent('onboarding_first_analysis_error', { error_message_hash: errorHash });
         clarityEvent('first_analysis_error');
       }
