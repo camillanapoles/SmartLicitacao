@@ -533,6 +533,13 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
           changeFrequency: 'monthly',
           priority: 0.7,
         },
+        // REPO-009 #761: Consultoria B2G landing
+        {
+          url: `${baseUrl}/consultoria-b2g`,
+          lastModified: new Date('2026-05-07'),
+          changeFrequency: 'monthly' as const,
+          priority: 0.8,
+        },
         // SEO-PLAYBOOK S4: Weekly digest hub
         {
           url: `${baseUrl}/blog/weekly`,
