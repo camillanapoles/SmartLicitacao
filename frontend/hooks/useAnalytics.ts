@@ -1,5 +1,15 @@
 import { useCallback } from 'react';
 import mixpanel from 'mixpanel-browser';
+import {
+  trackCTAClick,
+  trackFormStarted,
+  trackFormSubmitted,
+  trackLeadCaptured,
+  type CTAClickEvent,
+  type FormStartedEvent,
+  type FormSubmittedEvent,
+  type LeadCapturedEvent,
+} from '../lib/analytics-events';
 
 /**
  * STORY-370 AC1: Typed analytics events for the activation funnel.
@@ -77,6 +87,9 @@ export function getStoredUTMParams(): Record<string, string> {
   }
 }
 
+// Re-export REPO-018 event types so consumers can import from one place.
+export type { CTAClickEvent, FormStartedEvent, FormSubmittedEvent, LeadCapturedEvent };
+
 /**
  * Analytics hook for tracking user events with Mixpanel.
  * All tracking functions respect LGPD cookie consent (AC8).
@@ -144,10 +157,46 @@ export const useAnalytics = () => {
     trackEvent('page_view', { page: pageName });
   }, [trackEvent]);
 
+  /**
+   * REPO-018: Track a CTA button click.
+   * Delegates to lib/analytics-events.ts for SSR-safe, consent-gated tracking.
+   */
+  const trackCTAClickEvent = useCallback((event: CTAClickEvent) => {
+    trackCTAClick(event);
+  }, []);
+
+  /**
+   * REPO-018: Track when a user starts interacting with a form.
+   * Delegates to lib/analytics-events.ts for SSR-safe, consent-gated tracking.
+   */
+  const trackFormStartedEvent = useCallback((event: FormStartedEvent) => {
+    trackFormStarted(event);
+  }, []);
+
+  /**
+   * REPO-018: Track a successful form submission.
+   * Delegates to lib/analytics-events.ts for SSR-safe, consent-gated tracking.
+   */
+  const trackFormSubmittedEvent = useCallback((event: FormSubmittedEvent) => {
+    trackFormSubmitted(event);
+  }, []);
+
+  /**
+   * REPO-018: Track when a lead is captured.
+   * Delegates to lib/analytics-events.ts for SSR-safe, consent-gated tracking.
+   */
+  const trackLeadCapturedEvent = useCallback((event: LeadCapturedEvent) => {
+    trackLeadCaptured(event);
+  }, []);
+
   return {
     trackEvent,
     identifyUser,
     resetUser,
     trackPageView,
+    trackCTAClick: trackCTAClickEvent,
+    trackFormStarted: trackFormStartedEvent,
+    trackFormSubmitted: trackFormSubmittedEvent,
+    trackLeadCaptured: trackLeadCapturedEvent,
   };
 };
