@@ -1,701 +1,540 @@
-# SmartLic — Inteligencia em Licitacoes Publicas
+# SmartLic — Plataforma de Inteligência em Licitações Públicas
 
-[![Backend Tests](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/tests.yml/badge.svg)](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/tests.yml)
+[![Backend Tests](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/backend-tests.yml)
+[![Frontend Tests](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/frontend-tests.yml)
 [![CodeQL](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/codeql.yml/badge.svg)](https://github.com/tjsasakifln/PNCP-poc/actions/workflows/codeql.yml)
 
-> **SOFTWARE PROPRIETÁRIO** — © 2024-2026 CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA. Todos os direitos reservados. Contato: tiago.sasaki@confenge.com.br | WhatsApp: +55 (48) 9 8834-4559
+> Automação de procurement público com IA · API PNCP · ComprasGov · Classificação setorial GPT-4.1-nano · B2G SaaS · Govtech Brasil
 
-**SmartLic** e uma plataforma de inteligencia em licitacoes publicas que automatiza a descoberta, analise e qualificacao de oportunidades para empresas B2G (Business-to-Government).
+> **SOFTWARE PROPRIETÁRIO** — © 2024-2026 CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA. Todos os direitos reservados.
+> Contato: tiago.sasaki@confenge.com.br | WhatsApp: +55 (48) 9 8834-4559
 
-**Production:** https://smartlic.tech | **Estagio:** POC avancado (v0.5) | **Backend:** 65+ modulos | **Frontend:** 22 paginas
+---
 
-## Sobre o Projeto
+🇧🇷 [Português](#português) · 🇺🇸 [English](#english)
+
+---
+
+## Português
+
+**SmartLic** é uma plataforma em produção de inteligência em licitações públicas que automatiza a descoberta, análise e qualificação de oportunidades em contratos públicos para empresas B2G (Business-to-Government). Produto da **CONFENGE Avaliações e Inteligência Artificial LTDA**.
+
+Conecta-se às principais fontes oficiais do governo brasileiro — **PNCP (Portal Nacional de Contratações Públicas)**, **ComprasGov** e **Portal de Compras Públicas** — e aplica IA para classificar editais por setor econômico, avaliar viabilidade e entregar inteligência comercial acionável.
+
+**Produção:** https://smartlic.tech | **Versão:** v0.5 (beta com trials pagos) | **Backend:** 187 endpoints · 65 módulos | **Frontend:** 25 páginas + 10 mil+ páginas SEO programático
+
+---
+
+### Para Quem É
+
+SmartLic foi construído para qualquer organização que precise monitorar, analisar ou operar no ecossistema de compras governamentais brasileiro:
+
+#### Empresas que vendem para o governo (B2G)
+Automatize a prospecção de editais relevantes por setor (saúde, TI, engenharia, limpeza, vigilância, alimentos, vestuário etc.), elimine a triagem manual do PNCP e concentre esforço nas oportunidades com maior viabilidade de participação.
+
+#### Consultorias e assessorias de licitação
+Gerencie múltiplos clientes e setores em um único painel. Use o pipeline Kanban para acompanhar o ciclo de vida de cada edital — da descoberta à proposta. Exporte relatórios Excel e resumos executivos gerados por IA para entregar mais valor aos clientes.
+
+#### Escritórios de advocacia especializados em licitações
+Monitore editais, prazos de habilitação, modalidades (pregão eletrônico, dispensa eletrônica, concorrência, RDC, credenciamento sob Lei 14.133/2021) e histórico de contratos por órgão ou CNPJ.
+
+#### Plataformas de busca de editais e marketplaces B2G
+Integre via API os dados consolidados de PNCP + ComprasGov + PCP v2 — 1,5 milhão de editais indexados com deduplicação, classificação setorial e avaliação de viabilidade já processados. Evite construir e manter crawlers próprios.
+
+#### SaaS de procurement público e ERPs para prefeituras e órgãos públicos
+Incorpore inteligência de mercado de fornecedores: histórico de contratos (~2 milhões de registros), preços praticados, fornecedores vencedores por órgão e por categoria. Enriqueça fluxos de compra com dados do DataLake SmartLic.
+
+#### Softwares de gestão de contratos públicos
+Use a API de contratos históricos para alimentar análises de preço de referência, benchmarking de fornecedores e detecção de anomalias em licitações.
+
+#### Empresas de inteligência comercial e enriquecimento de dados
+Acesse o DataLake de editais (400 dias) e contratos (~2 milhões de linhas) para gerar insights setoriais, mapear market share de fornecedores públicos, identificar padrões de compra por órgão, UF e CNAE.
+
+#### Govtechs e civic-techs
+Construa sobre uma infraestrutura de dados públicos já operacional: ingestão ETL diária, full-text search em PostgreSQL, 183 migrações versionadas, API pública de observatório municipal e setorial.
+
+#### Portais de transparência, observatórios e órgãos de controle
+Use os endpoints públicos de observatório (`/observatorio`, `/indice-municipal`, `/cnpj`, `/compliance`) para construir painéis de transparência, monitoramento de fornecedores, índices de risco e alertas de padrão anormal em contratos públicos. Compatível com uso por Tribunais de Contas, Controladorias e Ministérios Públicos.
+
+#### Fintechs que financiam fornecedores públicos e seguradoras de seguro-garantia
+Acesse o histórico de contratos por CNPJ para avaliação de risco de crédito, análise de capacidade operacional e verificação de regularidade fiscal de fornecedores públicos.
+
+#### Empresas de compliance e due diligence
+Pesquise histórico de licitações e contratos por CNPJ, órgão contratante e setor. Identifique padrões de concentração de contratos, sobrepreço e fornecedores com histórico de impedimentos.
+
+#### Venture studios de govtech, aceleradoras e investidores B2G
+Código-fonte completo de uma plataforma B2G em produção: DataLake com 3,5M+ registros, classificação por IA, billing Stripe, 5.131+ testes automatizados, arquitetura Railway + Supabase + Redis. Referência arquitetural para startups de govtech no Brasil.
+
+#### Founders estrangeiros querendo entrar no mercado B2G brasileiro
+Stack documentada, fontes de dados mapeadas (PNCP, ComprasGov, Lei 14.133/2021), lógica de negócio exposta — um mapa do ecossistema de procurement público brasileiro.
+
+#### Plataformas de BI, RPA e automação (n8n, Make, Zapier)
+Consuma a API REST para alimentar dashboards de Power BI, Tableau ou Metabase com dados de licitações. Use webhooks e endpoints SSE para disparar automações no n8n, Make ou Zapier quando novos editais relevantes forem publicados.
+
+#### Associações comerciais, sindicatos empresariais e entidades como SEBRAE
+Monitore oportunidades de compras governamentais para associados por setor e região. Exporte relatórios periódicos com editais classificados, valores estimados e análise de viabilidade.
+
+#### Startups de IA aplicada a operações, consultorias de transformação digital e empresas de RPA
+Referência de implementação de pipeline RAG-free com classificação setorial por LLM (GPT-4.1-nano), zero-shot classification, circuit breakers, SWR cache, SSE em tempo real e worker ARQ para jobs assíncronos — tudo em produção.
+
+---
 
 ### Funcionalidades Principais
 
-- **Busca multi-fonte** — Agrega PNCP + PCP v2 + ComprasGov v3 com deduplicacao inteligente
-- **15 setores** — Vestuario, alimentos, informatica, engenharia, saude, vigilancia, transporte, e 8 outros
-- **Classificacao IA** — GPT-4.1-nano classifica relevancia setorial (keyword + zero-match)
-- **Analise de viabilidade** — 4 fatores: modalidade (30%), timeline (25%), valor (25%), geografia (20%)
-- **Pipeline de oportunidades** — Kanban com drag-and-drop para gerenciar editais
-- **Relatorios** — Excel estilizado + resumo executivo com IA
-- **Historico + Analytics** — Buscas salvas, sessoes, dashboard com metricas
-- **Resiliencia** — Circuit breakers, two-level cache (SWR), fallback cascade
-- **Billing** — Stripe subscriptions (SmartLic Pro R$397/mes + trial 14 dias)
-- **Observabilidade** — Prometheus metrics, OpenTelemetry tracing, Sentry errors
-- **304+ testes automatizados** — 169 backend + 135 frontend + E2E (Playwright)
+| Funcionalidade | Descrição |
+|----------------|-----------|
+| **Busca multi-fonte** | PNCP + PCP v2 + ComprasGov v3 agregados com deduplicação por prioridade de fonte |
+| **DataLake próprio** | ~1,5M editais (`pncp_raw_bids`, 400d) + ~2M contratos (`pncp_supplier_contracts`); full-text search PostgreSQL <100ms p95 |
+| **20 setores** | Classificação por keyword density + GPT-4.1-nano arbiter + zero-match (precisão ≥85%, recall ≥70%) |
+| **Viabilidade** | Score automático: modalidade (30%), prazo (25%), valor (25%), geografia (20%) |
+| **Pipeline Kanban** | Drag-and-drop para gestão de ciclo de vida de editais |
+| **Relatórios** | Excel estilizado + resumo executivo IA + exportação Google Sheets |
+| **SEO programático** | 10k+ páginas ISR: observatório setorial, CNPJ, órgãos, municípios, alertas, índice municipal |
+| **API pública** | Endpoints de observatório, contratos, licitações por setor/UF/órgão — dados abertos sem autenticação |
+| **Billing Stripe** | Pro R$ 397/mês · semestral R$ 357/mês · anual R$ 297/mês · Consultoria R$ 997/mês · Trial 14 dias |
+| **Observabilidade** | Prometheus + OpenTelemetry + Sentry · canário PNCP · monitoramento pg_cron |
 
-## 🚀 Quick Start
+---
 
-### Opção 1: Docker (Recomendado)
+### Casos de Uso
 
-#### Pré-requisitos
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- OpenAI API key
+#### Triagem automática de editais por setor
+Empresa de TI cadastra setor "Tecnologia da Informação" e UFs de interesse. SmartLic monitora o PNCP diariamente, classifica editais por IA e envia alertas apenas para oportunidades relevantes — eliminando horas de triagem manual.
 
-#### Instalação
+#### Inteligência de preço para fornecedores
+Consultoria de licitação consulta histórico de contratos por CNPJ de órgão (`/contratos/orgao/{cnpj}`) para estimar preço de referência antes de elaborar proposta, usando os ~2 milhões de contratos históricos do DataLake.
 
-1. Clone o repositório:
-```bash
-git clone <repository-url>
-cd pncp-poc
+#### Monitoramento de fornecedores concorrentes
+Empresa mapeia contratos ganhos por concorrentes via CNPJ (`/cnpj/{cnpj}`, `/fornecedores/{cnpj}`), identificando em quais órgãos, setores e UFs estão ativos.
+
+#### Dashboard de transparência municipal
+Prefeitura ou observatório cívico embute o endpoint `/indice-municipal/{municipio-uf}` em portal próprio para exibir índice de saúde das contratações locais.
+
+#### Automação n8n/Make/Zapier
+Webhook SmartLic dispara flow no n8n quando novo edital de interesse é publicado — notificando equipe no Slack, criando card no CRM e agendando reunião de go/no-go automaticamente.
+
+#### Due diligence de fornecedor
+Fintech ou seguradora consulta `/compliance/{cnpj}` para verificar histórico de contratos, regularidade e padrões de risco antes de conceder crédito ou emitir seguro-garantia.
+
+---
+
+### Integrações e Ecossistema
+
+SmartLic expõe API REST + SSE (Server-Sent Events) consumível por qualquer stack:
+
+| Ferramenta | Tipo de integração |
+|------------|-------------------|
+| **n8n / Make / Zapier** | Webhook em novos editais · trigger por setor/UF · notificações automáticas |
+| **Power BI / Tableau / Metabase** | Endpoints REST de contratos, licitações e índices para dashboards de BI |
+| **Google Sheets** | Exportação direta via OAuth integrado ao SmartLic |
+| **CRMs (HubSpot, Pipedrive, etc.)** | API de oportunidades qualificadas para enriquecer pipeline comercial |
+| **ERP / sistemas de gestão** | API de contratos históricos e editais ativos para enriquecimento de dados |
+| **Python / Node.js / qualquer cliente HTTP** | API REST documentada via Swagger em `/docs` |
+
+---
+
+### Fontes de Dados Oficiais
+
+| Fonte | Base Legal | Endpoint |
+|-------|-----------|----------|
+| **PNCP** (Portal Nacional de Contratações Públicas) | Lei 14.133/2021 | `pncp.gov.br/api/consulta/v1` |
+| **ComprasGov** (SIASG/CATMAT/CATSER) | Decreto 7.892/2013 | `dadosabertos.compras.gov.br` |
+| **Portal de Compras Públicas (PCP v2)** | Público | `compras.api.portaldecompraspublicas.com.br/v2` |
+
+---
+
+### Stack Tecnológica
+
+| Camada | Tecnologias |
+|--------|-------------|
+| **Backend** | FastAPI 0.136 · Python 3.12 · Pydantic 2.12 · httpx · OpenAI SDK 1.109 |
+| **IA / LLM** | GPT-4.1-nano (classificação setorial + resumos executivos) |
+| **Filas** | ARQ 0.26+ · Redis (cache · circuit breaker · SSE · rate limiter · locks distribuídos) |
+| **Banco de dados** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) · 183 migrações · 48 tabelas · 13+ RPCs |
+| **Frontend** | Next.js 16.1 · React 18.3 · TypeScript 5.9 · Tailwind CSS 3.4 · Framer Motion · @dnd-kit |
+| **Billing** | Stripe 11.4 (12 eventos webhook) · Resend (e-mail transacional) |
+| **Infra** | Railway (web + worker + frontend) · Supabase Cloud · Redis · GitHub Actions |
+| **Observabilidade** | Prometheus · OpenTelemetry · Sentry · Mixpanel |
+
+---
+
+### Arquitetura de Dados (3 camadas)
+
 ```
+Camada 1 — Ingestão ETL (cron ARQ)
+  pncp_raw_bids (~1,5M linhas, retenção 400 dias)  ←  rastreador diário (2h BRT)
+  pncp_supplier_contracts (~2M linhas)              ←  rastreador 3×/semana
 
-2. Configure variáveis de ambiente:
-```bash
-cp .env.example .env
-# Edite .env e adicione sua OPENAI_API_KEY
-```
+Camada 2 — Pipeline de Busca (consulta DataLake local)
+  search_datalake RPC → PostgreSQL full-text → <100ms p95
+  fallback: busca ao vivo nas 3 APIs quando DataLake retorna 0 resultados
 
-3. Inicie os serviços com Docker Compose:
-```bash
-docker-compose up
-```
-
-4. Acesse os serviços:
-- **Frontend**: http://localhost:3000 (Aplicação Next.js)
-- **Backend API**: http://localhost:8000/docs (Swagger UI)
-
-**📖 Guia completo de integração:** [docs/INTEGRATION.md](docs/INTEGRATION.md)
-
-#### Testando a Aplicacao
-
-**Production:**
-1. Acesse https://smartlic.tech
-2. Crie conta ou faca login
-3. Complete o onboarding (CNAE + UFs + objetivo)
-4. Busque licitacoes (setor + UFs + periodo)
-5. Analise resultados com badges de relevancia e viabilidade
-
-**Local Development:**
-1. Acesse http://localhost:3000
-2. Mesmos passos acima
-
-#### Comandos Docker Úteis
-
-```bash
-# Iniciar em background (detached)
-docker-compose up -d
-
-# Ver logs em tempo real
-docker-compose logs -f
-
-# Ver logs de um serviço específico
-docker-compose logs -f backend
-
-# Parar serviços
-docker-compose down
-
-# Rebuild após mudanças em dependências
-docker-compose build --no-cache
-
-# Ver status dos containers
-docker-compose ps
-
-# Executar comandos no container
-docker-compose exec backend python -c "print('Hello from container')"
+Camada 3 — Cache de Resultados (passivo, por requisição)
+  L1: InMemoryCache LRU (4h TTL)
+  L2: Supabase search_results_cache (24h) + SWR reativo
 ```
 
 ---
 
-### Opção 2: Instalação Manual
+### Arquitetura Geral
+
+```
+┌──────────────────┐
+│   Next.js 16.1   │  25 páginas core + 10k+ páginas SEO programático (ISR)
+└────────┬─────────┘
+         │ API Proxy
+┌────────▼─────────┐
+│  FastAPI 0.136   │  187 endpoints · 65 módulos
+└────────┬─────────┘
+         │
+         ├──► PNCP API           (ingestão diária + fallback live)
+         ├──► PCP v2 API         (fallback live)
+         ├──► ComprasGov v3      (fallback live)
+         ├──► OpenAI API         (classificação setorial + resumos IA)
+         ├──► Stripe API         (billing + webhooks)
+         ├──► Supabase           (PostgreSQL 17 + Auth + RLS)
+         ├──► Redis              (cache + ARQ jobs + locks distribuídos)
+         └──► Resend             (e-mail transacional)
+```
+
+---
+
+### Instalação Local
 
 #### Pré-requisitos
+
 - Python 3.12+
 - Node.js 18+
+- Supabase project (URL + chaves)
+- Redis (opcional — há fallback)
 - OpenAI API key
-- Supabase project (URL + keys)
-- Redis (optional, has fallback)
 
-#### Instalação
+#### Backend
 
-1. Clone o repositório:
-```bash
-git clone <repository-url>
-cd pncp-poc
-```
-
-2. Configure variáveis de ambiente:
-```bash
-cp .env.example .env
-# Edite .env e adicione sua OPENAI_API_KEY
-```
-
-3. Backend:
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
+# Swagger disponível em http://localhost:8000/docs
 ```
 
-4. Frontend:
+#### Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
+# Aplicação em http://localhost:3000
 ```
 
-5. Acesse: http://localhost:3000
-
-## Estrutura de Diretorios
-
-```
-pncp-poc/
-├── backend/                    # API Backend (FastAPI 0.129, Python 3.12)
-│   ├── main.py                # Entrypoint FastAPI
-│   ├── config.py              # 70+ env vars
-│   ├── search_pipeline.py     # Pipeline multi-fonte
-│   ├── consolidation.py       # Agregacao + dedup
-│   ├── pncp_client.py         # PNCP API client (circuit breaker)
-│   ├── filter.py              # Keyword density scoring
-│   ├── llm_arbiter.py         # LLM zero-match classification
-│   ├── viability.py           # Viability assessment (4 fatores)
-│   ├── search_cache.py        # Two-level cache + SWR
-│   ├── job_queue.py           # ARQ background jobs
-│   ├── metrics.py             # Prometheus exporter
-│   ├── telemetry.py           # OpenTelemetry tracing
-│   ├── sectors_data.yaml      # 15 setores (keywords, exclusoes)
-│   ├── routes/                # 19 route modules (49 endpoints)
-│   ├── clients/               # PCP, ComprasGov, etc.
-│   ├── services/              # Billing, sanctions
-│   ├── models/                # Cache, search state, stripe
-│   ├── migrations/            # 7 backend migrations
-│   ├── tests/                 # 169 test files
-│   │   ├── integration/       # 10 integration test files
-│   │   └── snapshots/         # OpenAPI schema drift detection
-│   └── requirements.txt       # 32 production packages
-│
-├── frontend/                   # Next.js 16, React 18, TypeScript 5.9
-│   ├── app/                   # 22 pages (App Router)
-│   │   ├── buscar/            # Main search page + 18 components
-│   │   ├── dashboard/         # Analytics dashboard
-│   │   ├── pipeline/          # Opportunity pipeline (kanban)
-│   │   ├── admin/             # Admin + cache dashboards
-│   │   ├── onboarding/        # 3-step wizard
-│   │   └── api/               # API proxy routes
-│   ├── components/            # 15 shared components
-│   ├── hooks/                 # Custom hooks (useSearch, useSearchSSE)
-│   ├── __tests__/             # 135 test files
-│   ├── e2e-tests/             # Playwright E2E tests
-│   └── package.json           # 46 packages (22 prod + 24 dev)
-│
-├── supabase/
-│   └── migrations/            # 35 Supabase migrations
-│
-├── docs/                       # Documentacao
-│   ├── summaries/             # gtm-resilience-summary, gtm-fixes-summary
-│   ├── framework/             # tech-stack, coding-standards
-│   ├── stories/               # Development stories
-│   └── guides/                # Setup guides
-│
-├── .aios-core/                # AIOS Framework
-│   └── development/           # Agents, tasks, workflows
-│
-├── PRD.md                     # Product Requirements Document
-├── CLAUDE.md                  # Claude Code instructions
-├── ROADMAP.md                 # Roadmap + backlog
-├── CHANGELOG.md               # Detailed changelog
-└── README.md                  # Este arquivo
-```
-
-## Documentacao
-
-- [PRD Tecnico](./PRD.md) — Especificacao tecnica
-- [Tech Stack](./docs/framework/tech-stack.md) — Tecnologias e versoes
-- [Coding Standards](./docs/framework/coding-standards.md) — Padroes de codigo
-- [Roadmap](./ROADMAP.md) — Status e backlog
-- [CHANGELOG](./CHANGELOG.md) — Historico de versoes
-- [GTM Resilience Summary](./docs/summaries/gtm-resilience-summary.md) — Arquitetura de resiliencia
-- [GTM Fixes Summary](./docs/summaries/gtm-fixes-summary.md) — Fixes de producao
-
-## 🤖 AIOS Framework
-
-Este projeto utiliza o [AIOS Framework](https://github.com/tjsasakifln/aios-core) para desenvolvimento orquestrado por IA.
-
-### Agentes Disponíveis
-
-- **@dev** - Desenvolvimento e implementação
-- **@qa** - Quality assurance e testes
-- **@architect** - Decisões arquiteturais
-- **@pm** - Gerenciamento de stories
-
-### Comandos AIOS
+#### Variáveis de Ambiente
 
 ```bash
-# Criar nova story
-/AIOS/story
-
-# Review de código
-/AIOS/review
-
-# Gerar documentação
-/AIOS/docs
+cp .env.example .env
+# Preencha OPENAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY,
+# SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, REDIS_URL, etc.
 ```
 
-Ver [User Guide](./.aios-core/user-guide.md) para lista completa de comandos.
-
-## Arquitetura
-
-```
-┌──────────────┐
-│   Next.js    │  Frontend (22 paginas, React + Tailwind)
-└──────┬───────┘
-       │ API Proxy
-┌──────▼───────┐
-│   FastAPI    │  Backend (65+ modulos, 49 endpoints)
-└──────┬───────┘
-       │
-       ├─────► PNCP API (prioridade 1)
-       ├─────► PCP v2 API (prioridade 2)
-       ├─────► ComprasGov v3 (prioridade 3)
-       ├─────► OpenAI API (classificacao + resumos)
-       ├─────► Stripe API (billing)
-       ├─────► Supabase (database + auth)
-       └─────► Redis (cache + jobs)
-```
-
-## Fluxo de Dados
-
-1. Usuario seleciona setor, UFs e periodo
-2. Backend consulta 3 fontes em paralelo (PNCP + PCP + ComprasGov)
-3. Consolidacao + deduplicacao por prioridade
-4. Filtragem: UF, valor, keywords, LLM zero-match, status
-5. Viability assessment (4 fatores)
-6. LLM summary + Excel (ARQ background jobs)
-7. Resultados via SSE em tempo real
-
-## Testes
-
-```bash
-# Backend (169 test files, 5131+ passing)
-cd backend && pytest
-
-# Frontend (135 test files, 2681+ passing)
-cd frontend && npm test
-
-# E2E (Playwright, 60 critical flows)
-cd frontend && npm run test:e2e
-```
-
-## 🚢 Deploy
-
-### Docker Compose (Desenvolvimento)
-
-O projeto inclui configuração completa do Docker Compose para ambiente de desenvolvimento:
-
-**Características:**
-- ✅ Hot-reload para backend (mudanças de código reiniciam automaticamente)
-- ✅ Health checks para todos os serviços
-- ✅ Volumes montados para desenvolvimento
-- ✅ Network bridge para comunicação inter-serviços
-- ✅ Variáveis de ambiente injetadas de `.env`
-
-**Serviços:**
-- `backend` - FastAPI em Python 3.12 (porta 8000)
-- `frontend` - Placeholder nginx (porta 3000)
-
-```bash
-# Iniciar ambiente completo
-docker-compose up -d
-
-# Verificar saúde dos serviços
-docker-compose ps
-
-# Ver logs
-docker-compose logs -f
-```
-
-### Deploy em Producao
-
-**Production:**
-- **Frontend:** https://smartlic.tech
-- **Backend API:** Railway (web + worker processes)
-- **Database:** Supabase Cloud (PostgreSQL + Auth)
-- **Cache:** Redis (Upstash ou Railway addon)
-
-**Plataformas:**
-- **Frontend + Backend + Worker:** Railway (tudo em um)
-- **Database + Auth:** Supabase Cloud
-- **Payments:** Stripe
-
-**Quick Deploy:**
-```bash
-# Railway (backend + frontend)
-npm install -g @railway/cli
-railway login
-railway up
-```
-
-## 📝 Variáveis de Ambiente
-
-### Local Development
-
-Configure as variáveis abaixo no arquivo `.env` (copie de `.env.example`):
-
-```env
-# === REQUIRED ===
-OPENAI_API_KEY=sk-...              # Obrigatória - Get from https://platform.openai.com/api-keys
-
-# === OPTIONAL (Backend) ===
-BACKEND_PORT=8000                  # Porta do FastAPI (default: 8000)
-LOG_LEVEL=INFO                     # Nível de logging: DEBUG|INFO|WARNING|ERROR
-BACKEND_URL=http://localhost:8000  # URL base para frontend chamar backend
-
-# === OPTIONAL (PNCP Client) ===
-PNCP_TIMEOUT=30                    # Timeout por request em segundos (default: 30)
-PNCP_MAX_RETRIES=5                 # Máximo de tentativas de retry (default: 5)
-PNCP_RATE_LIMIT=100                # Delay mínimo entre requests em ms (default: 100)
-
-# === OPTIONAL (LLM) ===
-LLM_MODEL=gpt-4.1-nano              # Modelo OpenAI (default: gpt-4.1-nano)
-LLM_TEMPERATURE=0.3                # Temperatura do modelo (0.0-2.0, default: 0.3)
-LLM_MAX_TOKENS=500                 # Máximo de tokens na resposta (default: 500)
-```
-
-### Production Environment
-
-Production environment variables are configured in Railway dashboard.
-See [.env.example](.env.example) for the full list of 70+ environment variables with documentation.
+Veja [.env.example](.env.example) para a lista completa de 70+ variáveis documentadas.
 
 ---
 
-## 🔧 Troubleshooting
+### Testes
 
-### Problemas Comuns e Soluções
-
-#### 0. Production Issues
-
-**Problema:** Frontend não consegue conectar ao backend em produção
-
-**Solução:**
-1. Verifique se backend está online:
-   ```bash
-   curl https://smartlic.tech/health
-   # Deve retornar: {"status":"healthy"}
-   ```
-
-2. Verifique variável de ambiente no Railway:
-   - Acesse Railway dashboard → Project Settings → Environment Variables
-   - Confirme: `BACKEND_URL=https://smartlic.tech`
-
-3. Verifique CORS no backend:
-   - Backend deve permitir origem do Railway frontend
-   - Ver `backend/main.py` linha ~48 para configuração CORS
-
-**Problema:** "Service Unavailable" ou "502 Bad Gateway" na API
-
-**Solução:**
-1. Verifique logs do Railway:
-   ```bash
-   railway logs
-   ```
-
-2. Causas comuns:
-   - Backend em cold start (primeiro request após inatividade) - aguarde 30s
-   - OpenAI API key inválida - verifique no Railway dashboard
-   - Memória insuficiente - verifique métricas no Railway
-   - Build falhou - verifique deploy logs
-
-**Problema:** Frontend mostra erro de CORS em produção
-
-**Solução:**
-Atualizar lista de origens permitidas em `backend/main.py`:
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://smartlic.tech",  # Production frontend
-        "http://localhost:3000"  # Local development
-    ],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
----
-
-#### 1. Docker / Container Issues
-
-**Problema:** `Cannot connect to the Docker daemon`
 ```bash
-# Solução: Inicie o Docker Desktop
-# Windows: Procure "Docker Desktop" no menu Iniciar
-# macOS: Abra Docker.app da pasta Applications
-# Linux: sudo systemctl start docker
-```
-
-**Problema:** `Error response from daemon: Conflict. The container name "/bidiq-backend" is already in use`
-```bash
-# Solução: Remova containers antigos
-docker-compose down
-docker-compose up --build
-```
-
-**Problema:** `bidiq-backend exited with code 137` (Out of Memory)
-```bash
-# Solução: Aumente memória do Docker Desktop
-# Settings → Resources → Memory: aumentar para 4GB+
-```
-
-**Problema:** Serviços não ficam "healthy" após 2 minutos
-```bash
-# Diagnóstico: Verifique logs dos containers
-docker-compose logs backend
-docker-compose logs frontend
-
-# Solução: Health check automático
-bash scripts/verify-integration.sh
-```
-
----
-
-#### 2. Backend API Issues
-
-**Problema:** `ImportError: No module named 'httpx'`
-```bash
-# Solução: Reinstale dependências
+# Backend (454 arquivos, 5.131+ aprovados)
 cd backend
-pip install -r requirements.txt --force-reinstall
-```
+pytest --timeout=30
 
-**Problema:** `401 Unauthorized` ou `invalid_api_key` (OpenAI)
-```bash
-# Solução 1: Verifique se a chave está correta
-cat .env | grep OPENAI_API_KEY
-# Deve exibir: OPENAI_API_KEY=sk-...
-
-# Solução 2: Verifique se a chave tem créditos
-# Acesse: https://platform.openai.com/usage
-
-# Solução 3: Use o modo fallback (sem LLM)
-# O sistema possui fallback automático - não precisa de API key para funcionar
-```
-
-**Problema:** `PNCP API timeout` ou `504 Gateway Timeout`
-```bash
-# Solução: Aumente o timeout (API PNCP é instável)
-# No .env:
-PNCP_TIMEOUT=60
-PNCP_MAX_RETRIES=10
-```
-
-**Problema:** `429 Too Many Requests` (PNCP Rate Limit)
-```bash
-# Solução: O cliente possui rate limiting automático
-# Aguarde 1 minuto e tente novamente
-# O sistema respeita header Retry-After automaticamente
-```
-
-**Problema:** `No matching distributions found for openpyxl`
-```bash
-# Solução: Use Python 3.11+ (versão mínima suportada)
-python --version  # Deve ser 3.11.0 ou superior
-# Se necessário, instale Python 3.11: https://www.python.org/downloads/
-```
-
----
-
-#### 3. Frontend Issues
-
-**Problema:** `Error: Cannot find module 'next'`
-```bash
-# Solução: Reinstale node_modules
+# Frontend (376 arquivos, 2.681+ aprovados)
 cd frontend
-rm -rf node_modules package-lock.json
-npm install
-```
+npm test
 
-**Problema:** `CORS policy: No 'Access-Control-Allow-Origin' header`
-```bash
-# Solução 1: Verifique se backend está rodando
-curl http://localhost:8000/health
-# Deve retornar: {"status":"healthy"}
-
-# Solução 2: Verifique CORS no backend (main.py linhas 49-55)
-# CORS já está configurado para allow_origins=["*"]
-# Se problema persistir, verifique BACKEND_URL no .env
-```
-
-**Problema:** Frontend mostra "Nenhum resultado encontrado" mas backend retornou dados
-```bash
-# Diagnóstico: Verifique console do navegador (F12)
-# Procure por erros de parse JSON ou validação de schema
-
-# Solução: Verifique estrutura de resposta da API
-curl -X POST http://localhost:8000/buscar \
-  -H "Content-Type: application/json" \
-  -d '{"ufs":["SC"],"data_inicial":"2026-01-01","data_final":"2026-01-31"}'
-```
-
-**Problema:** `Error: ENOENT: no such file or directory, open '.next/...'`
-```bash
-# Solução: Rebuild Next.js
-cd frontend
-rm -rf .next
-npm run build
-npm run dev
-```
-
----
-
-#### 4. Test Failures
-
-**Problema:** `pytest: command not found`
-```bash
-# Solução: Ative o ambiente virtual
-cd backend
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-**Problema:** `FAILED test_pncp_integration.py` (testes de integração)
-```bash
-# Solução: Testes de integração requerem internet e API PNCP funcionando
-# Pule estes testes com:
-pytest -m "not integration"
-```
-
-**Problema:** Coverage abaixo do threshold (70% backend / 60% frontend)
-```bash
-# Diagnóstico: Veja relatório detalhado
-cd backend && pytest --cov --cov-report=html
-# Abra: backend/htmlcov/index.html no navegador
-
-cd frontend && npm run test:coverage
-# Abra: frontend/coverage/index.html no navegador
-
-# Solução: Adicione testes para módulos não cobertos
-```
-
----
-
-#### 5. Excel Download Issues
-
-**Problema:** Botão "Download Excel" não funciona ou arquivo corrupto
-```bash
-# Diagnóstico: Verifique cache de downloads
-# Frontend usa cache in-memory com TTL de 10min
-
-# Solução 1: Tente novamente (cache pode ter expirado)
-# Solução 2: Verifique logs do backend
-docker-compose logs backend | grep "download_id"
-
-# Solução 3: Teste endpoint diretamente
-curl "http://localhost:3000/api/download?id=DOWNLOAD_ID" -o test.xlsx
-```
-
-**Problema:** Excel abre com erro "formato inválido"
-```bash
-# Solução: Verifique se openpyxl está instalado
-cd backend
-python -c "import openpyxl; print(openpyxl.__version__)"
-# Deve exibir versão 3.1.0+
-```
-
----
-
-#### 6. E2E Test Issues
-
-**Problema:** E2E tests failing with "Timed out waiting for page"
-```bash
-# Solução: Garanta que ambos serviços estejam rodando
-docker-compose up -d
-bash scripts/verify-integration.sh  # Health check
-
-# Execute testes E2E
+# E2E Playwright (60 fluxos críticos de usuário)
 cd frontend
 npm run test:e2e
 ```
 
-**Problema:** `Error: browserType.launch: Executable doesn't exist`
-```bash
-# Solução: Instale browsers do Playwright
-cd frontend
-npx playwright install
+---
+
+### Deploy em Produção
+
+| Componente | Plataforma |
+|------------|-----------|
+| Frontend | Railway (`RAILWAY_SERVICE_ROOT_DIRECTORY=frontend`) |
+| Backend API | Railway web process (`PROCESS_TYPE=web`, Uvicorn multi-worker) |
+| Worker ARQ | Railway worker process (`PROCESS_TYPE=worker`) |
+| Banco de dados | Supabase Cloud (PostgreSQL 17 + Auth + RLS) |
+| Cache | Redis (Upstash ou Railway addon) |
+| CI/CD | GitHub Actions — testes + API types check + migration gate |
+
+Push para `main` dispara deploy automático via Railway watch patterns.
+
+---
+
+### Documentação
+
+- [PRD Técnico](./PRD.md) — Especificação completa do produto
+- [Roadmap](./ROADMAP.md) — Status e backlog
+- [CHANGELOG](./CHANGELOG.md) — Histórico de versões
+- [Resumo de Resiliência GTM](./docs/summaries/gtm-resilience-summary.md)
+- [Resumo de Correções GTM](./docs/summaries/gtm-fixes-summary.md)
+
+---
+
+### Parcerias e Licenciamento
+
+Software proprietário. Contribuições externas não são aceitas sem autorização prévia por escrito da CONFENGE.
+
+Para propostas de **parceria, integração, licenciamento de dados ou white-label**:
+- **Email:** tiago.sasaki@confenge.com.br
+- **WhatsApp:** +55 (48) 9 8834-4559
+
+---
+
+---
+
+## English
+
+**SmartLic** is a production-grade public procurement intelligence platform that automates the discovery, analysis, and qualification of government contracting opportunities for B2G (Business-to-Government) organizations. Built by **CONFENGE Avaliações e Inteligência Artificial LTDA** in Brazil.
+
+Connects to Brazil's official procurement sources — **PNCP (National Public Procurement Portal)**, **ComprasGov**, and **Portal de Compras Públicas** — and applies AI to classify bids by economic sector, assess viability, and deliver actionable commercial intelligence.
+
+**Production:** https://smartlic.tech | **Version:** v0.5 (beta with paid trials) | **Backend:** 187 endpoints · 65 modules | **Frontend:** 25 pages + 10k+ programmatic SEO pages
+
+---
+
+### Who Is It For
+
+SmartLic is built for any organization that needs to monitor, analyze, or operate within Brazil's government procurement ecosystem:
+
+#### B2G companies (businesses selling to government)
+Automate bid discovery by sector (healthcare, IT, engineering, cleaning, security, food, apparel, etc.), eliminate manual PNCP screening, and focus effort on opportunities with the highest participation viability.
+
+#### Procurement consulting firms and bid advisors
+Manage multiple clients and sectors in one dashboard. Use the Kanban pipeline to track each bid's lifecycle. Export AI-generated Excel reports and executive summaries for client delivery.
+
+#### Law firms specializing in public procurement
+Monitor bids, qualification deadlines, procurement modalities (electronic bidding, direct award, concorrência, RDC, credenciamento under Lei 14.133/2021), and contract history by agency or CNPJ.
+
+#### Bid search platforms and B2G marketplaces
+Integrate via API the consolidated data from PNCP + ComprasGov + PCP v2 — 1.5M indexed bids with deduplication, sector classification, and viability scoring already processed. Avoid building and maintaining your own crawlers.
+
+#### Public procurement SaaS and ERP vendors for municipalities and public agencies
+Embed supplier market intelligence: contract history (~2M records), historical prices, winning suppliers per agency and category. Enrich procurement workflows with SmartLic DataLake data.
+
+#### Public contract management software
+Use the historical contracts API to power reference price analysis, supplier benchmarking, and procurement anomaly detection.
+
+#### Commercial intelligence and data enrichment companies
+Access the bid DataLake (400-day window) and contracts (~2M rows) to generate sector insights, map public supplier market share, and identify purchasing patterns by agency, state (UF), and CNAE industry code.
+
+#### Govtechs and civic-techs
+Build on top of an already operational public data infrastructure: daily ETL ingestion, PostgreSQL full-text search, 183 versioned migrations, and a public observatory API for municipal and sector-level data.
+
+#### Transparency portals, observatories, and oversight bodies
+Use public endpoints (`/observatorio`, `/indice-municipal`, `/cnpj`, `/compliance`) to build transparency dashboards, supplier monitoring tools, risk indices, and contract anomaly alerts. Suitable for Courts of Audit (Tribunais de Contas), Internal Control Bodies (Controladorias), and Public Ministries.
+
+#### Fintechs financing public suppliers and surety bond insurers
+Access contract history by CNPJ for credit risk assessment, operational capacity analysis, and supplier compliance verification before granting credit or issuing surety bonds.
+
+#### Compliance and due diligence companies
+Search procurement and contract history by CNPJ, contracting agency, and sector. Identify contract concentration patterns, price overruns, and suppliers with suspension history.
+
+#### Govtech venture studios, accelerators, and B2G investors
+Full source of a production B2G platform: DataLake with 3.5M+ records, AI classification, Stripe billing, 5,131+ automated tests, Railway + Supabase + Redis architecture. Architectural reference for govtech startups in Brazil.
+
+#### Foreign founders entering the Brazilian B2G market
+Documented stack, mapped data sources (PNCP, ComprasGov, Lei 14.133/2021), and exposed business logic — a map of the Brazilian public procurement ecosystem.
+
+#### BI platforms, RPA, and automation tools (n8n, Make, Zapier)
+Consume the REST API to feed Power BI, Tableau, or Metabase dashboards. Use webhooks and SSE endpoints to trigger n8n, Make, or Zapier automations when relevant new bids are published.
+
+#### Trade associations, industry unions, and SME support organizations (SEBRAE)
+Monitor government procurement opportunities for members by sector and region. Export periodic reports with classified bids, estimated values, and viability analysis.
+
+#### AI-applied operations startups, digital transformation consultancies, and RPA companies
+Production reference for: sector classification pipeline with LLM (GPT-4.1-nano), zero-shot classification, circuit breakers, SWR cache, real-time SSE, and async ARQ workers — all in production.
+
+---
+
+### Core Features
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-source search** | PNCP + PCP v2 + ComprasGov v3 aggregated with priority-based deduplication |
+| **Proprietary DataLake** | ~1.5M bids (`pncp_raw_bids`, 400d) + ~2M contracts (`pncp_supplier_contracts`); PostgreSQL full-text <100ms p95 |
+| **20 sectors** | Keyword density + GPT-4.1-nano arbiter + zero-match classification (precision ≥85%, recall ≥70%) |
+| **Viability scoring** | Automatic score: modality (30%), timeline (25%), value (25%), geography (20%) |
+| **Opportunity Kanban** | Drag-and-drop pipeline for bid lifecycle management |
+| **Reports** | Styled Excel + AI executive summary + Google Sheets export |
+| **Programmatic SEO** | 10k+ ISR pages: sectoral observatory, CNPJ, agencies, municipalities, alerts, municipal index |
+| **Public API** | Observatory, contracts, and bids endpoints by sector/UF/agency — unauthenticated public data |
+| **Stripe Billing** | Pro BRL 397/mo · semi-annual BRL 357/mo · annual BRL 297/mo · Consulting BRL 997/mo · 14-day trial |
+| **Observability** | Prometheus + OpenTelemetry + Sentry · PNCP canary · pg_cron monitoring |
+
+---
+
+### Integrations and Ecosystem
+
+SmartLic exposes a REST API + SSE (Server-Sent Events) consumable by any stack:
+
+| Tool | Integration type |
+|------|----------------|
+| **n8n / Make / Zapier** | Webhook on new bids · sector/UF triggers · automatic notifications |
+| **Power BI / Tableau / Metabase** | REST endpoints for contracts, bids, and indices for BI dashboards |
+| **Google Sheets** | Direct export via OAuth integration built into SmartLic |
+| **CRMs (HubSpot, Pipedrive, etc.)** | Qualified opportunity API to enrich commercial pipeline |
+| **ERP / management systems** | Historical contracts and active bids API for data enrichment |
+| **Python / Node.js / any HTTP client** | REST API documented via Swagger at `/docs` |
+
+---
+
+### Official Data Sources
+
+| Source | Legal Basis | Endpoint |
+|--------|-------------|----------|
+| **PNCP** (National Public Procurement Portal) | Lei 14.133/2021 | `pncp.gov.br/api/consulta/v1` |
+| **ComprasGov** (SIASG/CATMAT/CATSER) | Decreto 7.892/2013 | `dadosabertos.compras.gov.br` |
+| **Portal de Compras Públicas (PCP v2)** | Public | `compras.api.portaldecompraspublicas.com.br/v2` |
+
+---
+
+### Tech Stack
+
+| Layer | Technologies |
+|-------|-------------|
+| **Backend** | FastAPI 0.136 · Python 3.12 · Pydantic 2.12 · httpx · OpenAI SDK 1.109 |
+| **AI / LLM** | GPT-4.1-nano (sector classification + executive summaries) |
+| **Queues** | ARQ 0.26+ · Redis (cache · circuit breaker · SSE · rate limiter · distributed locks) |
+| **Database** | Supabase Cloud (PostgreSQL 17 + Auth + RLS) · 183 migrations · 48 tables · 13+ RPCs |
+| **Frontend** | Next.js 16.1 · React 18.3 · TypeScript 5.9 · Tailwind CSS 3.4 · Framer Motion · @dnd-kit |
+| **Billing** | Stripe 11.4 (12 webhook events) · Resend (transactional email) |
+| **Infra** | Railway (web + worker + frontend) · Supabase Cloud · Redis · GitHub Actions |
+| **Observability** | Prometheus · OpenTelemetry · Sentry · Mixpanel |
+
+---
+
+### Data Architecture (3 layers)
+
+```
+Layer 1 — ETL Ingestion (ARQ cron)
+  pncp_raw_bids (~1.5M rows, 400-day retention)  ←  daily crawler (2am BRT)
+  pncp_supplier_contracts (~2M rows)              ←  3×/week crawler
+
+Layer 2 — Search Pipeline (queries local DataLake)
+  search_datalake RPC → PostgreSQL full-text → <100ms p95
+  fallback: live API fetch when DataLake returns 0 results
+
+Layer 3 — Results Cache (passive, per-request)
+  L1: InMemoryCache LRU (4h TTL)
+  L2: Supabase search_results_cache (24h) + reactive SWR
 ```
 
 ---
 
-### Scripts Úteis de Diagnóstico
+### System Architecture
 
-```bash
-# Health check completo (recomendado)
-bash scripts/verify-integration.sh
-
-# Verificar portas ocupadas
-# Windows: netstat -ano | findstr :8000
-# Linux/Mac: lsof -i :8000
-
-# Rebuild completo (limpa cache)
-docker-compose down -v
-docker system prune -f
-docker-compose build --no-cache
-docker-compose up
-
-# Logs em tempo real de todos os serviços
-docker-compose logs -f --tail=50
-
-# Ver variáveis de ambiente carregadas
-docker-compose exec backend env | grep -E "OPENAI|PNCP|LLM"
+```
+┌──────────────────┐
+│   Next.js 16.1   │  25 core pages + 10k+ programmatic SEO pages (ISR)
+└────────┬─────────┘
+         │ API Proxy
+┌────────▼─────────┐
+│  FastAPI 0.136   │  187 endpoints · 65 modules
+└────────┬─────────┘
+         │
+         ├──► PNCP API           (daily ingestion + live fallback)
+         ├──► PCP v2 API         (live fallback)
+         ├──► ComprasGov v3      (live fallback)
+         ├──► OpenAI API         (sector classification + AI summaries)
+         ├──► Stripe API         (billing + webhooks)
+         ├──► Supabase           (PostgreSQL 17 + Auth + RLS)
+         ├──► Redis              (cache + ARQ jobs + distributed locks)
+         └──► Resend             (transactional email)
 ```
 
 ---
 
-### Onde Buscar Ajuda
+### Local Setup
 
-1. **Documentação Detalhada:**
-   - [Integration Guide](./docs/INTEGRATION.md) - Troubleshooting E2E
-   - [PRD.md](./PRD.md) - Especificação técnica completa
+```bash
+# Backend
+cd backend && python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+# Swagger at http://localhost:8000/docs
 
-2. **Suporte CONFENGE:**
-   - Email: tiago.sasaki@confenge.com.br
-   - WhatsApp: +55 (48) 9 8834-4559
+# Frontend
+cd frontend && npm install && npm run dev
+# App at http://localhost:3000
 
-3. **Logs e Debugging:**
-   ```bash
-   # Backend logs estruturados
-   docker-compose logs backend | grep -E "ERROR|WARNING"
-
-   # Frontend logs (console do navegador)
-   # Abra DevTools (F12) → Console
-   ```
-
-4. **Testes Automatizados:**
-   - Backend: `cd backend && pytest -v`
-   - Frontend: `cd frontend && npm test -- --verbose`
-   - E2E: `cd frontend && npm run test:e2e`
+# Environment variables
+cp .env.example .env
+# Fill: OPENAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY,
+# SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, REDIS_URL
+```
 
 ---
 
-## Contribuições
+### Tests
 
-Este é software proprietário da CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA. Contribuições externas não são aceitas sem autorização prévia e por escrito da CONFENGE.
+```bash
+# Backend (454 files, 5,131+ passing)
+cd backend && pytest --timeout=30
 
-Para propostas de parceria, licenciamento ou colaboração autorizada, entre em contato:
+# Frontend (376 files, 2,681+ passing)
+cd frontend && npm test
+
+# E2E Playwright (60 critical user flows)
+cd frontend && npm run test:e2e
+```
+
+---
+
+### Production Deploy
+
+| Component | Platform |
+|-----------|---------|
+| Frontend | Railway (`RAILWAY_SERVICE_ROOT_DIRECTORY=frontend`) |
+| Backend API | Railway web process (`PROCESS_TYPE=web`, Uvicorn multi-worker) |
+| ARQ Worker | Railway worker process (`PROCESS_TYPE=worker`) |
+| Database | Supabase Cloud (PostgreSQL 17 + Auth + RLS) |
+| Cache | Redis (Upstash or Railway addon) |
+| CI/CD | GitHub Actions — tests + API types check + migration gate |
+
+---
+
+### Documentation
+
+- [Technical PRD](./PRD.md) — Full product specification
+- [Roadmap](./ROADMAP.md) — Status and backlog
+- [CHANGELOG](./CHANGELOG.md) — Version history
+- [GTM Resilience Summary](./docs/summaries/gtm-resilience-summary.md)
+- [GTM Fixes Summary](./docs/summaries/gtm-fixes-summary.md)
+
+---
+
+### Partnerships and Licensing
+
+Proprietary software. External contributions require prior written authorization from CONFENGE.
+
+For **partnership, integration, data licensing, or white-label** inquiries:
 - **Email:** tiago.sasaki@confenge.com.br
 - **WhatsApp:** +55 (48) 9 8834-4559
 
-## Licença e Propriedade
+---
 
-**© 2024-2026 CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA — Todos os direitos reservados.**
+## Licença / License
 
-Este software é de propriedade exclusiva da CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA. O código-fonte, algoritmos, arquitetura, documentação, configurações e quaisquer materiais relacionados são propriedade intelectual da CONFENGE. É estritamente proibido o uso, cópia, modificação, distribuição, sublicenciamento ou qualquer forma de reprodução deste software, no todo ou em parte, sem consentimento prévio por escrito da CONFENGE.
+**© 2024-2026 CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA — Todos os direitos reservados / All rights reserved.**
 
-Consulte o arquivo [LICENSE](./LICENSE) para os termos completos.
+Este software é propriedade exclusiva da CONFENGE. É estritamente proibido o uso, cópia, modificação, distribuição ou sublicenciamento sem consentimento prévio por escrito.
 
-**Contato para licenciamento e negociações:**
-- **Email:** tiago.sasaki@confenge.com.br
-- **WhatsApp:** +55 (48) 9 8834-4559
-- **Empresa:** CONFENGE Avaliações e Inteligência Artificial LTDA
+This software is the exclusive property of CONFENGE. Unauthorized use, copying, modification, distribution, or sublicensing is strictly prohibited.
 
-## Links Uteis
+Consulte / See [LICENSE](./LICENSE) for full terms.
 
-- [PNCP API](https://pncp.gov.br/api/consulta/swagger-ui/index.html)
-- [PCP v2 API](https://compras.api.portaldecompraspublicas.com.br)
-- [FastAPI Docs](https://fastapi.tiangolo.com/)
-- [Next.js Docs](https://nextjs.org/docs)
-- [Supabase Docs](https://supabase.com/docs)
-- [Stripe Docs](https://stripe.com/docs)
+**Contato / Contact:** tiago.sasaki@confenge.com.br · +55 (48) 9 8834-4559 · CONFENGE Avaliações e Inteligência Artificial LTDA
