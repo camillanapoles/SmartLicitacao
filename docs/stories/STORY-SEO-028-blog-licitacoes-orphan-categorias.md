@@ -53,21 +53,21 @@ Hipótese: categoria `materiais_hidraulicos` foi renomeada para `materiais-hidra
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Exportar e classificar URLs (AC: 1)
-  - [ ] @data-engineer extrai 55 URLs do arquivo `/mnt/d/pncp-poc/gsc-404-urls.txt` (filtrando por `/blog/licitacoes/`)
-  - [ ] Comparar `{categoria}` extraído vs lista canônica de setores
-  - [ ] Output: planilha/tabela com classificação a/b/c
-- [ ] Task 2 — Source-of-truth de setores (AC: 4)
-  - [ ] Verificar se `frontend/app/lib/sectors.ts` (ou equivalente) existe
-  - [ ] Sincronizar com `backend/sectors_data.yaml`
-  - [ ] Documentar como adicionar/renomear setor sem quebrar URLs antigas
-- [ ] Task 3 — Redirects (AC: 2)
-  - [ ] @dev adiciona redirects em `next.config.js` ou `middleware.ts` para mapeamentos identificados
+- [x] Task 1 — Exportar e classificar URLs (AC: 1)
+  - [x] @data-engineer extrai 55 URLs do arquivo `/mnt/d/pncp-poc/gsc-404-urls.txt` (filtrando por `/blog/licitacoes/`)
+  - [x] Comparar `{categoria}` extraído vs lista canônica de setores
+  - [x] Output: planilha/tabela com classificação a/b/c
+- [x] Task 2 — Source-of-truth de setores (AC: 4)
+  - [x] Verificar se `frontend/app/lib/sectors.ts` (ou equivalente) existe
+  - [x] Sincronizar com `backend/sectors_data.yaml`
+  - [x] Documentar como adicionar/renomear setor sem quebrar URLs antigas
+- [x] Task 3 — Redirects (AC: 2)
+  - [x] @dev adiciona redirects em `next.config.js` ou `middleware.ts` para mapeamentos identificados
 - [ ] Task 4 — 410 Gone (AC: 3)
   - [ ] @dev modifica `app/blog/licitacoes/[setor]/[uf]/page.tsx` para retornar 410 quando setor é deprecated (vs 404 genérico)
 - [ ] Task 5 — Validação (AC: 6, 7)
   - [ ] Re-medir GSC em 30d
-  - [ ] Confirmar `/blog/licitacoes/cidade` continua funcionando (não regressão)
+  - [x] Confirmar `/blog/licitacoes/cidade` continua funcionando (não regressão)
 
 ## Referência de implementação
 
@@ -110,3 +110,41 @@ Hipótese: categoria `materiais_hidraulicos` foi renomeada para `materiais-hidra
 |------|--------|------|
 | 2026-04-27 | @sm (River) | Story criada a partir do brief GSC root-cause §3.1 + S5 |
 | 2026-04-27 | @po (Sarah) | **Validação 6-section: 6/6 PASS → GO**. Status: Draft → Ready. Substituir bloqueio "STORY-INC-001" por "SEN-BE-001 + SEN-BE-008" (INC-001 withdrawn). |
+| 2026-05-06 | @dev (Dex) | Classificação local dos 55 URLs, redirects 301 para setores legados claros e testes focados adicionados. |
+
+## Dev Agent Record
+
+### Agent Model Used
+
+GPT-5 Codex
+
+### Debug Log References
+
+- `node .aiox-core/development/scripts/generate-greeting.js dev` falhou antes/depois do install frontend porque o root não tem `node_modules/js-yaml` instalado.
+- `npm run lint` em `frontend/` falhou: `next lint` interpretado como diretório inválido pelo Next instalado (`Invalid project directory provided, no such directory: /tmp/pncp-issue-613/frontend/lint`).
+- `npm run typecheck -- --pretty false` em `frontend/` falhou: script `typecheck` ausente no `frontend/package.json`.
+
+### Completion Notes List
+
+- Classifiquei os 55 URLs locais de `gsc-404-urls.txt` em `docs/spikes/STORY-SEO-028-gsc-404-blog-licitacoes-classification.md`: 8 renamed/migrated, 31 canonical sector leaf URLs, 16 city URLs, 0 removed, 0 UF malformed.
+- Adicionei redirects 301 apenas para aliases legados observados: `materiais_hidraulicos`, `engenharia_rodoviaria`, `manutencao_predial`, `software_desenvolvimento`, `software_licencas`, `medicamentos`, `frota_veicular`.
+- Não adicionei fallback genérico nem redirect para homepage. Como a classificação local encontrou 0 categorias removidas e 0 UFs malformadas, 410 explícito não foi necessário nesta implementação.
+- Confirmei que `/blog/licitacoes/cidade/[cidade]` e `/blog/licitacoes/cidade/[cidade]/[setor]` existem; os 16 URLs `cidade` do cluster batem com slugs canônicos de cidade/setor.
+- Confirmei que `frontend/app/sitemap.ts` já normaliza IDs backend com `backendIdToFrontendSlug()` antes de emitir `/blog/licitacoes/{setor}/{uf}` no shard `id:2`.
+
+### File List
+
+- `docs/spikes/STORY-SEO-028-gsc-404-blog-licitacoes-classification.md`
+- `docs/stories/STORY-SEO-028-blog-licitacoes-orphan-categorias.md`
+- `frontend/__tests__/seo/legacy-licitacoes-redirects.test.js`
+- `frontend/lib/legacy-licitacoes-redirects.js`
+- `frontend/next.config.js`
+
+### Validation
+
+- `npm ci` em `frontend/` — passou; instalou dependências locais para validação.
+- `npm test -- --runTestsByPath __tests__/seo/legacy-licitacoes-redirects.test.js --runInBand` em `frontend/` — passou (3 testes).
+- `npx tsc --noEmit --pretty false` em `frontend/` — passou.
+- `node -e "Promise.resolve(require('./next.config.js').redirects()).then(...)"` em `frontend/` — passou; gerou 7 redirects legados.
+- `node - <<'NODE' ... unstable_getResponseFromNextConfig ... NODE` em `frontend/` — passou; redirect legado testado como 301 com query string preservada.
+- `git diff --check` — passou.
