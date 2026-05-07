@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
+# TODO BIZ-METRIC-001: validate empirically via in-app survey
+# Superseded by DEFAULT_HOURS_SAVED_PER_SEARCH in utils/app_config (TTL-cached).
+ESTIMATED_HOURS_SAVED_PER_SEARCH = 2.5
+
 
 # ============================================================================
 # Response Models
