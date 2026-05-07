@@ -261,6 +261,14 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
               required
               autoComplete="email"
               state={errors.email || emailCheckError ? "error" : undefined}
+              aria-invalid={!!(errors.email || emailCheckError)}
+              aria-describedby={
+                errors.email
+                  ? "email-error"
+                  : emailCheckError
+                  ? "email-disposable-error"
+                  : undefined
+              }
               {...register("email", {
                 onChange: () => {
                   setEmailCheckResult(null);
@@ -295,13 +303,13 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
           </div>
           {/* SAB-007 AC2: Format error */}
           {errors.email && !emailCheckError && (
-            <p className="mt-1 text-xs text-error" role="alert" aria-live="assertive" data-testid="email-error">
+            <p id="email-error" className="mt-1 text-xs text-error" role="alert" aria-live="assertive" data-testid="email-error">
               {errors.email.message}
             </p>
           )}
           {/* STORY-258: Disposable email error */}
           {emailCheckError && (
-            <p className="mt-1 text-xs text-error" role="alert" aria-live="assertive" data-testid="email-disposable-error">
+            <p id="email-disposable-error" className="mt-1 text-xs text-error" role="alert" aria-live="assertive" data-testid="email-disposable-error">
               {emailCheckError}
             </p>
           )}

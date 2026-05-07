@@ -285,8 +285,13 @@ export default function PerfilPage() {
         {!profileLoading && profileEdit && (
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
             {/* UFs */}
-            <div>
-              <Label>Estados de atuação</Label>
+            <div
+              role="group"
+              aria-labelledby="perfil-ufs-label"
+              aria-invalid={!!errors.ufs_atuacao}
+              aria-describedby={errors.ufs_atuacao ? "perfil-ufs-error" : undefined}
+            >
+              <Label id="perfil-ufs-label">Estados de atuação</Label>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_UFS.map((uf) => (
                   <button
@@ -304,11 +309,12 @@ export default function PerfilPage() {
                 ))}
               </div>
               {errors.ufs_atuacao && (
-                <p className="mt-1 text-xs text-error" role="alert">{errors.ufs_atuacao.message}</p>
+                <p id="perfil-ufs-error" className="mt-1 text-xs text-error" role="alert">{errors.ufs_atuacao.message}</p>
               )}
             </div>
 
             <SelectField
+              id="perfil-porte-empresa"
               label="Porte da empresa"
               value={watchedPorte}
               onChange={(v) => setValue("porte_empresa", v, { shouldValidate: true })}
@@ -316,6 +322,7 @@ export default function PerfilPage() {
               error={errors.porte_empresa?.message}
             />
             <SelectField
+              id="perfil-experiencia-licitacoes"
               label="Experiência com licitações"
               value={watchedExperiencia}
               onChange={(v) => setValue("experiencia_licitacoes", v, { shouldValidate: true })}
@@ -326,6 +333,7 @@ export default function PerfilPage() {
             {/* Value range */}
             <div className="grid grid-cols-2 gap-3">
               <NumberField
+                id="perfil-faixa-valor-min"
                 label="Valor mínimo (R$)"
                 value={watchedValorMin}
                 onChange={(v) => setValue("faixa_valor_min", v, { shouldValidate: true })}
@@ -333,6 +341,7 @@ export default function PerfilPage() {
                 error={errors.faixa_valor_min?.message}
               />
               <NumberField
+                id="perfil-faixa-valor-max"
                 label="Valor máximo (R$)"
                 value={watchedValorMax}
                 onChange={(v) => setValue("faixa_valor_max", v, { shouldValidate: true })}
@@ -343,6 +352,7 @@ export default function PerfilPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <NumberField
+                id="perfil-capacidade-funcionarios"
                 label="Funcionários"
                 value={watchedFuncionarios}
                 onChange={(v) => setValue("capacidade_funcionarios", v, { shouldValidate: true })}
@@ -350,6 +360,7 @@ export default function PerfilPage() {
                 error={errors.capacidade_funcionarios?.message}
               />
               <NumberField
+                id="perfil-faturamento-anual"
                 label="Faturamento anual (R$)"
                 value={watchedFaturamento}
                 onChange={(v) => setValue("faturamento_anual", v, { shouldValidate: true })}

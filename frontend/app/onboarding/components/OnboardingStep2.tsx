@@ -38,9 +38,14 @@ export function OnboardingStep2({ data, onChange, errors }: OnboardingStep2Props
       </div>
 
       {/* UFs de atuação */}
-      <div>
+      <div
+        role="group"
+        aria-labelledby="ufs-label"
+        aria-invalid={!!errors.ufs_atuacao}
+        aria-describedby={errors.ufs_atuacao ? "ufs-error" : undefined}
+      >
         <div className="flex items-center justify-between mb-2">
-          <Label required>Estados de atuação <span className="font-normal text-ink-secondary">({data.ufs_atuacao.length} selecionados)</span></Label>
+          <Label required id="ufs-label">Estados de atuação <span className="font-normal text-ink-secondary">({data.ufs_atuacao.length} selecionados)</span></Label>
           <div className="flex gap-2">
             <button onClick={selectAll} className="text-xs text-[var(--brand-blue)] hover:underline">
               Todos
@@ -93,7 +98,7 @@ export function OnboardingStep2({ data, onChange, errors }: OnboardingStep2Props
       </div>
 
       {errors.ufs_atuacao && (
-        <p className="text-xs text-[var(--error)] mt-1" role="alert" data-testid="ufs-error">
+        <p id="ufs-error" className="text-xs text-[var(--error)] mt-1" role="alert" data-testid="ufs-error">
           {errors.ufs_atuacao.message}
         </p>
       )}
@@ -106,7 +111,7 @@ export function OnboardingStep2({ data, onChange, errors }: OnboardingStep2Props
         onChangeMax={(v) => onChange({ faixa_valor_max: v })}
       />
       {errors.faixa_valor_max && (
-        <p className="text-xs text-[var(--error)] mt-1" role="alert" data-testid="valor-error">
+        <p id="valor-error" className="text-xs text-[var(--error)] mt-1" role="alert" data-testid="valor-error">
           {errors.faixa_valor_max.message}
         </p>
       )}
