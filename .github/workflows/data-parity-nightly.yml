@@ -41,6 +41,9 @@ jobs:
           pip install pytest-asyncio pytest-timeout
 
       - name: Run parity contract tests
+        # Advisory only (CRIT-DATA-PARITY-001): failures open a follow-up for ops triage
+        # but must NOT block PRs or fail the overall workflow run.
+        continue-on-error: true
         env:
           PARITY_TARGET_URL: ${{ github.event.inputs.target_url || 'https://smartlic.tech' }}
         working-directory: backend
