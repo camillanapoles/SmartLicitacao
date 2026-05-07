@@ -47,6 +47,8 @@ permissions:
 jobs:
   k6-load-test:
     name: k6 baseline (${{ github.event.inputs.script || 'all' }})
+    # Disabled: secrets STAGING_BACKEND_URL and LOAD_TEST_JWTS not configured — re-enable when #797 infra is ready
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

@@ -28,7 +28,7 @@ case "$PROCESS_TYPE" in
       LIMIT_MAX_REQUESTS="${GUNICORN_MAX_REQUESTS:-10000}"
       echo "Starting web process (uvicorn spawn-based workers=${WORKERS})..."
       echo "  CRIT-083: spawn() avoids os.fork() — eliminates cryptography/OpenSSL SIGSEGV."
-      echo "  Cross-worker SSE: Redis Streams (STORY-276). Graceful timeout: 120s."
+      echo "  Cross-worker SSE: Redis Streams (STORY-276). Graceful timeout: ${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}s (override via UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN)"
       echo "  host=0.0.0.0, port=${PORT:-8000}, workers=${WORKERS}, keep-alive=${GUNICORN_KEEP_ALIVE:-75}s"
       echo "  ADR-MEMORY-BUDGET rotation: limit_max_requests=${LIMIT_MAX_REQUESTS}"
 
@@ -39,7 +39,7 @@ case "$PROCESS_TYPE" in
         --timeout-keep-alive "${GUNICORN_KEEP_ALIVE:-75}" \
         --workers "${WORKERS}" \
         --limit-max-requests "${LIMIT_MAX_REQUESTS}" \
-        --timeout-graceful-shutdown 120
+        --timeout-graceful-shutdown "${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}"
     fi
 
     echo "Starting web process (gunicorn + uvicorn workers — opt-in via RUNNER=gunicorn)..."

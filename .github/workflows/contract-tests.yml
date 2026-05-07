@@ -46,11 +46,16 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: Install minimal contract-test dependencies
+      - name: Install contract-test dependencies
+        # Full requirements.txt is needed because tests/conftest.py autouse fixtures
+        # (_reset_rate_limiter_state, _reset_supabase_circuit_breaker, etc.) import
+        # fastapi, supabase, redis etc. at collection time — even with --confcutdir,
+        # pytest-asyncio auto-mode causes the root conftest to be loaded.
         run: |
           cd backend
           pip install --upgrade pip
-          pip install pytest pytest-asyncio pytest-timeout jsonschema httpx
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-timeout jsonschema
 
       - name: Run contract tests (offline only)
         id: contracts
@@ -156,7 +161,8 @@ jobs:
         run: |
           cd backend
           pip install --upgrade pip
-          pip install pytest pytest-asyncio pytest-timeout jsonschema httpx
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-timeout jsonschema
 
       - name: Run live contract checks
         run: |

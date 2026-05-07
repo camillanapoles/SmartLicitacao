@@ -42,6 +42,10 @@ env:
 jobs:
   backup:
     name: pg_dump → S3
+    # Disabled: AWS S3 backup secrets not configured — re-enable when #797 infra is ready
+    # Required secrets: AWS_BACKUP_ACCESS_KEY_ID, AWS_BACKUP_SECRET_KEY
+    # Required variables: BACKUP_S3_BUCKET, AWS_BACKUP_REGION
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30     # failsafe: dump de tabela grande não deve passar de 20min
 
