@@ -87,9 +87,9 @@ export function usePlan(): UsePlanReturn {
         dunning_phase: (data.dunning_phase as string) || "",
         days_since_failure: (data.days_since_failure as number) ?? null,
         subscription_end_date: (data.subscription_end_date as string) || null,
-        is_founder: data.is_founder ?? false,
-        founder_since: data.founder_since ?? null,
-        founder_offer_version: data.founder_offer_version ?? null,
+        is_founder: (data.is_founder as boolean) ?? false,
+        founder_since: (data.founder_since as string) ?? null,
+        founder_offer_version: (data.founder_offer_version as string) ?? null,
       }
     : null;
 

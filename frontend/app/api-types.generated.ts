@@ -3084,6 +3084,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/founding/checkout/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Founding Checkout Status
+         * @description Return Stripe checkout session status for the founding purchase confirmation page.
+         *
+         *     No auth required — Stripe ``cs_*`` session IDs are long random tokens that
+         *     are unguessable. Only ``status`` and ``payment_status`` are returned so no
+         *     PII is exposed. Used by ``/fundadores/obrigado`` to poll until payment is
+         *     confirmed (max 20 × 3 s = 60 s).
+         */
+        get: operations["founding_checkout_status_v1_founding_checkout_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/health": {
         parameters: {
             query?: never;
@@ -7667,6 +7692,16 @@ export interface components {
             checkout_url: string;
             /** Lead Id */
             lead_id: string;
+        };
+        /**
+         * FoundingCheckoutStatusResponse
+         * @description Response model for GET /v1/founding/checkout/status.
+         */
+        FoundingCheckoutStatusResponse: {
+            /** Payment Status */
+            payment_status: string;
+            /** Status */
+            status: string;
         };
         /** FoundingLeadEntry */
         FoundingLeadEntry: {
@@ -14821,6 +14856,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FoundingCheckoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    founding_checkout_status_v1_founding_checkout_status_get: {
+        parameters: {
+            query: {
+                session_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingCheckoutStatusResponse"];
                 };
             };
             /** @description Validation Error */
