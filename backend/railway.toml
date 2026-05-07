@@ -17,8 +17,8 @@ watchPatterns = ["**"]
 # which creates clean processes with independent OpenSSL initialization.
 # 2 workers on Railway 1GB: ~500-600MB total (each worker ~200-300MB) — workable.
 # Cross-worker SSE: handled by Redis Streams (STORY-276, STORY-294).
-# Graceful shutdown: --timeout-graceful-shutdown 120 aligned with drainingSeconds.
-startCommand = "sh -c 'uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 75 --workers ${WEB_CONCURRENCY:-2} --timeout-graceful-shutdown 120'"
+# Graceful shutdown: configurable via UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN (default 120s, aligned with drainingSeconds=120).
+startCommand = "sh -c 'uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 75 --workers ${WEB_CONCURRENCY:-2} --timeout-graceful-shutdown ${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}'"
 # Stage-2 fix 2026-04-27: was /health (probes 5 external APIs with 10s each timeout).
 # Under sustained Googlebot crawl, /health couldn't respond → 11 healthcheck retries
 # failed → Railway never promoted new container, leaving old wedged one in service

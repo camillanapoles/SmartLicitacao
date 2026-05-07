@@ -1,13 +1,9 @@
-import type { Metadata } from 'next';
-import FoundingClient from './FoundingClient';
+import { permanentRedirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'SmartLic Founding Partners — Os primeiros 50 clientes moldam o produto',
-  description:
-    '50% off vitalício, linha direta com o fundador e voz no roadmap para os primeiros 50 clientes pagantes do SmartLic. Vagas limitadas até 30/05/2026.',
-  robots: { index: false, follow: false },
-};
-
+/**
+ * 301 permanent redirect: /founding → /fundadores
+ * Issue #786 — pt-BR route rename.
+ */
 export default function FoundingPage() {
-  return <FoundingClient />;
+  permanentRedirect('/fundadores');
 }

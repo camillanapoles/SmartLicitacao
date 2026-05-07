@@ -21,6 +21,9 @@ on:
 
 jobs:
   load-test:
+    # Disabled: load test infra not configured for CI — re-enable when #797 infra is ready
+    # The Locust stage_4_7_pattern.py reproducer requires a live staging environment.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

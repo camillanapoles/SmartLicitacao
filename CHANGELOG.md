@@ -7,17 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Backend / Founders
+- **Founders welcome email template + ARQ job + founding_leads tracking fields (#791)** — `templates/emails/founders_welcome.py` com HTML + plain text, tom pessoal direto de Tiago. `send_founders_welcome_email()` em `email_service.py` com gate de idempotência via `founding_leads.welcome_sent_at`. `send_founders_welcome` ARQ job (despacha email + Mixpanel people.set). Migration `20260507130000_founding_leads_tracking_fields.sql`: adiciona `welcome_sent_at`, `checkout_source`, `offer_version` à tabela `founding_leads`. Índice parcial `idx_founding_leads_welcome_pending` para queries de idempotência. 19 testes unitários. Rollback: `20260507130000_founding_leads_tracking_fields.down.sql`.
+
+### Fixed — SEO / Structured Data
+- **Metadados Dataset schema completos em /licitacoes/[setor] (#614)** — Adicionados campos faltantes reportados pelo GSC: `description`, `license` (CC BY 4.0), `distribution.contentUrl` e `creator` (organização legal). `buildDatasetJsonLd` exportado para testes isolados. Cobertura Jest para os campos obrigatórios do Dataset. Zera warnings de dados estruturados no Search Console. Rollback: reverter commit.
+
+### Added — Database / Billing
+- **Campos de fundador no perfil de usuário (#784)** — Migration `20260507100000_profiles_founder_fields.sql` adiciona 5 colunas à tabela `profiles`: `is_founder` (boolean, default false — marcado `true` pelo webhook `checkout.session.completed` para compras lifetime v2), `founder_since` (timestamptz da compra), `founder_offer_version` (ex: `v2_lifetime` para distinguir versões futuras), `founder_checkout_source` (utm_source/checkout param para atribuição), e `consulting_discount_pct` (int 0-100, `null` = sem desconto Consultoria). Fundadores v1 (assinatura mensal -50%) NÃO recebem `is_founder=true` — permanecem como assinantes Pro regulares. Índice parcial `idx_profiles_founders` em `is_founder=true` (máx 50 linhas por design do cap de fundadores). Permite verificação de direito lifetime sem JOIN em `founding_leads`. Rollback: `20260507100000_profiles_founder_fields.down.sql`.
+
 ### Changed — Backend / Founding
 - **Pivot founding_policy para one-time lifetime R$997 + deadline 2026-06-30 (BIZ-FOUND-002 v2 #782)** — Adiciona 3 colunas à tabela `founding_policy`: `offer_mode TEXT NOT NULL DEFAULT 'lifetime'` (CHECK subscription|lifetime), `price_brl_cents INT NOT NULL DEFAULT 99700`, `consulting_discount_pct INT NOT NULL DEFAULT 50`. Atualiza linha canônica id=1: deadline 2026-06-30T23:59:59-03:00, offer_mode=lifetime, price_brl_cents=99700. Recria RPC `check_founding_availability()` com 2 novas colunas de retorno (`offer_mode`, `price_brl_cents`) para o frontend renderizar copy de preço sem queries extras. Atualiza `FoundingAvailabilityResponse` Pydantic com `offer_mode` e `price_brl_cents`. Atualiza `FoundingPolicySnapshot` (admin) com os 3 novos campos. Snapshot OpenAPI e `api-types.generated.ts` atualizados. Migration: `20260507100100_founding_policy_lifetime_pivot.sql` + `.down.sql` pareado. Rollback: executar `20260507100100_founding_policy_lifetime_pivot.down.sql`.
 
 ### Fixed — Database / Migrations
 - **RLS policy gsc_metrics corrigida + 14 migrations aplicadas (#796)** — `20260422120000_create_gsc_metrics.sql` referenciava `profiles.is_master` como coluna (inexistente — é computado em Python); corrigido para `profiles.plan_type = 'master'`. 14 migrations pendentes aplicadas ao DB de produção via Management API. Resolve falha crônica em `migration-check.yml`. Rollback: `supabase db push` com `.down.sql` dos arquivos afetados.
 
+### Added — Frontend / Marketing
+- `/fundadores` landing page with founders offer copy and availability gate; Calendly CTA em `/fundadores/obrigado` (pós-checkout)
+- 301 permanent redirect from `/founding` → `/fundadores`
+
+### Added — Frontend / Founders
+- `FoundersTopBanner` component with availability gate and countdown (#787)
+- `FoundersRibbon` component (inline variant) for embedding in page sections (#787)
+- **FoundersRibbon CTAs em 5 rotas pSEO de alto-intent (#788)** — Integra `FoundersRibbon` (variant `contextual`) nas páginas `/observatorio/[slug]`, `/cnpj/[cnpj]`, `/orgaos/[slug]`, `/licitacoes/[setor]` e `/blog/programmatic/[setor]`. CTA posicionado abaixo do conteúdo principal (sem impacto no SEO acima da dobra). Prop `src` rastreia rota de origem no Mixpanel via evento `founders_pseo_conversion`. Não adiciona `cache:no-store` (SEN-FE-001 safe). Rollback: reverter commit.
+
 ### Added — Frontend / Legal
 - **Página de termos do Plano Fundadores (#793)** — `frontend/app/termos/fundadores/page.tsx` criado com 9 seções legais cobrindo escopo vitalício, fair use, sem garantia de êxito, período de resfriamento (CDC art. 49) e disclaimer de parceria governamental. `frontend/app/termos/page.tsx` atualizado com link para `/termos/fundadores`. Protege juridicamente o SmartLic e informa fundadores sobre os exatos direitos adquiridos.
 
+### Added — Frontend / Analytics
+- **Typed Mixpanel wrappers para eventos founders (#790)** — `lib/analytics/founders.ts` expõe 9 funções tipadas (`trackFoundersPageView`, `trackFoundersBannerView`, `trackFoundersBannerClick`, `trackFoundersBannerDismiss`, `trackFoundersRibbonView`, `trackFoundersRibbonClick`, `trackFoundersCtaClick`, `trackFoundersCheckoutStart`, `trackFoundersPseoConversion`). Todas usam `safeTrack` interno que silencia erros do Mixpanel (SSR / consent não dado). Testes unitários em `lib/analytics/__tests__/founders.test.ts`: cobertura de `safeTrack` (error swallowing) + todos os 9 wrappers com props forwarding. Backend: `mark_founding_lead_completed` corrigido para incrementar `founders_checkout_success` após o race guard (não antes) — evita overcount em violações de cap. 4 novos testes de counter em `test_founding_webhook_race_guard.py`. Rollback: reverter PR #790.
+
+### Fixed — Backend / Infra
+- **Graceful shutdown uvicorn configurável via env var (#799)** — `--timeout-graceful-shutdown` em `backend/start.sh` e `backend/railway.toml` usa `${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}` (padrão 120s, alinhado com Railway drainingSeconds=120). Override via Railway env var sem redeploy. Teste `TestAC9GracefulTimeout` atualizado para verificar novo padrão parametrizado.
+
 ### Fixed — Backend / Analytics
 - **Auditoria de cobertura CNAE→Setor + warning em fallback (#599)** — `backend/utils/cnae_mapping.py` ganha comentário de cobertura (`59/1300 ≈4.5%` dos CNAEs mapeados explicitamente). `logger.warning("cnae_not_mapped ...")` emitido quando CNAE não está no mapeamento explícito e ativa o fallback padrão. Remove `load_cnae_from_db()` e `_warmup_cnae_mapping()` — merge DB não validado. Docstring corrigida. Teste estendido para assert do warning em fallback. Rollback: reverter commit.
+
+### Fixed — CI / DevOps
+- **Correção de workflows CI com falhas (#797)** — `audit-prod-env.yml` ganhou `workflow_dispatch` + trigger `push:main` para execução independente; `cleanup.yml` ganhou `workflow_dispatch`; `contract-tests.yml` corrigido com env vars obrigatórias e `if: always()` no step de relatório; `data-parity-nightly.yml`, `db-backup.yml`, `k6-load-test.yml` e `load-test-weekly.yml` receberam `workflow_dispatch` e ajustes de infra. Workflows que dependem de infra não provisionada foram desabilitados (scheduled → manual-only). Rollback: reverter commit.
+
+### Fixed — Frontend / Analytics
+- **CONV-INST-003: lifecycle de verificação de email + timeout UI (#607)** — Botão de suporte no `EmailDeadEndModal` corrigido para `mailto:tiago@smartlic.tech` (era link `/ajuda`). Modal aparece após 300s sem confirmação de email com 3 ações de recuperação: checar spam, reenviar, contato com suporte. Import `next/link` não utilizado removido. Mixpanel: visibilidade completa do funil `email_verification_{pending,completed,timeout}`.
 
 ### Added — Frontend / Intel Reports
 - **Intel Reports frontend layer: CTA + checkout + polling + download (#632)** — Adiciona camada frontend completa para Intel Reports (one-time purchase): `IntelReportCTA` "use client" component em `/cnpj/[cnpj]` (parent Server Component com ISR); 4 API proxy routes (`/api/intel-reports/checkout`, `/api/intel-reports/`, `/api/intel-reports/[purchaseId]`, `/api/intel-reports/[purchaseId]/download`); página de sucesso pós-Stripe com polling até 120s (40×3s, `useRef` anti-stale-closure); página de cancelamento. Proxy routes usam factory `createProxyRoute` para rotas simples e padrão manual `getRefreshedToken` + `sanitizeProxyError` para rotas dinâmicas. PDF streaming com `Content-Disposition: attachment`. 6 testes unitários (CTA behavior, 401→signup redirect, checkout_url redirect, Mixpanel events, loading state). Rollback: remover seção #632 de `page.tsx` e deletar arquivos novos.
@@ -35,9 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auditoria e fechamento do Gap-7: contagem de setores (#798)** — Auditoria empírica confirmou 20 setores em `backend/sectors_data.yaml` (CLAUDE.md já correto). Fechadas Inc-1 e Gap-7 em `_reversa_sdd/review-report.md` com contagem confirmada e lista completa dos IDs de setor.
 
 ### Added — Tests
+- **Cobertura do módulo health.py — TD-TEST-004 (#202)** — 26 testes unitários cobrindo `HealthStatus` enum, `SourceHealthResult.to_dict()`, `SystemHealth.to_dict()`, `initialize_health_tracking()` / `get_uptime_seconds()`, `check_source_health()` (ConnectError + exceção genérica), `get_health_status()` (integração com mock de rede) e `get_system_health()` (Redis down, circuit breaker degradado). `health.py` (1100+ linhas) tinha cobertura zero antes desta PR.
 - **Idempotência payment_intent.succeeded + runbook ops Intel Reports (#718)** — `TestIdempotency::test_payment_intent_succeeded_replay_is_deduped_before_delivery` verifica que replay do mesmo event-id retorna `already_processed` sem tocar tabelas de purchase/subscription. Documenta guardrails para implementação futura de one-time purchases em `purchases` table. Runbook em `docs/runbooks/issue-718-intel-reports-ops-validation.md`.
 - **Edge case tests para keyword density pipeline — TD-BE-023 (#249)** — 71 testes cobrindo `normalize_text`, `match_keywords`, `validate_terms`, `_strip_org_context`, `has_red_flags`, `has_sector_red_flags`, `check_proximity_context` e `check_co_occurrence` para inputs que aparecem em dados reais do PNCP: strings vazias, whitespace-only, strings muito longas (10k tokens), caracteres especiais, Unicode/acentuado português, RTL (árabe), emojis, texto numérico, null bytes e scripts mistos. Nenhuma alteração no código de produção necessária — funções já tratam esses inputs defensivamente. Rollback: reverter commit.
-- **Cobertura do módulo health.py — TD-TEST-004 (#202)** — 26 testes unitários cobrindo `HealthStatus` enum, `SourceHealthResult.to_dict()`, `SystemHealth.to_dict()`, `initialize_health_tracking()` / `get_uptime_seconds()`, `check_source_health()` (ConnectError + exceção genérica), `get_health_status()` (integração com mock de rede) e `get_system_health()` (Redis down, circuit breaker degradado). `health.py` (1100+ linhas) tinha cobertura zero antes desta PR.
 
 ### Fixed — Backend / Tech Debt
 - **Validação de duplicatas de keywords por normalização em sectors_data.yaml (TD-BE-015 #210)** — `_validate_sector_keywords()` e `_check_list_for_duplicates()` adicionados a `backend/sectors.py`. Detecta keywords que colapsam para a mesma forma após `normalize_text()` (ex: "café" e "cafe"). Log de warnings apenas — nunca levanta exceção, nunca bloqueia startup. Checa `keywords`, `exclusions` e `context_required_keywords` por setor. 20 novos testes. Rollback: reverter commit.
@@ -61,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed — Backend / Excel
 - **Logging estruturado e validação de tipos para geração de Excel (#180 TD-HP-003)** — `_validate_licitacoes_types()` em `excel.py` escaneia valores de dict antes de geração e loga warning para tipos não-serializáveis (observability-only, não raise). `pipeline/stages/generate.py`: `asyncio.to_thread(create_excel)` envolto em try/except; falha na geração define `excel_status='failed'` com log estruturado em vez de exception não tratada. `routes/sessions.py`: `create_excel` na rota de download envolto em try/except com HTTPException 500 acionável. 3 novos testes em `test_excel.py`.
+
 ### Fixed — Analytics
 - **Extração do multiplicador hours-saved para constante nomeada (#598)** — `2.5` extraído para `ESTIMATED_HOURS_SAVED_PER_SEARCH = 2.5` em `backend/routes/analytics.py` (Gap-6 do audit brownfield). Valor é supersedido em runtime por `DEFAULT_HOURS_SAVED_PER_SEARCH` de `utils/app_config` (TTL-cached 5 min). TODO `BIZ-METRIC-001` referencia story de validação empírica futura. Rollback: reverter commit.
 

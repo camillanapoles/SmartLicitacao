@@ -5,6 +5,7 @@ import CnpjPerfilClient from './CnpjPerfilClient';
 import InlineTrialCTA from '../../components/InlineTrialCTA';
 import IntelReportCTA from './IntelReportCTA';
 import { LeadCapture } from '@/components/LeadCapture';
+import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
 
@@ -226,6 +227,13 @@ export default async function CnpjPerfilPage({
           description={`Novos editais de ${perfil.setor_nome} em ${perfil.empresa.uf}, toda semana no seu email.`}
         />
       </div>
+
+      {/* #788: Founders plan CTA for high-intent organic visitors */}
+      <FoundersRibbon
+        variant="contextual"
+        copy="Acesso vitalício durante a fase inicial do SmartLic — vagas limitadas."
+        src="pseo_cnpj"
+      />
     </ContentPageLayout>
   );
 }

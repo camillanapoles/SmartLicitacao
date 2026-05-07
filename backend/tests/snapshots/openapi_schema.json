@@ -11866,6 +11866,20 @@
             "title": "Capabilities",
             "type": "object"
           },
+          "consulting_discount_pct": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Consultoria discount % granted to this founder (default 50 for v2_lifetime). NULL = no consulting discount.",
+            "title": "Consulting Discount Pct"
+          },
           "days_since_failure": {
             "anyOf": [
               {
@@ -11888,10 +11902,53 @@
             "title": "Email",
             "type": "string"
           },
+          "founder_checkout_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "utm_source or checkout source param from founding checkout metadata.",
+            "title": "Founder Checkout Source"
+          },
+          "founder_offer_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Offer version string from checkout metadata (e.g. 'v2_lifetime').",
+            "title": "Founder Offer Version"
+          },
+          "founder_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Timestamp of checkout.session.completed for the lifetime purchase.",
+            "title": "Founder Since"
+          },
           "is_admin": {
             "default": false,
             "description": "Whether user has admin privileges",
             "title": "Is Admin",
+            "type": "boolean"
+          },
+          "is_founder": {
+            "default": false,
+            "description": "TRUE if user purchased the v2 lifetime Plano Fundadores (R$997). NOT set for v1 subscription founders (-50% monthly).",
+            "title": "Is Founder",
             "type": "boolean"
           },
           "plan_id": {

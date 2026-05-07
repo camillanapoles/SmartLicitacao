@@ -143,7 +143,7 @@ def set_user_profile(user_id: str, properties: dict[str, Any]) -> None:
     """Set Mixpanel people profile properties for a user. Fire-and-forget, never raises.
 
     Args:
-        user_id: Distinct ID of the user (Supabase UUID).
+        user_id: Distinct ID of the user (e.g. Supabase UUID or email).
         properties: Dict of profile properties to set (e.g. {'is_founder': True}).
     """
     try:

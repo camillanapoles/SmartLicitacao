@@ -2,6 +2,7 @@
  * Footer Component Tests
  * STORY-230 AC1-AC4: Footer navigation links
  * GTM-COPY-005 AC5: Address, /sobre link, CONFENGE attribution
+ * REPO-011: "Soluções" column with 4 entries (#763)
  *
  * Tests:
  * - AC1: "Central de Ajuda" links to /ajuda
@@ -9,6 +10,7 @@
  * - AC3: Footer links consistent across pages
  * - AC4: All footer links accessible to unauthenticated users
  * - GTM-COPY-005 AC5: Fiscal address visible, /sobre link, CONFENGE mention
+ * - REPO-011: Soluções column renders 3 links + 1 disabled placeholder
  */
 
 import { render, screen } from '@testing-library/react';
@@ -55,6 +57,42 @@ describe('Footer Component', () => {
       expect(screen.getByText('Planos')).toBeInTheDocument();
       expect(screen.getByText('Suporte')).toBeInTheDocument();
       expect(screen.getByText('Legal')).toBeInTheDocument();
+    });
+  });
+
+  describe('REPO-011: Soluções column', () => {
+    it('should render the Soluções column heading', () => {
+      expect(screen.getByText('Soluções')).toBeInTheDocument();
+    });
+
+    it('should render SaaS link pointing to /planos', () => {
+      const links = screen.getAllByRole('link', { name: /^saas$/i });
+      expect(links.length).toBeGreaterThanOrEqual(1);
+      expect(links[0]).toHaveAttribute('href', '/planos');
+    });
+
+    it('should render Radar B2G link pointing to /consultoria-b2g?modalidade=radar', () => {
+      const link = screen.getByRole('link', { name: 'Radar B2G' });
+      expect(link).toHaveAttribute('href', '/consultoria-b2g?modalidade=radar');
+    });
+
+    it('should render Consultoria B2G link pointing to /consultoria-b2g', () => {
+      const links = screen.getAllByRole('link', { name: 'Consultoria B2G' });
+      const exactLink = links.find((l) => l.getAttribute('href') === '/consultoria-b2g');
+      expect(exactLink).toBeDefined();
+    });
+
+    it('should render "Exemplos" as disabled text, not a link', () => {
+      // Exemplos must NOT be an anchor/link element
+      const exemplosLink = screen.queryByRole('link', { name: /exemplos/i });
+      expect(exemplosLink).toBeNull();
+      // But text must still be visible
+      expect(screen.getByText(/exemplos/i)).toBeInTheDocument();
+    });
+
+    it('should preserve the transparency disclaimer section', () => {
+      // The transparency section heading from STORY-173
+      expect(screen.getByText('Transparência de Fontes de Dados')).toBeInTheDocument();
     });
   });
 

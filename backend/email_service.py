@@ -77,6 +77,8 @@ def send_email(
         html: HTML body content.
         tags: Optional Resend tags for tracking.
         reply_to: Optional reply-to address.
+        headers: Optional extra headers dict.
+        from_email: Optional sender override (defaults to EMAIL_FROM env var).
 
     Returns:
         Email ID string on success, None on failure.
@@ -232,6 +234,105 @@ def send_email_async(
 
     thread = threading.Thread(target=_send, daemon=True)
     thread.start()
+
+
+# ---------------------------------------------------------------------------
+# Founders email constants (personal tone — from Tiago directly)
+# ---------------------------------------------------------------------------
+FOUNDERS_EMAIL_FROM = "Tiago do SmartLic <tiago@smartlic.tech>"
+FOUNDERS_EMAIL_REPLY_TO = "tiago.sasaki@gmail.com"
+
+
+def send_founders_welcome_email(user_email: str, user_name: str) -> Optional[str]:
+    """Send founders welcome email with idempotency gate via founding_leads.
+
+    Checks founding_leads.welcome_sent_at before sending to prevent double-sends.
+    On success, sets welcome_sent_at so subsequent calls are no-ops.
+
+    Args:
+        user_email: Recipient email address (matched against founding_leads.email).
+        user_name: Display name for the personal greeting.
+
+    Returns:
+        Resend email ID string on success, None if not sent (already sent or error).
+    """
+    from templates.emails.founders_welcome import (
+        render_founders_welcome_email,
+        FOUNDERS_WELCOME_SUBJECT,
+    )
+
+    if not _is_configured():
+        logger.debug(
+            "Founders welcome email not sent (disabled/unconfigured): to=%s", user_email
+        )
+        return None
+
+    # --- Idempotency check: skip if welcome_sent_at already set ---
+    lead_id: Optional[str] = None
+    try:
+        from supabase_client import get_supabase
+
+        db = get_supabase()
+        result = (
+            db.table("founding_leads")
+            .select("id, welcome_sent_at")
+            .eq("email", user_email)
+            .eq("checkout_status", "completed")
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(result, "data", None) or []
+        if not rows:
+            logger.warning(
+                "send_founders_welcome_email: no completed founding_lead for email=%s — skipping",
+                user_email,
+            )
+            return None
+        row = rows[0]
+        if row.get("welcome_sent_at"):
+            logger.info(
+                "send_founders_welcome_email: already sent (welcome_sent_at=%s) for email=%s",
+                row["welcome_sent_at"],
+                user_email,
+            )
+            return None
+        lead_id = row.get("id")
+    except Exception as exc:
+        logger.error(
+            "send_founders_welcome_email: idempotency DB check failed for email=%s: %s",
+            user_email,
+            exc,
+        )
+        return None
+
+    # --- Send email ---
+    html = render_founders_welcome_email(user_name=user_name)
+
+    email_id = send_email(
+        to=user_email,
+        subject=FOUNDERS_WELCOME_SUBJECT,
+        html=html,
+        from_email=FOUNDERS_EMAIL_FROM,
+        reply_to=FOUNDERS_EMAIL_REPLY_TO,
+        tags=[{"name": "category", "value": "founders_welcome"}],
+    )
+
+    # --- Mark welcome as sent (idempotency record) ---
+    if email_id and lead_id:
+        try:
+            from datetime import datetime, timezone
+
+            db.table("founding_leads").update(
+                {"welcome_sent_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("id", lead_id).execute()
+        except Exception as exc:
+            logger.error(
+                "send_founders_welcome_email: failed to set welcome_sent_at for lead_id=%s: %s",
+                lead_id,
+                exc,
+            )
+
+    return email_id
 
 
 def send_intel_report_ready(

@@ -1,12 +1,9 @@
-import type { Metadata } from 'next';
-import FoundingObrigadoClient from './FoundingObrigadoClient';
+import { permanentRedirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Bem-vindo ao SmartLic Founding Partners',
-  description: 'Próximos passos para o seu trial SmartLic como founding partner.',
-  robots: { index: false, follow: false },
-};
-
+/**
+ * 301 permanent redirect: /founding/obrigado → /fundadores/obrigado
+ * Issue #786 — pt-BR route rename.
+ */
 export default function FoundingObrigadoPage() {
-  return <FoundingObrigadoClient />;
+  permanentRedirect('/fundadores/obrigado');
 }

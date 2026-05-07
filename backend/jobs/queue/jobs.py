@@ -394,17 +394,17 @@ async def send_founders_welcome(ctx: dict, user_email: str, user_name: str) -> d
         logger.error("send_founders_welcome: email send failed email=%s: %s", user_email, exc)
         return {"status": "error", "error": str(exc), "email_id": None}
 
-    # Mixpanel people.set — best-effort, never blocks the job
-    try:
-        import os
-        if os.getenv("MIXPANEL_TOKEN", "").strip():
-            from analytics_events import set_user_profile
-
-            set_user_profile(user_email, {"is_founder": True, "plan": "founders"})
-    except Exception as exc:
-        logger.warning("send_founders_welcome: Mixpanel people.set failed: %s", exc)
-
     if email_id:
+        # Mixpanel people.set — only after confirmed send, best-effort, never blocks the job
+        try:
+            import os
+            if os.getenv("MIXPANEL_TOKEN", "").strip():
+                from analytics_events import set_user_profile
+
+                set_user_profile(user_email, {"is_founder": True, "plan": "founders"})
+        except Exception as exc:
+            logger.warning("send_founders_welcome: Mixpanel people.set failed: %s", exc)
+
         logger.info("send_founders_welcome: sent email_id=%s email=%s", email_id, user_email)
         return {"status": "sent", "email_id": email_id}
 

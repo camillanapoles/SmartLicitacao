@@ -266,3 +266,86 @@ def test_refund_helper_skips_when_payment_intent_missing():
 
     # Should not raise; should return False.
     assert _refund_session_charge(session) is False
+
+
+# ---------------------------------------------------------------------------
+# Prometheus counter assertions
+# ---------------------------------------------------------------------------
+
+
+@patch("webhooks.handlers.founding.founders_checkout_success")
+@patch("webhooks.handlers.founding.founders_checkout_failed")
+@patch("webhooks.handlers.founding._send_cap_violation_email")
+@patch("webhooks.handlers.founding._refund_session_charge")
+def test_success_counter_incremented_on_available(
+    mock_refund, mock_email, mock_failed, mock_success
+):
+    """reason=available -> success counter incremented, failed counter NOT called."""
+    sb = _make_sb_with_rpc_sequence([
+        [{"available": True, "seats_remaining": 5, "seats_total": 50,
+          "deadline_at": "2026-05-30T23:59:59-03:00", "paused": False, "reason": "available"}]
+    ])
+
+    mark_founding_lead_completed(sb, _founding_session())
+
+    mock_success.labels.return_value.inc.assert_called_once()
+    mock_failed.labels.assert_not_called()
+
+
+@patch("webhooks.handlers.founding.founders_checkout_success")
+@patch("webhooks.handlers.founding.founders_checkout_failed")
+@patch("webhooks.handlers.founding._send_cap_violation_email")
+@patch("webhooks.handlers.founding._refund_session_charge")
+def test_failed_counter_incremented_on_cap_violated_not_success(
+    mock_refund, mock_email, mock_failed, mock_success
+):
+    """reason=founding_cap_reached -> failed(cap_violated) counter incremented, success NOT called."""
+    mock_refund.return_value = True
+
+    sb = _make_sb_with_rpc_sequence([
+        [{"available": False, "seats_remaining": 0, "seats_total": 50,
+          "deadline_at": "2026-05-30T23:59:59-03:00", "paused": False,
+          "reason": "founding_cap_reached"}]
+    ])
+
+    mark_founding_lead_completed(sb, _founding_session())
+
+    mock_failed.labels.assert_called_with(reason="cap_violated")
+    mock_success.labels.assert_not_called()
+
+
+@patch("webhooks.handlers.founding.founders_checkout_success")
+@patch("webhooks.handlers.founding.founders_checkout_failed")
+@patch("webhooks.handlers.founding._send_cap_violation_email")
+@patch("webhooks.handlers.founding._refund_session_charge")
+def test_success_counter_incremented_on_rpc_unavailable(
+    mock_refund, mock_email, mock_failed, mock_success
+):
+    """RPC unavailable (fail-safe path) -> success counter still incremented (legitimate purchase)."""
+    fake_sb = MagicMock()
+    fake_sb.rpc.return_value = MagicMock(execute=MagicMock(side_effect=Exception("db down")))
+    fake_sb.table.return_value = fake_sb
+    fake_sb.update.return_value = fake_sb
+    fake_sb.eq.return_value = fake_sb
+    fake_sb.execute.return_value = MagicMock(data=[{"id": "lead-1"}])
+
+    mark_founding_lead_completed(fake_sb, _founding_session())
+
+    mock_success.labels.return_value.inc.assert_called_once()
+    mock_failed.labels.assert_not_called()
+
+
+@patch("webhooks.handlers.founding.founders_checkout_success")
+@patch("webhooks.handlers.founding.founders_checkout_failed")
+def test_failed_counter_incremented_on_db_error(mock_failed, mock_success):
+    """DB update error -> failed(db_error) counter, success NOT called."""
+    fake_sb = MagicMock()
+    fake_sb.table.return_value = fake_sb
+    fake_sb.update.return_value = fake_sb
+    fake_sb.eq.return_value = fake_sb
+    fake_sb.execute.side_effect = Exception("connection refused")
+
+    mark_founding_lead_completed(fake_sb, _founding_session())
+
+    mock_failed.labels.assert_called_with(reason="db_error")
+    mock_success.labels.assert_not_called()
