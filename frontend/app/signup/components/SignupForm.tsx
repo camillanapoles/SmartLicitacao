@@ -29,6 +29,14 @@ interface SignupFormProps {
   isFormValid: boolean;
 }
 
+// CONV-INST-002 AC3: deterministic 8-char hex hash of a string — no PII, no external dep.
+function hashStr(s: string): string {
+  const n = s
+    .split("")
+    .reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+  return Math.abs(n).toString(16).slice(0, 8).padStart(8, "0");
+}
+
 export function SignupForm({ form, loading, error, onSubmit, isFormValid }: SignupFormProps) {
   const {
     register,
@@ -67,38 +75,52 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
     [trackEvent]
   );
 
-  // CONV-INST-002 AC1: Fire signup_form_rendered exactly once on mount
+  // CONV-INST-002 AC1: Fire signup_form_rendered exactly once on mount.
+  // Read search params from window (avoids useSearchParams/Suspense boundary).
   useEffect(() => {
     if (formRenderedFiredRef.current) return;
     formRenderedFiredRef.current = true;
+    const params =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const refParam = params?.get("ref") ?? null;
+    const utmSource = params?.get("utm_source") ?? undefined;
     trackWithDevice("signup_form_rendered", {
-      fields_count: 5,
+      rollout_branch: "unknown" as const,
+      has_referral_code: refParam !== null && /^[A-Z0-9]{8}$/i.test(refParam),
+      source: utmSource,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // CONV-INST-002 AC4: Detect new field errors after each validation cycle.
+  // CONV-INST-002 AC3: Detect new field errors after each validation cycle.
   // RHF mode:"onBlur" populates errors asynchronously after blur, so we watch
   // the errors object rather than reading it inside the blur callback.
   useEffect(() => {
-    const fieldNames = ["fullName", "email", "phone", "password", "confirmPassword"] as const;
-    for (const field of fieldNames) {
-      const fieldError = errors[field];
+    const fieldNames = [
+      "fullName",
+      "email",
+      "phone",
+      "password",
+      "confirmPassword",
+    ] as const;
+    for (const fieldKey of fieldNames) {
+      const fieldError = errors[fieldKey];
       if (fieldError?.type && fieldError?.message) {
-        const key = `${field}:${fieldError.type}`;
+        const key = `${fieldKey}:${fieldError.type}`;
         if (!firedErrorsRef.current.has(key)) {
           firedErrorsRef.current.add(key);
-          const msgHash = btoa(fieldError.message).slice(0, 16);
           trackWithDevice("signup_field_error", {
-            field_name: field,
-            error_type: fieldError.type,
-            error_message_hash: msgHash,
+            field: fieldKey,
+            error_code: fieldError.type,
+            error_message_hash: hashStr(fieldError.message),
           });
         }
       }
     }
-  // errors object identity changes when new errors appear
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // errors object identity changes when new errors appear
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [errors]);
 
   // STORY-258: Email validation state
@@ -208,16 +230,20 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
             error={errors.fullName?.message}
             errorTestId="name-error"
             {...register("fullName", {
-            onBlur: () => {
-              if (!firedBlursRef.current.has("fullName")) {
-                firedBlursRef.current.add("fullName");
-                trackWithDevice("signup_field_blur", {
-                  field_name: "fullName",
-                  is_filled: (fullName ?? "").trim().length > 0,
-                });
-              }
-            },
-          })}
+              onBlur: () => {
+                if (!firedBlursRef.current.has("fullName")) {
+                  firedBlursRef.current.add("fullName");
+                  const val = (fullName ?? "").trim();
+                  // CONV-INST-002 AC2
+                  trackWithDevice("signup_field_blur", {
+                    field: "fullName",
+                    has_value: val.length > 0,
+                    value_length: val.length,
+                    has_validation_error: Boolean(errors.fullName),
+                  });
+                }
+              },
+            })}
           />
         </div>
 
@@ -246,9 +272,12 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
                   // CONV-INST-002 AC2: blur tracking (fire once per field)
                   if (!firedBlursRef.current.has("email")) {
                     firedBlursRef.current.add("email");
+                    const val = (email ?? "").trim();
                     trackWithDevice("signup_field_blur", {
-                      field_name: "email",
-                      is_filled: (email ?? "").trim().length > 0,
+                      field: "email",
+                      has_value: val.length > 0,
+                      value_length: val.length,
+                      has_validation_error: Boolean(errors.email),
                     });
                   }
                 },
@@ -322,9 +351,12 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
                 // CONV-INST-002 AC2: blur tracking (fire once per field)
                 if (!firedBlursRef.current.has("phone")) {
                   firedBlursRef.current.add("phone");
+                  const val = (phone ?? "").trim();
                   trackWithDevice("signup_field_blur", {
-                    field_name: "phone",
-                    is_filled: (phone ?? "").trim().length > 0,
+                    field: "phone",
+                    has_value: val.length > 0,
+                    value_length: val.length,
+                    has_validation_error: Boolean(errors.phone),
                   });
                 }
               },
@@ -360,9 +392,12 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
                 onBlur: () => {
                   if (!firedBlursRef.current.has("password")) {
                     firedBlursRef.current.add("password");
+                    const val = password ?? "";
+                    // CONV-INST-002 AC2 — value_length omitido: credential metadata não vai a analytics
                     trackWithDevice("signup_field_blur", {
-                      field_name: "password",
-                      is_filled: (password ?? "").length > 0,
+                      field: "password",
+                      has_value: val.length > 0,
+                      has_validation_error: Boolean(errors.password),
                     });
                   }
                 },
@@ -422,13 +457,13 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
           {password && !passwordMeetsPolicy && (
             <ul className="mt-1 text-xs space-y-0.5">
               <li className={password.length >= 8 ? "text-green-600" : "text-error"}>
-                {password.length >= 8 ? "\u2713" : "\u2717"} Mínimo 8 caracteres
+                {password.length >= 8 ? "✓" : "✗"} Mínimo 8 caracteres
               </li>
               <li className={/[A-Z]/.test(password) ? "text-green-600" : "text-error"}>
-                {/[A-Z]/.test(password) ? "\u2713" : "\u2717"} Pelo menos 1 letra maiúscula
+                {/[A-Z]/.test(password) ? "✓" : "✗"} Pelo menos 1 letra maiúscula
               </li>
               <li className={/\d/.test(password) ? "text-green-600" : "text-error"}>
-                {/\d/.test(password) ? "\u2713" : "\u2717"} Pelo menos 1 número
+                {/\d/.test(password) ? "✓" : "✗"} Pelo menos 1 número
               </li>
             </ul>
           )}
@@ -453,9 +488,12 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
               onBlur: () => {
                 if (!firedBlursRef.current.has("confirmPassword")) {
                   firedBlursRef.current.add("confirmPassword");
+                  const val = confirmPassword ?? "";
+                  // CONV-INST-002 AC2 — value_length omitido: credential metadata não vai a analytics
                   trackWithDevice("signup_field_blur", {
-                    field_name: "confirmPassword",
-                    is_filled: (confirmPassword ?? "").length > 0,
+                    field: "confirmPassword",
+                    has_value: val.length > 0,
+                    has_validation_error: Boolean(errors.confirmPassword),
                   });
                 }
               },

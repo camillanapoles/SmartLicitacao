@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+
 
 interface EmailDeadEndModalProps {
   onClose: () => void;
@@ -132,15 +132,15 @@ export function EmailDeadEndModal({
         </button>
 
         {/* Action (c): Support */}
-        <Link
+        <a
           ref={lastFocusRef}
-          href="/ajuda"
+          href="mailto:tiago.sasaki@confenge.com.br"
           data-testid="dead-end-support"
           className="block w-full py-2.5 border border-divider rounded-button text-sm
                      text-ink-secondary text-center hover:bg-surface-1 transition-colors"
         >
           Falar com suporte
-        </Link>
+        </a>
       </div>
     </div>
   );

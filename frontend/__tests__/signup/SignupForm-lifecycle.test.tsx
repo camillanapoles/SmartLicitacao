@@ -2,9 +2,9 @@
  * CONV-INST-002 AC8: SignupForm analytics lifecycle tests.
  *
  * Covers:
- *   - signup_form_rendered fires exactly once on mount
- *   - signup_field_blur fires per distinct field blur
- *   - signup_field_error fires on zod validation errors
+ *   - signup_form_rendered fires exactly once on mount (AC1)
+ *   - signup_field_blur fires per distinct field blur with correct shape (AC2)
+ *   - signup_field_error fires on zod validation errors with correct shape (AC3)
  *   - device_type derives correctly
  *
  * Strategy: render SignupForm in isolation with a real react-hook-form instance.
@@ -83,7 +83,7 @@ beforeEach(() => {
 });
 
 describe("CONV-INST-002: SignupForm lifecycle analytics", () => {
-  describe("signup_form_rendered", () => {
+  describe("signup_form_rendered (AC1)", () => {
     it("fires exactly once on mount", () => {
       render(<SignupFormWrapper />);
       const renderedCalls = trackEventMock.mock.calls.filter(
@@ -103,6 +103,17 @@ describe("CONV-INST-002: SignupForm lifecycle analytics", () => {
       expect(call?.[1]).toMatchObject({ device_type: "mobile" });
     });
 
+    it("includes rollout_branch, has_referral_code, and source in the payload", () => {
+      // Default: no ref param, no utm_source
+      render(<SignupFormWrapper />);
+      const call = trackEventMock.mock.calls.find(([n]) => n === "signup_form_rendered");
+      expect(call?.[1]).toMatchObject({
+        rollout_branch: "unknown",
+        has_referral_code: false,
+        source: undefined,
+      });
+    });
+
     it("does not double-fire on re-render", () => {
       const { rerender } = render(<SignupFormWrapper />);
       rerender(<SignupFormWrapper />);
@@ -113,7 +124,7 @@ describe("CONV-INST-002: SignupForm lifecycle analytics", () => {
     });
   });
 
-  describe("signup_field_blur", () => {
+  describe("signup_field_blur (AC2)", () => {
     it("fires once when fullName field is blurred", async () => {
       render(<SignupFormWrapper />);
       const input = screen.getByPlaceholderText("Seu nome");
@@ -127,8 +138,27 @@ describe("CONV-INST-002: SignupForm lifecycle analytics", () => {
       );
       expect(blurCalls.length).toBeGreaterThanOrEqual(1);
       expect(blurCalls[0][1]).toMatchObject({
-        field_name: "fullName",
+        field: "fullName",
         device_type: "desktop",
+      });
+    });
+
+    it("includes has_value, value_length and has_validation_error in payload", async () => {
+      render(<SignupFormWrapper />);
+      const input = screen.getByPlaceholderText("Seu nome");
+      await act(async () => {
+        fireEvent.focus(input);
+        fireEvent.change(input, { target: { value: "Tiago" } });
+        fireEvent.blur(input);
+      });
+      const blurCall = trackEventMock.mock.calls.find(
+        ([n, p]) => n === "signup_field_blur" && p?.field === "fullName"
+      );
+      expect(blurCall?.[1]).toMatchObject({
+        field: "fullName",
+        has_value: true,
+        value_length: 5,
+        has_validation_error: expect.any(Boolean),
       });
     });
 
@@ -142,7 +172,7 @@ describe("CONV-INST-002: SignupForm lifecycle analytics", () => {
         fireEvent.blur(input);
       });
       const blurCalls = trackEventMock.mock.calls.filter(
-        ([n, p]) => n === "signup_field_blur" && p?.field_name === "fullName"
+        ([n, p]) => n === "signup_field_blur" && p?.field === "fullName"
       );
       expect(blurCalls).toHaveLength(1);
     });
@@ -170,7 +200,7 @@ describe("CONV-INST-002: SignupForm lifecycle analytics", () => {
     );
   });
 
-  describe("signup_field_error", () => {
+  describe("signup_field_error (AC3)", () => {
     it("fires when email field has a zod validation error", async () => {
       render(<SignupFormWrapper />);
       const emailInput = screen.getByPlaceholderText("seu@email.com");
@@ -186,7 +216,9 @@ describe("CONV-INST-002: SignupForm lifecycle analytics", () => {
         // May or may not fire depending on zod schema — just verify shape if fired
         if (errorCalls.length > 0) {
           expect(errorCalls[0][1]).toMatchObject({
-            field_name: "email",
+            field: "email",
+            error_code: expect.any(String),
+            error_message_hash: expect.stringMatching(/^[0-9a-f]{1,8}$/),
             device_type: "desktop",
           });
         }

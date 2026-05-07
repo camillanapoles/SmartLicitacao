@@ -416,21 +416,27 @@ export default function SignupPage() {
   // cleanup doesn't fire a false signup_form_abandoned on successful submit.
   const submittedRef = useRef(false);
 
-  // CONV-INST-002 AC5: Fire signup_form_abandoned when user leaves without
+  // CONV-INST-002 AC4: Fire signup_form_abandoned when user leaves without
   // submitting (component unmount OR window beforeunload).
   useEffect(() => {
+    const allFields = [
+      "fullName",
+      "email",
+      "phone",
+      "password",
+      "confirmPassword",
+    ] as const;
+    const buildAbandonPayload = () => ({
+      // AC4: fields_touched = which fields the user interacted with (not filled count)
+      fields_touched: allFields.filter(
+        (f) => form.formState.touchedFields[f] === true
+      ),
+      has_errors: Object.keys(form.formState.errors).length > 0,
+      device_type: currentDeviceType(),
+    });
     const handleBeforeUnload = () => {
       if (!submittedRef.current && form.formState.isDirty) {
-        const filledFields = (
-          ["fullName", "email", "phone", "password", "confirmPassword"] as const
-        ).filter((f) => {
-          const v = form.getValues(f);
-          return typeof v === "string" ? v.trim().length > 0 : Boolean(v);
-        });
-        trackEvent("signup_form_abandoned", {
-          fields_filled: filledFields.length,
-          device_type: currentDeviceType(),
-        });
+        trackEvent("signup_form_abandoned", buildAbandonPayload());
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -438,19 +444,10 @@ export default function SignupPage() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       // Also fire on SPA navigation away (unmount without beforeunload)
       if (!submittedRef.current && form.formState.isDirty) {
-        const filledFields = (
-          ["fullName", "email", "phone", "password", "confirmPassword"] as const
-        ).filter((f) => {
-          const v = form.getValues(f);
-          return typeof v === "string" ? v.trim().length > 0 : Boolean(v);
-        });
-        trackEvent("signup_form_abandoned", {
-          fields_filled: filledFields.length,
-          device_type: currentDeviceType(),
-        });
+        trackEvent("signup_form_abandoned", buildAbandonPayload());
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (success) {
