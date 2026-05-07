@@ -132,6 +132,7 @@ class WorkerSettings:
         daily_digest_job, email_alerts_job,
         reclassify_pending_bids_job, classify_zero_match_job,
         generate_intel_report,
+        send_founders_welcome,
     )
     from jobs.queue.search import search_job
 
@@ -175,6 +176,7 @@ class WorkerSettings:
         bid_analysis_job, daily_digest_job, email_alerts_job,
         reclassify_pending_bids_job, classify_zero_match_job,
         generate_intel_report,
+        send_founders_welcome,
         *_ingestion_functions,
         *_monitoring_functions,
         *_founders_functions,
