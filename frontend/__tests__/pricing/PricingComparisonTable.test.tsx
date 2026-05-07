@@ -114,7 +114,7 @@ describe('PricingComparisonTable', () => {
 
       // Table still renders — fail-open means Founders stays visible (initial=true)
       expect(screen.getByText('Plano Fundadores')).toBeInTheDocument();
-      expect(screen.getByText('SmartLic Pro')).toBeInTheDocument();
+      expect(screen.getAllByText('SmartLic Pro')[0]).toBeInTheDocument();
     });
 
     it('keeps showing table when API returns non-ok response', async () => {
