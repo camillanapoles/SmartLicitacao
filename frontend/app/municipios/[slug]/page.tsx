@@ -88,8 +88,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? profile.populacao.toLocaleString('pt-BR') + ' hab.'
     : '';
 
+  // REPO-016: preposicao correta por UF (DF -> 'no', demais -> 'em')
+  const prep = profile.uf.toUpperCase() === 'DF' ? 'no' : 'em';
+
   return {
-    title: `Licitações em ${profile.nome}-${profile.uf} — ${profile.total_licitacoes_abertas} editais abertos`,
+    title: `Licitações abertas ${prep} ${profile.nome}-${profile.uf} | SmartLic`,
     description:
       `Consulte os ${profile.total_licitacoes_abertas} editais abertos em ${profile.nome}-${profile.uf}. ` +
       (popFmt ? `${popFmt}. ` : '') +

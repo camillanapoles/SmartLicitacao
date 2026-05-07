@@ -87,8 +87,8 @@ export async function generateMetadata({
   }).format(valor_total_24m);
 
   return {
-    title: `${empresa.razao_social} — Histórico de Contratos Públicos`,
-    description: `Contratos públicos, licitações e editais do CNPJ ${cnpj} (${empresa.razao_social}). ${total_contratos_24m} contratos | ${valorFormatado} captados. Monitore via SmartLic.`,
+    title: `Quanto ${empresa.razao_social} fatura com o governo? | SmartLic`,
+    description: `${empresa.razao_social} (CNPJ ${cnpj}) firmou ${total_contratos_24m} contratos públicos nos últimos 24 meses, totalizando ${valorFormatado}. Histórico completo no PNCP via SmartLic.`,
     alternates: {
       canonical: `https://smartlic.tech/cnpj/${cnpj}`,
     },

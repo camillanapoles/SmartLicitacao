@@ -94,7 +94,7 @@ export async function generateMetadata({
     : '';
 
   return {
-    title: `${stats.nome} — Licitações, Editais e Contratos`,
+    title: `Como ${stats.nome} compra e quais oportunidades publica? | SmartLic`,
     description: `${stats.nome} publicou ${stats.total_licitacoes} licitações. ${stats.licitacoes_30d} nos últimos 30 dias. Valor médio: ${valorMedioFormatado}.${contratosDesc}`,
     alternates: {
       canonical: `https://smartlic.tech/orgaos/${slug}`,

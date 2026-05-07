@@ -58,14 +58,14 @@ export async function generateMetadata({
   // AC9: Meta tags
   return {
     robots: { index: true },
-    title: `Editais de ${sector.name} 2026 — Para sua Empresa | SmartLic`,
+    title: `Melhores oportunidades para empresas de ${sector.name} | SmartLic`,
     description: `Encontre ${totalOpen > 0 ? `${totalOpen} ` : ""}editais abertos de ${sector.name} em ${topUfs}. Análise com IA e score de viabilidade. Teste grátis 14 dias.`,
     alternates: {
       canonical: canonicalUrl,
     },
     // AC11: Open Graph
     openGraph: {
-      title: `Editais de ${sector.name} 2026 — Para sua Empresa | SmartLic`,
+      title: `Melhores oportunidades para empresas de ${sector.name} | SmartLic`,
       description: `Encontre editais abertos de ${sector.name}. Análise com IA e score de viabilidade. Teste grátis 14 dias.`,
       url: canonicalUrl,
       type: "website",
