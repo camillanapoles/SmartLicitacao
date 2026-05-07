@@ -577,4 +577,209 @@ describe('AnalyticsProvider Component', () => {
       expect(mockMixpanel.register).not.toHaveBeenCalled();
     });
   });
+
+  describe('REPO-019: pseo_origin super-property', () => {
+    const originalReferrer = document.referrer;
+
+    // Helper to set document.referrer in jsdom (read-only by default)
+    const setReferrer = (value: string) => {
+      Object.defineProperty(document, 'referrer', {
+        configurable: true,
+        get: () => value,
+      });
+    };
+
+    afterEach(() => {
+      // Restore original referrer
+      Object.defineProperty(document, 'referrer', {
+        configurable: true,
+        get: () => originalReferrer,
+      });
+    });
+
+    it('registers pseo_origin=/cnpj when referrer is a /cnpj pSEO page', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/cnpj/12345678000195');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.register).toHaveBeenCalledWith(
+          expect.objectContaining({ pseo_origin: '/cnpj' })
+        );
+      });
+    });
+
+    it('registers pseo_origin=/orgaos when referrer is a /orgaos pSEO page', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/orgaos/ministerio-da-saude');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.register).toHaveBeenCalledWith(
+          expect.objectContaining({ pseo_origin: '/orgaos' })
+        );
+      });
+    });
+
+    it('registers pseo_origin=/licitacoes for /licitacoes referrer', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/licitacoes/construcao-civil');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.register).toHaveBeenCalledWith(
+          expect.objectContaining({ pseo_origin: '/licitacoes' })
+        );
+      });
+    });
+
+    it('registers pseo_origin=/observatorio for /observatorio referrer', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/observatorio/raio-x-setor-ti');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.register).toHaveBeenCalledWith(
+          expect.objectContaining({ pseo_origin: '/observatorio' })
+        );
+      });
+    });
+
+    it('registers pseo_origin=/blog for /blog referrer', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/blog/licitacoes/tecnologia');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.register).toHaveBeenCalledWith(
+          expect.objectContaining({ pseo_origin: '/blog' })
+        );
+      });
+    });
+
+    it('does NOT register pseo_origin when referrer is empty (direct navigation)', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.init).toHaveBeenCalled();
+      });
+
+      const registerCalls = (mockMixpanel.register as jest.Mock).mock.calls;
+      const pseoCall = registerCalls.find(
+        (args: unknown[]) => args[0] && typeof args[0] === 'object' && 'pseo_origin' in (args[0] as object)
+      );
+      expect(pseoCall).toBeUndefined();
+    });
+
+    it('does NOT register pseo_origin when referrer is a non-pSEO internal page', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/buscar');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.init).toHaveBeenCalled();
+      });
+
+      const registerCalls = (mockMixpanel.register as jest.Mock).mock.calls;
+      const pseoCall = registerCalls.find(
+        (args: unknown[]) => args[0] && typeof args[0] === 'object' && 'pseo_origin' in (args[0] as object)
+      );
+      expect(pseoCall).toBeUndefined();
+    });
+
+    it('does NOT register pseo_origin from an external domain with a matching path', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      // External site with path that looks like pSEO
+      setReferrer('https://evil.com/cnpj/12345678000195');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.init).toHaveBeenCalled();
+      });
+
+      const registerCalls = (mockMixpanel.register as jest.Mock).mock.calls;
+      const pseoCall = registerCalls.find(
+        (args: unknown[]) => args[0] && typeof args[0] === 'object' && 'pseo_origin' in (args[0] as object)
+      );
+      expect(pseoCall).toBeUndefined();
+    });
+
+    it('registers pseo_origin only once per session (second render skips)', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/cnpj/12345678000195');
+      // Simulate already recorded in this session
+      sessionStorage.setItem('smartlic_pseo_origin_recorded', '/cnpj');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.init).toHaveBeenCalled();
+      });
+
+      const registerCalls = (mockMixpanel.register as jest.Mock).mock.calls;
+      const pseoCall = registerCalls.find(
+        (args: unknown[]) => args[0] && typeof args[0] === 'object' && 'pseo_origin' in (args[0] as object)
+      );
+      expect(pseoCall).toBeUndefined();
+    });
+
+    it('does NOT register pseo_origin when consent not granted', () => {
+      getCookieConsent.mockReturnValue({ analytics: false });
+      setReferrer('http://localhost/cnpj/12345678000195');
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      expect(mockMixpanel.register).not.toHaveBeenCalled();
+    });
+  });
 });

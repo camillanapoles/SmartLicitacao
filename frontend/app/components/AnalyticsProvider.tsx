@@ -105,6 +105,34 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // REPO-019: Register pseo_origin super-property when user arrives from a pSEO page.
+      // Registered once per session (separate key from isFirstPath so it fires whenever
+      // the user first lands on any page with a pSEO referrer, not only the very first page).
+      const PSEO_ORIGIN_KEY = 'smartlic_pseo_origin_recorded';
+      const pseoOriginPaths = ['/cnpj/', '/orgaos/', '/licitacoes/', '/municipios/', '/observatorio/', '/blog/'];
+      if (!sessionStorage.getItem(PSEO_ORIGIN_KEY) && document.referrer) {
+        try {
+          const referrerUrl = new URL(document.referrer);
+          // Same-origin guard: only match internal pSEO referrers
+          if (referrerUrl.origin === window.location.origin) {
+            const refPathname = referrerUrl.pathname;
+            const matchedPrefix = pseoOriginPaths.find((p) => refPathname.startsWith(p));
+            if (matchedPrefix) {
+              // Strip trailing slash from prefix to get the section name (e.g. "/cnpj/" → "/cnpj")
+              const pseoOriginValue = matchedPrefix.slice(0, -1);
+              sessionStorage.setItem(PSEO_ORIGIN_KEY, pseoOriginValue);
+              try {
+                mixpanel.register({ pseo_origin: pseoOriginValue });
+              } catch {
+                // ignore
+              }
+            }
+          }
+        } catch {
+          // new URL() throws on invalid referrer — ignore
+        }
+      }
+
       // Track page_load
       try {
         const pageLoadProps: Record<string, unknown> = {

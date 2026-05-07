@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { GradientButton } from '@/app/components/ui/GradientButton';
 import { useScrollAnimation } from '@/lib/animations';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
+import { hero } from '@/lib/copy/valueProps';
 
 interface HeroSectionProps {
   className?: string;
@@ -20,6 +21,7 @@ const HERO_SCREENSHOT_BLUR =
  * SAB-006 AC2/AC5: Removed stats badges (consolidated into StatsSection), CTA above fold
  * DEBT-125: 50/50 layout with annotated product screenshot
  * REPO-006: Copymasters consensus v1 — B2G intelligence positioning
+ * REPO-007: Founding disclaimer below CTAs
  */
 export default function HeroSection({ className = '' }: HeroSectionProps) {
   const { ref, isVisible } = useScrollAnimation(0.1);
@@ -119,6 +121,14 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
               </GradientButton>
             </Link>
           </motion.div>
+
+          {/* REPO-007: Founding disclaimer — below CTAs, non-competitive */}
+          <motion.p
+            className="text-sm text-zinc-400 dark:text-zinc-500 max-w-md mx-auto lg:mx-0 text-center lg:text-left mt-4"
+            variants={fadeInUp}
+          >
+            {hero.disclaimer}
+          </motion.p>
 
           {/* Trust indicators */}
           <motion.div
