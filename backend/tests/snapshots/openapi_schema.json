@@ -5412,6 +5412,39 @@
         "title": "FoundingCheckoutStatusResponse",
         "type": "object"
       },
+      "FoundingSessionStatusResponse": {
+        "description": "Enriched session status for the /fundadores/obrigado page (#865).\n\nReturns masked email, has_account, and invite_sent so the frontend can\nrender the correct post-purchase CTA without exposing full PII.",
+        "properties": {
+          "email": {
+            "description": "Masked email (2 chars before @ + **** + domain).",
+            "title": "Email",
+            "type": "string"
+          },
+          "has_account": {
+            "description": "True if a profiles row exists for this email.",
+            "title": "Has Account",
+            "type": "boolean"
+          },
+          "invite_sent": {
+            "description": "True if magic_link_sent_at IS NOT NULL.",
+            "title": "Invite Sent",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "'completed' | 'pending' | 'not_found'",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "email",
+          "has_account",
+          "invite_sent"
+        ],
+        "title": "FoundingSessionStatusResponse",
+        "type": "object"
+      },
       "FoundingLeadEntry": {
         "properties": {
           "checkout_status": {
@@ -18775,6 +18808,50 @@
           }
         },
         "summary": "Founding Checkout Status",
+        "tags": [
+          "founding"
+        ]
+      }
+    },
+    "/v1/founding/session-status": {
+      "get": {
+        "description": "Enriched session status for the /fundadores/obrigado confirmation page (#865).\n\nNo auth required — Stripe ``cs_*`` session IDs are long random opaque tokens.\nReturns masked email, ``has_account``, and ``invite_sent`` so the frontend\ncan render the right post-purchase CTA without polling Stripe directly.\n\nExpiry guard: sessions with checkout_status != 'completed' that are older\nthan 24 h return ``status='pending'`` to prevent infinite polling.",
+        "operationId": "founding_session_status_v1_founding_session_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundingSessionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Founding Session Status",
         "tags": [
           "founding"
         ]
