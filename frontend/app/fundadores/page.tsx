@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import FundadoresClient from './FundadoresClient';
 
 export const metadata: Metadata = {
@@ -80,7 +81,9 @@ export default function FundadoresPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFaq) }}
       />
-      <FundadoresClient />
+      <Suspense>
+        <FundadoresClient />
+      </Suspense>
     </>
   );
 }
