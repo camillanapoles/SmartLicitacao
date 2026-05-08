@@ -1,6 +1,6 @@
 # ROADMAP — SmartLic
 
-**Versao:** 5.0 | **Atualizado:** 2026-05-08 | **Status:** Founders Plan Live, Intel Reports Em Progresso
+**Versao:** 5.1 | **Atualizado:** 2026-05-08 | **Status:** Founders Plan Live, Intel Reports 86%
 
 ## 2026-04-24 — EPIC-GROWTH-VIRAL-2026-Q3: On-Page CAC-Zero
 
@@ -44,7 +44,7 @@ RELIABILITY SPRINT:  [####################] 100% (13/13 stories, 4 sprints)
 REPOSICIONAMENTO B2G:[###################.] ~96% (22/23 issues)
 FOUNDERS PLAN:       [####################] 100% (23 issues — #782–#872)
 TECH DEBT (TD):      [##################..] ~90% (144/160 issues fechadas)
-INTEL REPORTS:       [##########..........] ~71% (5/7 issues, 2 open blockers)
+INTEL REPORTS:       [################....] ~86% (6/7 issues, 1 open blocker)
 UX PREMIUM:          [##..................] ~6% (2/36 stories)
 ```
 
@@ -134,9 +134,9 @@ Plano Fundadores vitalício R$997 one-time. 23 issues (#782–#872) implementado
 
 ## Backlog Ativo
 
-### Intel Reports Epic (71% — 2 blockers open)
+### Intel Reports Epic (86% — 1 blocker open)
 
-Milestone: `Intel Reports Epic` (#1) — open:2, closed:5.
+Milestone: `Intel Reports Epic` (#1) — open:1, closed:6.
 
 | Story | Título | Status |
 |-------|--------|--------|
@@ -145,8 +145,8 @@ Milestone: `Intel Reports Epic` (#1) — open:2, closed:5.
 | #630 | Stripe checkout + webhook fulfillment | Closed |
 | #631 | ARQ background job + Storage delivery | Closed |
 | #632 | Frontend CTA + checkout flow + polling | Closed |
+| #826 | RPC sector_uf_intel (INTEL-REPORT-002) | Closed |
 | #633 | Mapa de Oportunidade Setorial (R47) | **OPEN — BLOCKER** |
-| #826 | RPC sector_uf_intel (INTEL-REPORT-002) | **OPEN — BLOCKER** |
 
 ### Technical Debt (TD — ~90% concluido)
 
@@ -185,23 +185,19 @@ Source: `docs/stories/2026-04/EPIC-GROWTH-VIRAL-2026-Q3.md`
 
 Status: todas Draft — Sprint 1 aguarda STORY-289 Done (pré-req de GV-018). Milestone criado (#4), issues a criar.
 
-### Open P0 (38 issues abertas — 2026-05-08)
+### Open P0 (28 issues abertas — 2026-05-08)
 
 Issues críticos sem milestone:
 
 | # | Título | Área |
 |---|--------|------|
-| #869 | E2E Playwright fluxo checkout fundadores | testing |
-| #866 | Webhook checkout.session.completed mode=payment | backend |
 | #871 | Mixpanel + backend metrics pipeline founders | tracking |
-| #886 | pSEO desktop CTR — snippet e CTA above fold | seo |
-| #884 | Micro-conversões pSEO instrumentação | seo |
-| #883 | Auditoria indexação canônicos/noindex/lang | seo |
-| #882 | Enriquecer templates vencedores pSEO | seo |
 | #827 | E2E Playwright Intel Reports compra | testing |
 | #825 | Smoke test go-live Intel Reports staging | qa |
 | #856 | RES-BE-017: Pool leak asyncio.wait_for cleanup | backend |
-| #800 | OBS-SENTRY-FE-F: 1460 quiescent events /contratos | frontend |
+| #718 | Validar MIXPANEL_TOKEN + idempotência Stripe one-time | ops |
+| #902 | CONV-INST-005: MS Clarity trial onboarding step tagging | frontend |
+| #903 | ARCH-100-001: Godmodule split + refactor tracker | arch |
 
 ---
 
@@ -239,7 +235,7 @@ Obsolete stories and docs moved to `docs/archive/` (Feb 20, 2026):
 | 2026-05-05 | Conversão + Instrumentação completo (CONV-INST, SEC-HMAC, SEC-SECDEF) |
 | 2026-05-07 | Reposicionamento B2G Phase 0 — 96% (22/23 REPO issues) |
 | 2026-05-08 | Founders Plan live — R$997 one-time, 23 issues shipped em 2 dias |
-| 2026-05-08 | ROADMAP v5.0 — sync com tracker (394 issues, velocity 18/dia) |
+| 2026-05-08 | ROADMAP v5.1 — sync com tracker (397 issues, velocity ~25/dia) |
 
 ---
 
