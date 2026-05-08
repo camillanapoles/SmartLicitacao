@@ -11,7 +11,7 @@
  */
 
 import Link from 'next/link';
-import { SECTOR_SLUG_TO_BACKEND_ID } from '@/lib/programmatic';
+import { SECTOR_SLUG_TO_BACKEND_ID, formatBRL } from '@/lib/programmatic';
 import type { PanoramaStats } from '@/lib/programmatic';
 
 export interface SectorHubConfig {
@@ -44,21 +44,6 @@ const TOP_UFS = [
   { uf: 'PR', name: 'Paraná' },
   { uf: 'RS', name: 'Rio Grande do Sul' },
 ];
-
-function formatBRL(value: number): string {
-  if (value >= 1_000_000_000) {
-    return `R$${(value / 1_000_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} bi`;
-  }
-  if (value >= 1_000_000) {
-    return `R$${(value / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`;
-  }
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 /**
  * Fetch panorama stats com ISR 3600s (1h) — padrão hub utilitário.

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Frontend / SEO
+- **5 blogs pSEO → hubs utilitários com dados reais acima da dobra [PSEO-HUB-002] (#880)** — `PncpHubPanel` (async server component, ISR 3600s) exibe KPIs consolidados de 3 setores via `Promise.all`; `SectorHubPanel` (genérico configurável via `SectorHubConfig`) transforma `/blog/licitacoes-ti-software-2026`, `/licitacoes-saude-2026` e `/licitacoes-engenharia-2026` em hubs com UF grid + sub-categorias + links internos; `ContratosHubPanel` renderiza `ContractsPanoramaBlock` com dados reais de engenharia/SP. Todos os fetchers locais usam `next:{revalidate:3600}` + `AbortSignal.timeout(10000)` + fallback silencioso quando `BACKEND_URL` ausente (SEN-FE-001 compliant). Rollback: reverter PR #880.
+
 ### Added — Backend / Intel Reports
 - **INTEL-REPORT-002: RPC `sector_uf_intel` + PDF Panorama Setorial × UF (#826)** — Migration `20260508120000_sector_uf_intel_rpc.sql` entrega RPC PostgreSQL que agrega `pncp_supplier_contracts` por setor (via keywords ILIKE) × UF, retornando JSONB com top-20 fornecedores, série temporal com zero-fill (`generate_series`), top-10 órgãos compradores, métricas P50/P90/avg e distribuição por esfera. `pdf_generator_sector_uf_report.py` gera PDF A4 de 7 seções via ReportLab. `SectorUfIntelReportCTA` no frontend inicia checkout Stripe (R$147, `product_type=sector_uf`). SECURITY DEFINER + `SET search_path = public, pg_temp` + `GRANT EXECUTE TO service_role` only (SEC-SECDEF-001). 34 testes unitários. Rollback: `20260508120000_sector_uf_intel_rpc.down.sql`.
 
