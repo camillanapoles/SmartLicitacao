@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { GradientButton } from '@/app/components/ui/GradientButton';
 import { useScrollAnimation } from '@/lib/animations';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
+import { hero } from '@/lib/copy/valueProps';
 
 interface HeroSectionProps {
   className?: string;
@@ -14,10 +15,6 @@ interface HeroSectionProps {
 
 const HERO_SCREENSHOT_BLUR =
   'data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAADQAgCdASoUAA0ALvmczmclLy8vDwD4SzgGWWK505WAAP7wLrgqjz50IhRgDbeGwhDdH55pOuyAD9i3oi0FuVjIAAA=';
-
-// REPO-007: Founding disclaimer — locked copy v1
-const HERO_DISCLAIMER =
-  'Criado por servidor público com mais de 10 anos em licitações. Plataforma independente, sem vínculo com órgãos governamentais.';
 
 /**
  * STORY-174 AC1: Hero Section Redesign - Premium SaaS Aesthetic
@@ -129,7 +126,7 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             className="text-sm text-zinc-400 dark:text-zinc-500 max-w-md mx-auto lg:mx-0 text-center lg:text-left mt-4"
             variants={fadeInUp}
           >
-            {HERO_DISCLAIMER}
+            {hero.disclaimer}
           </motion.p>
 
           {/* Trust indicators */}

@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import { getUfPrep } from '@/lib/programmatic';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
@@ -88,8 +89,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? profile.populacao.toLocaleString('pt-BR') + ' hab.'
     : '';
 
-  // REPO-016: preposicao correta por UF (DF -> 'no', demais -> 'em')
-  const prep = profile.uf.toUpperCase() === 'DF' ? 'no' : 'em';
+  const prep = getUfPrep(profile.uf.toUpperCase());
 
   return {
     title: `Licitações abertas ${prep} ${profile.nome}-${profile.uf} | SmartLic`,
