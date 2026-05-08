@@ -92,13 +92,13 @@ export default function FundadoresClient() {
       <section className="bg-slate-900 text-white">
         <div className="mx-auto max-w-3xl px-4 py-16">
           <p className="text-sm uppercase tracking-widest text-blue-400 font-semibold mb-3">
-            Plano Fundadores — vagas limitadas
+            Plano Fundadores — oferta por tempo limitado
           </p>
           <h1 className="text-3xl sm:text-5xl font-bold leading-tight mb-4">
-            Entre cedo na infraestrutura de inteligência B2G do SmartLic.
+            Sua empresa B2G encontra a licitação certa em minutos, não em dias.
           </h1>
           <p className="text-lg sm:text-xl text-slate-300 mb-8">
-            Acesso vitalício antes da estrutura comercial definitiva.
+            Acesso vitalício ao SmartLic por R$997 pagamento único — antes do preço subir para R$397/mês.
           </p>
 
           <div className="mb-8">
@@ -117,24 +117,24 @@ export default function FundadoresClient() {
         {/* Problema */}
         <section aria-labelledby="problema-heading" className="mb-16">
           <h2 id="problema-heading" className="text-2xl font-semibold text-slate-900 mb-4">
-            Por que B2G é difícil
+            4 a 8 horas por semana perdidas pesquisando editais
           </h2>
           <div className="prose prose-slate max-w-none">
             <p>
               Licitações públicas são publicadas em dezenas de portais diferentes, em formatos
               inconsistentes, com terminologias confusas e prazos que mudam sem aviso. Empresas B2G
-              gastam horas toda semana só para descobrir o que está aberto — antes mesmo de
-              qualificar se vale a pena participar.
+              gastam entre 4 e 8 horas toda semana só para descobrir o que está aberto — antes mesmo
+              de qualificar se vale a pena participar.
             </p>
             <p className="mt-4">
-              <strong>Menos PDF. Mais decisão.</strong> O SmartLic agrega, filtra e classifica
+              <strong>O SmartLic resolve isso em minutos.</strong> Agrega, filtra e classifica
               automaticamente para que sua equipe foque no que importa: construir propostas
-              competitivas.
+              competitivas para editais que realmente valem a pena.
             </p>
             <p className="mt-4">
-              <strong>A IA encontra. A inteligência decide.</strong> Classificação setorial por
-              GPT-4.1-nano com precisão ≥85%, análise de viabilidade em quatro fatores e histórico
-              de 2 milhões de contratos públicos para benchmark de preço.
+              <strong>A IA encontra. Você decide.</strong> Classificação setorial por IA com
+              precisão ≥85%, análise de viabilidade em quatro fatores e histórico de 2 milhões de
+              contratos públicos para benchmark de preço — tudo em uma tela, em segundos.
             </p>
           </div>
         </section>
@@ -145,7 +145,7 @@ export default function FundadoresClient() {
         {/* Comparação */}
         <section aria-labelledby="comparacao-heading" className="mt-16">
           <h2 id="comparacao-heading" className="text-2xl font-semibold text-slate-900 mb-6">
-            Fundador vs Assinatura recorrente
+            Fundadores vs Pro — a conta fecha rápido
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
@@ -156,19 +156,20 @@ export default function FundadoresClient() {
                     Plano Fundadores
                   </th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-700 border border-slate-200">
-                    Pro Recorrente
+                    Plano Pro
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ['Modelo de cobrança', 'R$997 único', 'R$397/mês'],
+                  ['Modelo de cobrança', 'R$997 pagamento único', 'R$397/mês'],
                   ['Custo em 12 meses', 'R$997', 'R$4.764'],
+                  ['Custo em 24 meses', 'R$997', 'R$9.528'],
                   ['Acesso', 'Vitalício', 'Enquanto pagar'],
                   ['Todas as funcionalidades', '✓', '✓'],
                   ['Atualizações futuras', '✓ incluídas', '✓ incluídas'],
-                  ['Vagas disponíveis', 'Limitadas', 'Ilimitadas'],
-                  ['Ajude a financiar a próxima fase', '✓', '—'],
+                  ['Suporte prioritário com o fundador', '✓', '—'],
+                  ['Oferta disponível até', 'Data limite ativa', 'Sempre disponível'],
                 ].map(([label, founder, regular]) => (
                   <tr key={label} className="border border-slate-200 hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-700 border border-slate-200">{label}</td>
@@ -207,10 +208,10 @@ export default function FundadoresClient() {
           className="mt-16 rounded-xl border border-blue-200 bg-blue-50 p-8"
         >
           <h2 id="cta-final-heading" className="text-2xl font-semibold text-slate-900 mb-2">
-            Reserve sua vaga agora
+            Garanta seu acesso antes do prazo encerrar
           </h2>
           <p className="text-slate-700 mb-6">
-            Acesso vitalício por {price}. Pagamento único via Stripe — cartão de crédito ou boleto.
+            {price} pagamento único — acesso vitalício, sem mensalidade, sem renovação. Via Stripe — cartão de crédito ou boleto.
           </p>
           <FundadoresForm availability={snapshot} price={price} />
         </section>
