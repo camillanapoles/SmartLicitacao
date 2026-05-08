@@ -540,6 +540,13 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
           changeFrequency: 'monthly' as const,
           priority: 0.8,
         },
+        // PSEO-HUB-001 (#879): pSEO hub for "licitações públicas 2026"
+        {
+          url: `${baseUrl}/licitacoes-publicas-2026`,
+          lastModified: new Date('2026-05-08'),
+          changeFrequency: 'daily' as const,
+          priority: 0.9,
+        },
         // SEO-PLAYBOOK S4: Weekly digest hub
         {
           url: `${baseUrl}/blog/weekly`,
