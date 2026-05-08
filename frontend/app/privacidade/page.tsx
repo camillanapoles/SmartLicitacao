@@ -3,6 +3,8 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Política de Privacidade',
   description: 'Política de Privacidade do SmartLic - Como coletamos, usamos e protegemos seus dados',
+  alternates: { canonical: 'https://smartlic.tech/privacidade' },
+  robots: { index: false, follow: true },
 };
 
 export default function PrivacidadePage() {

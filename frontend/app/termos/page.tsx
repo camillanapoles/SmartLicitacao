@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Termos de Serviço',
   description: 'Termos de Serviço do SmartLic - Condições de uso da plataforma',
+  alternates: { canonical: 'https://smartlic.tech/termos' },
   robots: {
     index: false,
     follow: false,

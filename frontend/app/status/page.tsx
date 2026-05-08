@@ -11,6 +11,8 @@ import StatusContent from "./components/StatusContent";
 export const metadata: Metadata = {
   title: { absolute: "Status do Sistema | SmartLic" },
   description: "Acompanhe o status em tempo real dos sistemas e fontes de dados do SmartLic.",
+  alternates: { canonical: 'https://smartlic.tech/status' },
+  robots: { index: false, follow: true },
 };
 
 export default function StatusPage() {

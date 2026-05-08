@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description:
     'Entre cedo na infraestrutura de inteligência B2G do SmartLic. Acesso vitalício por R$997 — pagamento único, sem mensalidade. Vagas limitadas.',
   robots: { index: true, follow: true },
+  alternates: { canonical: 'https://smartlic.tech/fundadores' },
   openGraph: {
     title: 'SmartLic Plano Fundadores — Acesso vitalício à inteligência B2G',
     description:
