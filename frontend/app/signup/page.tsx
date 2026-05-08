@@ -99,6 +99,12 @@ export default function SignupPage() {
     confirmPassword === password &&
     confirmPassword !== "";
 
+  // CONV-INST-005 AC2: Tag email_pending when confirmation screen is shown
+  useEffect(() => {
+    if (!success) return;
+    tagOnboardingStep("email_pending");
+  }, [success]);
+
   // GTM-FIX-009 AC2: Countdown timer (starts at 60s on success)
   useEffect(() => {
     if (!success || countdown <= 0) return;

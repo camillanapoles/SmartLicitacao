@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { safeSetItem } from "../../lib/storage";
 import { useAnalytics } from "../../hooks/useAnalytics";
 import { useClarity } from "../../hooks/useClarity";
+import { tagOnboardingStep } from "../../lib/analytics/clarity";
 import { getDaysInTrial } from "../../lib/analytics-helpers";
 import {
   onboardingStep1Schema,
@@ -90,8 +91,10 @@ export default function OnboardingPage() {
   }, [step1Form, step2Form]);
 
   // CONV-INST-005 AC1: Tag session as onboarding stage on mount (LGPD guard in claritySet)
+  // AC2: Also tag profile_setup step so funnel filter works in Clarity dashboard
   useEffect(() => {
     claritySet("user_stage", "onboarding");
+    tagOnboardingStep("profile_setup");
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // GTM-642: Auto-fill UF from CNPJ deep-link (/?cnpj=XXXXXXXXXXXXXXX)
