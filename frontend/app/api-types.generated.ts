@@ -3116,6 +3116,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/founding/session-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Founding Session Status
+         * @description Enriched session status for the /fundadores/obrigado confirmation page (#865).
+         *
+         *     No auth required — Stripe ``cs_*`` session IDs are long random opaque tokens.
+         *     Returns masked email, ``has_account``, and ``invite_sent`` so the frontend
+         *     can render the right post-purchase CTA without polling Stripe directly.
+         *
+         *     Expiry guard: sessions with checkout_status != 'completed' that are older
+         *     than 24 h return ``status='pending'`` to prevent infinite polling.
+         */
+        get: operations["founding_session_status_v1_founding_session_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/health": {
         parameters: {
             query?: never;
@@ -7805,6 +7832,35 @@ export interface components {
             seats_remaining: number;
             /** Seats Taken */
             seats_taken: number;
+        };
+        /**
+         * FoundingSessionStatusResponse
+         * @description Enriched session status for the /fundadores/obrigado page (#865).
+         *
+         *     Returns masked email, has_account, and invite_sent so the frontend can
+         *     render the correct post-purchase CTA without exposing full PII.
+         */
+        FoundingSessionStatusResponse: {
+            /**
+             * Email
+             * @description Masked email (2 chars before @ + **** + domain).
+             */
+            email: string;
+            /**
+             * Has Account
+             * @description True if a profiles row exists for this email.
+             */
+            has_account: boolean;
+            /**
+             * Invite Sent
+             * @description True if magic_link_sent_at IS NOT NULL.
+             */
+            invite_sent: boolean;
+            /**
+             * Status
+             * @description 'completed' | 'pending' | 'not_found'
+             */
+            status: string;
         };
         /** GSCLowCTROpportunity */
         GSCLowCTROpportunity: {
@@ -14900,6 +14956,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FoundingCheckoutStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    founding_session_status_v1_founding_session_status_get: {
+        parameters: {
+            query: {
+                session_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingSessionStatusResponse"];
                 };
             };
             /** @description Validation Error */
