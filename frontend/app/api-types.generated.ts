@@ -3357,7 +3357,11 @@ export interface paths {
          *
          *     Frontend uses this endpoint after being redirected back from Stripe
          *     (/intel-reports/{CHECKOUT_SESSION_ID}?status=processing).
-         *     Poll until status is "completed" or "failed".
+         *     Poll until status is "ready" or "failed".
+         *
+         *     Returns:
+         *     - 404 if purchase does not exist
+         *     - 403 if purchase belongs to a different user
          */
         get: operations["get_intel_report_status_v1_intel_reports__purchase_id__get"];
         put?: never;
@@ -3382,9 +3386,14 @@ export interface paths {
          *     Requires:
          *     - Authentication
          *     - Ownership: purchase must belong to the authenticated user
-         *     - Status: purchase must be "completed" (pdf_url present)
+         *     - Status: purchase must be "ready" (pdf_url present)
          *
-         *     Returns the PDF as a streaming attachment.
+         *     Returns:
+         *     - 401 if not authenticated
+         *     - 404 if purchase does not exist
+         *     - 403 if purchase belongs to a different user
+         *     - 400 if purchase status is not "ready"
+         *     - PDF stream if all checks pass
          */
         get: operations["download_intel_report_v1_intel_reports__purchase_id__download_get"];
         put?: never;
