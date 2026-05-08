@@ -40,6 +40,10 @@ export type PlanInfo = Partial<Omit<UserProfileResponse, "capabilities" | "user_
   dunning_phase: string;
   days_since_failure: number | null;
   subscription_end_date: string | null;
+  /** Founders Plan fields (BIZ-FOUND-002) */
+  is_founder: boolean;
+  founder_since: string | null;
+  founder_offer_version: string | null;
 };
 
 interface UsePlanReturn {
@@ -83,6 +87,9 @@ export function usePlan(): UsePlanReturn {
         dunning_phase: (data.dunning_phase as string) || "",
         days_since_failure: (data.days_since_failure as number) ?? null,
         subscription_end_date: (data.subscription_end_date as string) || null,
+        is_founder: (data.is_founder as boolean) ?? false,
+        founder_since: (data.founder_since as string) ?? null,
+        founder_offer_version: (data.founder_offer_version as string) ?? null,
       }
     : null;
 

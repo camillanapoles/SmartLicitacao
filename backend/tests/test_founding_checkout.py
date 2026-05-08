@@ -9,9 +9,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-# Enable Stripe key before importing the route so FOUNDING_COUPON_ID etc.
-# get the normal defaults.
+# Enable Stripe key + founding price ID before importing the route.
 os.environ.setdefault("STRIPE_SECRET_KEY", "sk_test_fake")
+os.environ.setdefault("FOUNDING_ONE_TIME_PRICE_ID", "price_test_founding_lifetime")
+
+import routes.founding as founding_module  # noqa: E402
 
 from routes.founding import (  # noqa: E402
     FoundingCheckoutRequest,
@@ -246,3 +248,242 @@ def test_founding_route_returns_409_when_email_already_has_profile(
     r = client.post("/v1/founding/checkout", json=_valid_payload_args())
     assert r.status_code == 409
     assert "já possui conta" in r.json()["detail"].lower() or "ja possui" in r.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# #783 — v2 lifetime one-time payment tests
+# ---------------------------------------------------------------------------
+
+
+class _TableChain:
+    """Differentiates DB calls by table + operation to avoid mock collision."""
+
+    def __init__(self):
+        self._table = None
+        self._op = None
+        self._rpc_result = {
+            "available": True,
+            "seats_remaining": 48,
+            "seats_total": 50,
+            "deadline_at": "2026-05-30T23:59:59-03:00",
+            "paused": False,
+            "reason": "available",
+            "offer_mode": "lifetime",
+            "price_brl_cents": 99700,
+        }
+
+    def table(self, name):
+        self._table = name
+        return self
+
+    def select(self, *a, **kw):
+        self._op = "select"
+        return self
+
+    def insert(self, *a, **kw):
+        self._op = "insert"
+        return self
+
+    def update(self, *a, **kw):
+        self._op = "update"
+        return self
+
+    def eq(self, *a, **kw):
+        return self
+
+    def limit(self, *a, **kw):
+        return self
+
+    def rpc(self, name):
+        return self
+
+    def execute(self):
+        if self._table == "profiles" and self._op == "select":
+            return MagicMock(data=[])  # no existing profile
+        if self._table == "founding_leads" and self._op == "insert":
+            return MagicMock(data=[{"id": "lead-uuid-v2-001"}])
+        if self._table == "founding_leads" and self._op == "update":
+            return MagicMock(data=[])
+        # RPC call (table is None)
+        return MagicMock(data=[self._rpc_result])
+
+
+def _make_stripe_session_mock(**extra_metadata):
+    session = MagicMock()
+    session.id = "cs_test_v2_lifetime"
+    session.url = "https://checkout.stripe.com/pay/cs_test_v2_lifetime"
+    return session
+
+
+def _v2_checkout_setup(app_with_founding, monkeypatch, price_id="price_test_founding_lifetime"):
+    """Returns (client, stripe_create_mock)."""
+    chain = _TableChain()
+
+    with patch("routes.founding.get_supabase", return_value=chain):
+        if price_id:
+            monkeypatch.setenv("FOUNDING_ONE_TIME_PRICE_ID", price_id)
+        else:
+            monkeypatch.delenv("FOUNDING_ONE_TIME_PRICE_ID", raising=False)
+
+        import stripe as stripe_lib
+        stripe_create_mock = MagicMock(return_value=_make_stripe_session_mock())
+        monkeypatch.setattr(stripe_lib.checkout.Session, "create", stripe_create_mock)
+
+        client = TestClient(app_with_founding, raise_server_exceptions=False)
+        r = client.post("/v1/founding/checkout", json=_valid_payload_args())
+        return r, stripe_create_mock
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_uses_mode_payment(mock_get_supabase, app_with_founding, monkeypatch):
+    chain = _TableChain()
+    mock_get_supabase.return_value = chain
+
+    import stripe as stripe_lib
+
+    stripe_create_mock = MagicMock(return_value=_make_stripe_session_mock())
+    monkeypatch.setattr(stripe_lib.checkout.Session, "create", stripe_create_mock)
+
+    client = TestClient(app_with_founding)
+    r = client.post("/v1/founding/checkout", json=_valid_payload_args())
+
+    assert r.status_code == 200
+    call_kwargs = stripe_create_mock.call_args.kwargs
+    assert call_kwargs["mode"] == "payment"
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_uses_card_and_boleto(mock_get_supabase, app_with_founding, monkeypatch):
+    chain = _TableChain()
+    mock_get_supabase.return_value = chain
+
+    import stripe as stripe_lib
+
+    stripe_create_mock = MagicMock(return_value=_make_stripe_session_mock())
+    monkeypatch.setattr(stripe_lib.checkout.Session, "create", stripe_create_mock)
+
+    client = TestClient(app_with_founding)
+    client.post("/v1/founding/checkout", json=_valid_payload_args())
+
+    call_kwargs = stripe_create_mock.call_args.kwargs
+    assert set(call_kwargs["payment_method_types"]) == {"card", "boleto"}
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_metadata_contains_offer_fields(mock_get_supabase, app_with_founding, monkeypatch):
+    chain = _TableChain()
+    mock_get_supabase.return_value = chain
+
+    import stripe as stripe_lib
+
+    stripe_create_mock = MagicMock(return_value=_make_stripe_session_mock())
+    monkeypatch.setattr(stripe_lib.checkout.Session, "create", stripe_create_mock)
+
+    client = TestClient(app_with_founding)
+    client.post("/v1/founding/checkout", json=_valid_payload_args())
+
+    call_kwargs = stripe_create_mock.call_args.kwargs
+    meta = call_kwargs["metadata"]
+    assert meta["offer_version"] == "v2_lifetime"
+    assert meta["offer_mode"] == "lifetime"
+    assert meta["price_brl_cents"] == "99700"
+    assert "checkout_source" in meta
+    assert "founding_lead_id" in meta
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_no_discounts_in_session(mock_get_supabase, app_with_founding, monkeypatch):
+    chain = _TableChain()
+    mock_get_supabase.return_value = chain
+
+    import stripe as stripe_lib
+
+    stripe_create_mock = MagicMock(return_value=_make_stripe_session_mock())
+    monkeypatch.setattr(stripe_lib.checkout.Session, "create", stripe_create_mock)
+
+    client = TestClient(app_with_founding)
+    client.post("/v1/founding/checkout", json=_valid_payload_args())
+
+    call_kwargs = stripe_create_mock.call_args.kwargs
+    assert "discounts" not in call_kwargs
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_returns_500_when_price_id_not_configured(
+    mock_get_supabase, app_with_founding, monkeypatch
+):
+    chain = _TableChain()
+    mock_get_supabase.return_value = chain
+
+    monkeypatch.delenv("FOUNDING_ONE_TIME_PRICE_ID", raising=False)
+    client = TestClient(app_with_founding, raise_server_exceptions=False)
+    r = client.post("/v1/founding/checkout", json=_valid_payload_args())
+
+    assert r.status_code == 500
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_returns_410_when_cap_reached(mock_get_supabase, app_with_founding):
+    chain = _TableChain()
+    chain._rpc_result = {
+        "available": False,
+        "seats_remaining": 0,
+        "seats_total": 50,
+        "deadline_at": None,
+        "paused": False,
+        "reason": "founding_cap_reached",
+        "offer_mode": "lifetime",
+        "price_brl_cents": 99700,
+    }
+    mock_get_supabase.return_value = chain
+
+    client = TestClient(app_with_founding)
+    r = client.post("/v1/founding/checkout", json=_valid_payload_args())
+
+    assert r.status_code == 410
+    assert r.json()["detail"]["error_code"] == "founding_cap_reached"
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_response_includes_payment_mode_lifetime(
+    mock_get_supabase, app_with_founding, monkeypatch
+):
+    chain = _TableChain()
+    mock_get_supabase.return_value = chain
+
+    import stripe as stripe_lib
+
+    monkeypatch.setattr(
+        stripe_lib.checkout.Session, "create", MagicMock(return_value=_make_stripe_session_mock())
+    )
+
+    client = TestClient(app_with_founding)
+    r = client.post("/v1/founding/checkout", json=_valid_payload_args())
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["payment_mode"] == "lifetime"
+    assert "checkout_url" in body
+    assert "lead_id" in body
+
+
+@patch("routes.founding.get_supabase")
+def test_checkout_v2_checkout_source_from_query_param(
+    mock_get_supabase, app_with_founding, monkeypatch
+):
+    chain = _TableChain()
+    mock_get_supabase.return_value = chain
+
+    import stripe as stripe_lib
+
+    stripe_create_mock = MagicMock(return_value=_make_stripe_session_mock())
+    monkeypatch.setattr(stripe_lib.checkout.Session, "create", stripe_create_mock)
+
+    client = TestClient(app_with_founding)
+    client.post(
+        "/v1/founding/checkout?src=email_campaign",
+        json=_valid_payload_args(),
+    )
+
+    call_kwargs = stripe_create_mock.call_args.kwargs
+    assert call_kwargs["metadata"]["checkout_source"] == "email_campaign"

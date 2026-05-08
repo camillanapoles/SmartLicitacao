@@ -17,6 +17,7 @@ import { usePlan } from "../../hooks/usePlan";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { formatCurrencyBR } from "../../lib/format-currency";
 import { Download } from "lucide-react";
+import { FounderBadge } from "../../components/FounderBadge";
 
 import { DashboardStatCards } from "./components/DashboardStatCards";
 import { DashboardTimeSeriesChart } from "./components/DashboardTimeSeriesChart";
@@ -255,6 +256,8 @@ export default function DashboardPage() {
         title="Dashboard"
         extraControls={
           <>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(planInfo as any)?.is_founder && <FounderBadge className="ml-1" />}
             <DashboardProfileHeaderControls profilePct={profilePct} />
             <button
               onClick={handleExportCSV}

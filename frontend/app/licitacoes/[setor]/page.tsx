@@ -59,14 +59,14 @@ export async function generateMetadata({
   // AC9: Meta tags
   return {
     robots: { index: true },
-    title: `Editais de ${sector.name} 2026 — Para sua Empresa | SmartLic`,
+    title: `Melhores oportunidades para empresas de ${sector.name} | SmartLic`,
     description: `Encontre ${totalOpen > 0 ? `${totalOpen} ` : ""}editais abertos de ${sector.name} em ${topUfs}. Análise com IA e score de viabilidade. Teste grátis 14 dias.`,
     alternates: {
       canonical: canonicalUrl,
     },
     // AC11: Open Graph
     openGraph: {
-      title: `Editais de ${sector.name} 2026 — Para sua Empresa | SmartLic`,
+      title: `Melhores oportunidades para empresas de ${sector.name} | SmartLic`,
       description: `Encontre editais abertos de ${sector.name}. Análise com IA e score de viabilidade. Teste grátis 14 dias.`,
       url: canonicalUrl,
       type: "website",
@@ -427,6 +427,25 @@ export default async function SectorPage({
               </h3>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* REPO-015: Consultoria-b2g CTA with setor pre-fill */}
+      <section className="max-w-5xl mx-auto px-4 pb-4">
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-6">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+            Quer receber alertas de editais deste setor?
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            Diagnóstico gratuito. Sem compromisso.
+          </p>
+          <Link
+            href={`/consultoria-b2g?modalidade=radar&setor=${setor}`}
+            className="inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+            data-cta-source="pseo-licitacoes"
+          >
+            Receber radar da minha empresa
+          </Link>
         </div>
       </section>
 

@@ -89,6 +89,11 @@ export default function OnboardingPage() {
     });
   }, [step1Form, step2Form]);
 
+  // CONV-INST-005 AC1: Tag session as onboarding stage on mount (LGPD guard in claritySet)
+  useEffect(() => {
+    claritySet("user_stage", "onboarding");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // GTM-642: Auto-fill UF from CNPJ deep-link (/?cnpj=XXXXXXXXXXXXXXX)
   useEffect(() => {
     const cnpj = cnpjParam;

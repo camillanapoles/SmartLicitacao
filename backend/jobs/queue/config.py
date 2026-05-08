@@ -133,6 +133,7 @@ class WorkerSettings:
         reclassify_pending_bids_job, classify_zero_match_job,
         send_founders_welcome,
         generate_intel_report,
+        send_founders_welcome,
     )
     from jobs.queue.search import search_job
 
@@ -177,6 +178,7 @@ class WorkerSettings:
         reclassify_pending_bids_job, classify_zero_match_job,
         send_founders_welcome,
         generate_intel_report,
+        send_founders_welcome,
         *_ingestion_functions,
         *_monitoring_functions,
         *_founders_functions,

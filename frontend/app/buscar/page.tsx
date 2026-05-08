@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PullToRefresh from "react-simple-pull-to-refresh";
@@ -34,10 +34,14 @@ import { SEARCH_TOUR_STEPS, RESULTS_TOUR_STEPS } from "./constants/tour-steps";
 import { ReferralToast, shouldShowReferralToast } from "./components/ReferralToast";
 import { RestoredResultsBanner } from "./components/RestoredResultsBanner";
 import { clearNewBidsBadge } from "../../components/NewBidsNotificationBadge";
+import { setClarityTag } from "../components/ClarityAnalytics";
 
 function HomePageContent() {
   const orch = useSearchOrchestration();
   const searchParams = useSearchParams();
+
+  // CONV-INST-005: fire first_analysis_done tag only once per session
+  const firstAnalysisDoneRef = useRef(false);
 
   // STORY-369 AC4: Exit survey state — shown once when trial expires
   const [showExitSurvey, setShowExitSurvey] = useState(false);
@@ -84,6 +88,21 @@ function HomePageContent() {
     if (!token) return;
     clearNewBidsBadge(token).catch(() => {/* best-effort */});
   }, [orch.search.result]);
+
+  // CONV-INST-005 AC2/AC3: tag plan_type (free_trial vs pro) when planInfo loads
+  useEffect(() => {
+    if (!orch.planInfo?.plan_id) return;
+    const planType = orch.planInfo.plan_id === "free_trial" ? "free_trial" : "pro";
+    setClarityTag("plan_type", planType);
+  }, [orch.planInfo?.plan_id]);
+
+  // CONV-INST-005 AC4: tag first_analysis_done once when results arrive
+  useEffect(() => {
+    if (firstAnalysisDoneRef.current) return;
+    if (!orch.search.result || orch.search.loading) return;
+    firstAnalysisDoneRef.current = true;
+    setClarityTag("first_analysis_done", "true");
+  }, [orch.search.result, orch.search.loading]);
 
   if (orch.authLoading) {
     return (

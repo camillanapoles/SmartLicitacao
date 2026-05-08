@@ -20,6 +20,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("STRIPE_SECRET_KEY", "sk_test_fake")
+os.environ.setdefault("FOUNDING_ONE_TIME_PRICE_ID", "price_test_founding_lifetime")
 
 from routes.founding import router as founding_router  # noqa: E402
 
@@ -231,8 +232,8 @@ def test_availability_returns_expected_shape(mock_get_sb, app_with_founding):
     assert body["seats_taken"] == 3
     assert body["paused"] is False
     assert body["reason"] == "available"
-    assert body["coupon_code"] == "FOUNDING_LIFETIME"
-    assert body["discount_pct"] == 50
+    assert body["coupon_code"] == ""
+    assert body["discount_pct"] == 0
     assert body["deadline_at"] == "2026-05-30T23:59:59-03:00"
 
 

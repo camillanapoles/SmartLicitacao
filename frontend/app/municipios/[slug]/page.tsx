@@ -89,8 +89,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? profile.populacao.toLocaleString('pt-BR') + ' hab.'
     : '';
 
+  // REPO-016: preposicao correta por UF (DF -> 'no', demais -> 'em')
+  const prep = profile.uf.toUpperCase() === 'DF' ? 'no' : 'em';
+
   return {
-    title: `Licitações em ${profile.nome}-${profile.uf} — ${profile.total_licitacoes_abertas} editais abertos`,
+    title: `Licitações abertas ${prep} ${profile.nome}-${profile.uf} | SmartLic`,
     description:
       `Consulte os ${profile.total_licitacoes_abertas} editais abertos em ${profile.nome}-${profile.uf}. ` +
       (popFmt ? `${popFmt}. ` : '') +
@@ -347,6 +350,23 @@ export default async function MunicipioSlugPage({ params }: Props) {
               className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
               Teste grátis por 14 dias
+            </Link>
+          </section>
+
+          {/* REPO-015: Consultoria-b2g CTA with municipio pre-fill */}
+          <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+              Quer inteligência B2G para este município?
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              Diagnóstico gratuito. Sem compromisso.
+            </p>
+            <Link
+              href={`/consultoria-b2g?modalidade=radar&municipio=${slug}`}
+              className="inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+              data-cta-source="pseo-municipios"
+            >
+              Solicitar diagnóstico B2G
             </Link>
           </section>
 

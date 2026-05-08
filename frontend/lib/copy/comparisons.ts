@@ -174,7 +174,7 @@ export const defensiveMessaging: Record<string, DefensiveMessage> = {
     smartlicSolution:
       "No SmartLic, consolidamos fontes oficiais automaticamente com cobertura nacional",
     quantifiedBenefit:
-      "Nunca perca uma oportunidade. Visibilidade completa do mercado",
+      "Monitore todas as oportunidades. Visibilidade completa do mercado",
   },
 
   ai: {

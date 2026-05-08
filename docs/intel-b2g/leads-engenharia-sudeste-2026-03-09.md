@@ -673,7 +673,7 @@
 - **Contratos recentes:** 1 (R$ 102,338.20)
 - **Faturamento gov mensal:** R$ 17,056.37
 - **Sanções:** Nenhuma
-- **Objeto exemplo:** 25.0.000006693-4
+- **Objeto exemplo:** 25.0.000006693-4
 a prestação de serviços contínuos de consultoria técnica especializada em engenhar
 
 ### 37. MAC CONCRETOS LTDA — 12063851000162

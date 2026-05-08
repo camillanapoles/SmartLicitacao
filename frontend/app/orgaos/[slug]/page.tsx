@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import OrgaoPerfilClient from './OrgaoPerfilClient';
@@ -95,7 +96,7 @@ export async function generateMetadata({
     : '';
 
   return {
-    title: `${stats.nome} — Licitações, Editais e Contratos`,
+    title: `Como ${stats.nome} compra e quais oportunidades publica? | SmartLic`,
     description: `${stats.nome} publicou ${stats.total_licitacoes} licitações. ${stats.licitacoes_30d} nos últimos 30 dias. Valor médio: ${valorMedioFormatado}.${contratosDesc}`,
     alternates: {
       canonical: `https://smartlic.tech/orgaos/${slug}`,
@@ -210,6 +211,23 @@ export default async function OrgaoPerfilPage({
           description={`Novos editais de ${stats.nome}, toda semana no seu email.`}
         />
       </div>
+
+      {/* REPO-015: Consultoria-b2g CTA with orgao slug pre-fill */}
+      <section className="mt-12 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-6">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+          Quer monitorar os editais deste órgão?
+        </h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Diagnóstico gratuito. Sem compromisso.
+        </p>
+        <Link
+          href={`/consultoria-b2g?modalidade=report&orgao=${slug}`}
+          className="inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+          data-cta-source="pseo-orgao"
+        >
+          Solicitar análise de edital
+        </Link>
+      </section>
 
       {/* #788: Founders plan CTA for high-intent organic visitors */}
       <FoundersRibbon

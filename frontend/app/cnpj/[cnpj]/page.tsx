@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import CnpjPerfilClient from './CnpjPerfilClient';
@@ -87,8 +88,8 @@ export async function generateMetadata({
   }).format(valor_total_24m);
 
   return {
-    title: `${empresa.razao_social} — Histórico de Contratos Públicos`,
-    description: `Contratos públicos, licitações e editais do CNPJ ${cnpj} (${empresa.razao_social}). ${total_contratos_24m} contratos | ${valorFormatado} captados. Monitore via SmartLic.`,
+    title: `Quanto ${empresa.razao_social} fatura com o governo? | SmartLic`,
+    description: `${empresa.razao_social} (CNPJ ${cnpj}) firmou ${total_contratos_24m} contratos públicos nos últimos 24 meses, totalizando ${valorFormatado}. Histórico completo no PNCP via SmartLic.`,
     alternates: {
       canonical: `https://smartlic.tech/cnpj/${cnpj}`,
     },
@@ -227,6 +228,23 @@ export default async function CnpjPerfilPage({
           description={`Novos editais de ${perfil.setor_nome} em ${perfil.empresa.uf}, toda semana no seu email.`}
         />
       </div>
+
+      {/* REPO-015: Consultoria-b2g CTA with CNPJ pre-fill */}
+      <section className="mt-12 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-6">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+          Quer análise profissional de licitações?
+        </h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Diagnóstico gratuito. Sem compromisso.
+        </p>
+        <Link
+          href={`/consultoria-b2g?modalidade=intel&cnpj=${cnpj}`}
+          className="inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+          data-cta-source="pseo-cnpj"
+        >
+          Mapear meu setor
+        </Link>
+      </section>
 
       {/* #788: Founders plan CTA for high-intent organic visitors */}
       <FoundersRibbon

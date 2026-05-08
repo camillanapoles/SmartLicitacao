@@ -5378,6 +5378,12 @@
           "lead_id": {
             "title": "Lead Id",
             "type": "string"
+          },
+          "payment_mode": {
+            "default": "lifetime",
+            "description": "'lifetime' for one-time payment (v2) or 'subscription' for legacy",
+            "title": "Payment Mode",
+            "type": "string"
           }
         },
         "required": [
@@ -5385,6 +5391,25 @@
           "lead_id"
         ],
         "title": "FoundingCheckoutResponse",
+        "type": "object"
+      },
+      "FoundingCheckoutStatusResponse": {
+        "description": "Response model for GET /v1/founding/checkout/status.",
+        "properties": {
+          "payment_status": {
+            "title": "Payment Status",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "payment_status"
+        ],
+        "title": "FoundingCheckoutStatusResponse",
         "type": "object"
       },
       "FoundingLeadEntry": {
@@ -18671,7 +18696,7 @@
     },
     "/v1/founding/checkout": {
       "post": {
-        "description": "Create a founding-customer Stripe Checkout Session with the canonical coupon applied.\n\nBIZ-FOUND-002 gate:\n- Calls ``check_founding_availability()`` BEFORE creating the lead row.\n- On ``available=false`` returns 410 Gone with structured ``error_code`` +\n  ``error_reason`` so the frontend can render the right copy.\n\nSide effects (when available):\n- Inserts a ``founding_leads`` row with ``checkout_status='pending'``.\n- Subsequent webhook events (``checkout.session.completed`` / ``expired``)\n  update it. The webhook also re-checks availability for race guard\n  (handled in webhooks.handlers.founding).",
+        "description": "Create a founding-customer Stripe Checkout Session (v2 one-time payment).\n\nBIZ-FOUND-002 gate:\n- Calls ``check_founding_availability()`` BEFORE creating the lead row.\n- On ``available=false`` returns 410 Gone with structured ``error_code`` +\n  ``error_reason`` so the frontend can render the right copy.\n\n#783 changes:\n- Uses ``mode='payment'`` (one-time) with ``FOUNDING_ONE_TIME_PRICE_ID``.\n- Accepts ``card`` and ``boleto`` payment methods.\n- No coupon / discounts applied.\n- Expanded metadata: ``offer_version``, ``offer_mode``, ``price_brl_cents``,\n  ``checkout_source`` (resolved from ``src`` or ``utm_source`` query param).\n\nSide effects (when available):\n- Inserts a ``founding_leads`` row with ``checkout_status='pending'``.\n- Subsequent webhook events (``checkout.session.completed`` / ``expired``)\n  update it. The webhook also re-checks availability for race guard\n  (handled in webhooks.handlers.founding).",
         "operationId": "founding_checkout_v1_founding_checkout_post",
         "requestBody": {
           "content": {
@@ -18706,6 +18731,50 @@
           }
         },
         "summary": "Founding Checkout",
+        "tags": [
+          "founding"
+        ]
+      }
+    },
+    "/v1/founding/checkout/status": {
+      "get": {
+        "description": "Return Stripe checkout session status for the founding purchase confirmation page.\n\nNo auth required \u2014 Stripe ``cs_*`` session IDs are long random tokens that\nare unguessable. Only ``status`` and ``payment_status`` are returned so no\nPII is exposed. Used by ``/fundadores/obrigado`` to poll until payment is\nconfirmed (max 20 \u00d7 3 s = 60 s).",
+        "operationId": "founding_checkout_status_v1_founding_checkout_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "minLength": 8,
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundingCheckoutStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Founding Checkout Status",
         "tags": [
           "founding"
         ]

@@ -8,7 +8,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["**"]
+watchPatterns = ["backend/**"]
 
 [deploy]
 # CRIT-083: uvicorn --workers (spawn-based) — SAFE with cryptography>=46.

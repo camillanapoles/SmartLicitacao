@@ -4,6 +4,7 @@
 import LandingNavbar from './components/landing/LandingNavbar';
 import HeroSection from './components/landing/HeroSection';
 import OpportunityCost from './components/landing/OpportunityCost';
+import ThreeTiersSection from './components/landing/ThreeTiersSection';
 import BeforeAfter from './components/landing/BeforeAfter';
 import HowItWorks from './components/landing/HowItWorks';
 import StatsSection from './components/landing/StatsSection';
@@ -22,6 +23,7 @@ export default function LandingPage() {
       <main id="main-content">
         <HeroSection />
         <OpportunityCost />
+        <ThreeTiersSection />
         <BeforeAfter />
         <HowItWorks />
         <StatsSection />

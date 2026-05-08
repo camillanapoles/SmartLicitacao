@@ -1,13 +1,5 @@
 'use client';
 
-/**
- * Plano Fundadores: deadline countdown + seat counter for the /fundadores landing.
- *
- * Receives an availability snapshot from the parent (single fetch on mount)
- * and ticks an internal clock every 1s for the countdown. Re-fetch of the
- * snapshot itself is the parent's responsibility (currently every 60s).
- */
-
 import { useEffect, useMemo, useState } from 'react';
 
 export interface FoundingAvailabilitySnapshot {
@@ -27,6 +19,9 @@ interface Props {
   snapshot: FoundingAvailabilitySnapshot | null;
 }
 
+// Fallback hardcoded — 2026-06-30 23:59:59 BRT (UTC-3)
+const DEADLINE_FALLBACK = '2026-06-30T23:59:59-03:00';
+
 interface Countdown {
   days: number;
   hours: number;
@@ -35,10 +30,7 @@ interface Countdown {
   total_ms: number;
 }
 
-function computeCountdown(deadlineIso: string | null, nowMs: number): Countdown {
-  if (!deadlineIso) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, total_ms: 0 };
-  }
+function computeCountdown(deadlineIso: string, nowMs: number): Countdown {
   const deadlineMs = Date.parse(deadlineIso);
   const total = Math.max(0, deadlineMs - nowMs);
   const seconds = Math.floor(total / 1000) % 60;
@@ -60,89 +52,55 @@ export default function FundadoresCountdown({ snapshot }: Props) {
     return () => clearInterval(t);
   }, []);
 
+  const deadlineIso = snapshot?.deadline_at ?? DEADLINE_FALLBACK;
+
   const countdown = useMemo(
-    () => computeCountdown(snapshot?.deadline_at ?? null, now),
-    [snapshot?.deadline_at, now]
+    () => computeCountdown(deadlineIso, now),
+    [deadlineIso, now]
   );
 
-  if (!snapshot) {
-    return (
-      <div
-        data-testid="fundadores-availability-loading"
-        className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500"
-      >
-        Carregando disponibilidade...
-      </div>
-    );
-  }
-
-  const seatsRemaining = snapshot.seats_remaining;
-  const seatsTotal = snapshot.seats_total;
-  const urgency = seatsRemaining > 0 && seatsRemaining <= 5;
-  const full = !snapshot.available;
-
-  const counterColor = full
-    ? 'text-red-700 bg-red-50 border-red-200'
-    : urgency
-      ? 'text-amber-800 bg-amber-50 border-amber-200'
-      : 'text-blue-800 bg-blue-50 border-blue-200';
+  const expired = countdown.total_ms === 0;
+  const paused = snapshot?.paused ?? false;
 
   return (
     <div
       data-testid="fundadores-availability"
-      className={`rounded-lg border p-4 ${counterColor}`}
+      className="rounded-lg border border-blue-500/30 bg-blue-950/20 p-4"
       aria-live="polite"
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-sm font-medium" data-testid="fundadores-seat-counter">
-          {full ? (
-            <span>
-              <strong>0/{seatsTotal}</strong> vagas restantes — programa fechado.
-            </span>
-          ) : (
-            <span>
-              <strong data-testid="fundadores-seats-remaining">{seatsRemaining}</strong>
-              /{seatsTotal} vagas restantes
-              {urgency && ' — corra!'}
-            </span>
-          )}
+      {expired ? (
+        <p className="text-sm text-slate-300" data-testid="fundadores-countdown-expired">
+          O prazo de inscrição fundadores encerrou.
         </p>
-        <p className="text-xs uppercase tracking-wide opacity-80" data-testid="fundadores-price-label">
-          Acesso vitalício
-        </p>
-      </div>
-
-      {snapshot.deadline_at && countdown.total_ms > 0 && (
+      ) : (
         <div
-          className="mt-3 flex flex-wrap items-center gap-3 text-sm"
+          className="flex flex-wrap items-center gap-3 text-sm text-slate-200"
           data-testid="fundadores-countdown"
         >
           <span className="opacity-70">Encerra em:</span>
-          <div className="flex items-center gap-2 font-mono tabular-nums">
+          <div className="flex items-center gap-3 font-mono tabular-nums text-white">
             <span data-testid="fundadores-countdown-days">
-              <strong>{countdown.days}</strong>d
+              <strong className="text-xl">{countdown.days}</strong>
+              <span className="text-xs ml-1 opacity-70">dias</span>
             </span>
             <span data-testid="fundadores-countdown-hours">
-              <strong>{pad2(countdown.hours)}</strong>h
+              <strong className="text-xl">{pad2(countdown.hours)}</strong>
+              <span className="text-xs ml-1 opacity-70">h</span>
             </span>
             <span data-testid="fundadores-countdown-minutes">
-              <strong>{pad2(countdown.minutes)}</strong>m
+              <strong className="text-xl">{pad2(countdown.minutes)}</strong>
+              <span className="text-xs ml-1 opacity-70">min</span>
             </span>
             <span data-testid="fundadores-countdown-seconds">
-              <strong>{pad2(countdown.seconds)}</strong>s
+              <strong className="text-xl">{pad2(countdown.seconds)}</strong>
+              <span className="text-xs ml-1 opacity-70">s</span>
             </span>
           </div>
         </div>
       )}
 
-      {snapshot.deadline_at && countdown.total_ms === 0 && (
-        <p className="mt-2 text-sm" data-testid="fundadores-countdown-expired">
-          O prazo de inscrição fundadores encerrou.
-        </p>
-      )}
-
-      {snapshot.paused && (
-        <p className="mt-2 text-sm" data-testid="fundadores-paused-notice">
+      {paused && (
+        <p className="mt-2 text-sm text-amber-300" data-testid="fundadores-paused-notice">
           Inscrições temporariamente pausadas. Tente novamente em algumas horas.
         </p>
       )}

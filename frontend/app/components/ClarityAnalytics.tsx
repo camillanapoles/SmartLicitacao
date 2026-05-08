@@ -51,3 +51,14 @@ export function ClarityAnalytics() {
 
   return null;
 }
+
+// SSR-safe + LGPD-safe: no-op when window unavailable or analytics not consented.
+export function setClarityTag(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  const consent = getCookieConsent();
+  if (!consent?.analytics) return;
+  const win = window as Window & { clarity?: (...args: unknown[]) => void };
+  if (typeof win.clarity === "function") {
+    win.clarity("set", key, value);
+  }
+}

@@ -236,7 +236,7 @@ export default function SicafComoCadastrarManterAtivo2026() {
       </p>
 
       <div className="not-prose my-8 sm:my-10 bg-brand/5 border border-brand/20 rounded-lg p-6 sm:p-8 text-center">
-        <h3 className="text-xl font-bold mb-2">Monitore Editais e Nunca Perca um Prazo de Habilitação</h3>
+        <h3 className="text-xl font-bold mb-2">Monitore Editais e Acompanhe Todos os Prazos de Habilitação</h3>
         <p className="text-ink-secondary mb-4">
           O SmartLic agrega editais do PNCP, ComprasNet e outros portais em uma busca única, com filtros por setor, UF e valor estimado. Saiba com antecedência quais licitações estão abertas no seu segmento — e prepare sua documentação antes que o prazo feche.
         </p>

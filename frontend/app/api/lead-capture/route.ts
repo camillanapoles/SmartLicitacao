@@ -2,7 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, source, setor, uf } = await request.json();
+    const body = await request.json();
+    const {
+      email,
+      source,
+      setor,
+      uf,
+      // REPO-014: extended fields for DiagnosticForm
+      nome,
+      empresa,
+      cnpj,
+      modalidade_interesse,
+      mensagem,
+      telefone,
+      // UTM params forwarded from the client
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_term,
+    } = body as Record<string, string | undefined>;
 
     if (!email || !email.includes('@')) {
       return NextResponse.json({ error: 'Email inválido' }, { status: 400 });
@@ -18,6 +37,17 @@ export async function POST(request: NextRequest) {
         source,
         setor: setor || null,
         uf: uf || null,
+        nome: nome || null,
+        empresa: empresa || null,
+        cnpj: cnpj || null,
+        modalidade_interesse: modalidade_interesse || null,
+        mensagem: mensagem || null,
+        telefone: telefone || null,
+        utm_source: utm_source || null,
+        utm_medium: utm_medium || null,
+        utm_campaign: utm_campaign || null,
+        utm_content: utm_content || null,
+        utm_term: utm_term || null,
         captured_at: new Date().toISOString(),
       }),
     });

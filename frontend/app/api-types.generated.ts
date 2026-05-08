@@ -3064,12 +3064,19 @@ export interface paths {
         put?: never;
         /**
          * Founding Checkout
-         * @description Create a founding-customer Stripe Checkout Session with the canonical coupon applied.
+         * @description Create a founding-customer Stripe Checkout Session (v2 one-time payment).
          *
          *     BIZ-FOUND-002 gate:
          *     - Calls ``check_founding_availability()`` BEFORE creating the lead row.
          *     - On ``available=false`` returns 410 Gone with structured ``error_code`` +
          *       ``error_reason`` so the frontend can render the right copy.
+         *
+         *     #783 changes:
+         *     - Uses ``mode='payment'`` (one-time) with ``FOUNDING_ONE_TIME_PRICE_ID``.
+         *     - Accepts ``card`` and ``boleto`` payment methods.
+         *     - No coupon / discounts applied.
+         *     - Expanded metadata: ``offer_version``, ``offer_mode``, ``price_brl_cents``,
+         *       ``checkout_source`` (resolved from ``src`` or ``utm_source`` query param).
          *
          *     Side effects (when available):
          *     - Inserts a ``founding_leads`` row with ``checkout_status='pending'``.
@@ -3078,6 +3085,31 @@ export interface paths {
          *       (handled in webhooks.handlers.founding).
          */
         post: operations["founding_checkout_v1_founding_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/founding/checkout/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Founding Checkout Status
+         * @description Return Stripe checkout session status for the founding purchase confirmation page.
+         *
+         *     No auth required — Stripe ``cs_*`` session IDs are long random tokens that
+         *     are unguessable. Only ``status`` and ``payment_status`` are returned so no
+         *     PII is exposed. Used by ``/fundadores/obrigado`` to poll until payment is
+         *     confirmed (max 20 × 3 s = 60 s).
+         */
+        get: operations["founding_checkout_status_v1_founding_checkout_status_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7667,6 +7699,22 @@ export interface components {
             checkout_url: string;
             /** Lead Id */
             lead_id: string;
+            /**
+             * Payment Mode
+             * @description 'lifetime' for one-time payment (v2) or 'subscription' for legacy
+             * @default lifetime
+             */
+            payment_mode: string;
+        };
+        /**
+         * FoundingCheckoutStatusResponse
+         * @description Response model for GET /v1/founding/checkout/status.
+         */
+        FoundingCheckoutStatusResponse: {
+            /** Payment Status */
+            payment_status: string;
+            /** Status */
+            status: string;
         };
         /** FoundingLeadEntry */
         FoundingLeadEntry: {
@@ -14821,6 +14869,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FoundingCheckoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    founding_checkout_status_v1_founding_checkout_status_get: {
+        parameters: {
+            query: {
+                session_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundingCheckoutStatusResponse"];
                 };
             };
             /** @description Validation Error */

@@ -150,8 +150,34 @@ export const redefinirSenhaSchema = z
 export type RedefinirSenhaFormData = z.infer<typeof redefinirSenhaSchema>;
 
 // ============================================================================
+// DiagnosticForm Schema (REPO-014 #766)
+// ============================================================================
+
+export const diagnosticFormSchema = z.object({
+  nome: z.string().min(2, "Nome obrigatório"),
+  email: z.string().email("Email inválido"),
+  empresa: z.string().optional(),
+  cnpj: z
+    .string()
+    .optional()
+    .refine(
+      (val) =>
+        !val ||
+        /^\d{14}$|^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(val),
+      "CNPJ inválido"
+    ),
+  setor: z.string().min(1, "Setor obrigatório"),
+  modalidade_interesse: z.enum(["radar", "report", "intel", "nao_sei"]),
+  mensagem: z.string().max(500).optional(),
+  telefone: z.string().optional(),
+});
+
+export type DiagnosticFormData = z.infer<typeof diagnosticFormSchema>;
+
+// ============================================================================
 // Password Strength Helper
 // ============================================================================
+
 
 export function getPasswordStrength(pw: string): {
   level: "fraca" | "média" | "forte";
