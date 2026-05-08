@@ -184,7 +184,7 @@ describe('getUserFriendlyError', () => {
     });
 
     it('should map "PNCP está temporariamente"', () => {
-      expect(getUserFriendlyError('PNCP está temporariamente')).toBe('Uma das fontes está temporariamente indisponivel. Tente novamente em instantes.');
+      expect(getUserFriendlyError('PNCP está temporariamente')).toBe('Nossas fontes estão temporariamente indisponíveis. Tente novamente em instantes.');
     });
 
     it('should map "tempo limite de"', () => {

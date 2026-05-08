@@ -17,7 +17,7 @@ describe("TruncationWarningBanner", () => {
   it("shows generic message when no truncated UFs provided", () => {
     render(<TruncationWarningBanner />);
     expect(
-      screen.getByText(/mais de 250\.000 registros do PNCP/)
+      screen.getByText(/mais de 250.000 registros das nossas fontes/)
     ).toBeInTheDocument();
   });
 
@@ -45,7 +45,7 @@ describe("TruncationWarningBanner", () => {
   it("shows generic message for empty truncated UFs array", () => {
     render(<TruncationWarningBanner truncatedUfs={[]} />);
     expect(
-      screen.getByText(/mais de 250\.000 registros do PNCP/)
+      screen.getByText(/mais de 250.000 registros das nossas fontes/)
     ).toBeInTheDocument();
   });
 
@@ -130,7 +130,7 @@ describe("TruncationWarningBanner", () => {
         />
       );
       expect(
-        screen.getByText(/mais de 250\.000 registros do PNCP/)
+        screen.getByText(/mais de 250.000 registros das nossas fontes/)
       ).toBeInTheDocument();
     });
   });

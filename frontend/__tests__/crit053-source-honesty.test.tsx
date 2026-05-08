@@ -243,7 +243,7 @@ describe("CRIT-053 AC8: DataQualityBanner with degraded sources", () => {
 
     // Should contain PNCP degradation message
     expect(
-      screen.getByText(/fonte principal \(PNCP\) esta com lentidao/i)
+      screen.getByText(/A fonte principal esta com lentidao/i)
     ).toBeInTheDocument();
 
     // "Tentar novamente" button should be rendered (failedUfs is empty
@@ -342,10 +342,10 @@ describe("CRIT-053 AC8: SearchResults degraded zero results", () => {
     const degradedSection = screen.getByTestId("degraded-zero-results");
     expect(degradedSection).toBeInTheDocument();
 
-    // Should contain the PNCP unavailability message
+    // Should contain the unavailability message
     expect(
       screen.getByText(
-        /PNCP.*esta temporariamente indisponivel/i
+        /A fonte principal de dados está temporariamente indisponivel/i
       )
     ).toBeInTheDocument();
 
