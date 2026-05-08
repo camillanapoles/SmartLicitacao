@@ -47,9 +47,6 @@ describe('tagOnboardingStep', () => {
     mockSetClarityTag.mockImplementationOnce(() => {
       throw new Error('Clarity not available');
     });
-    // tagOnboardingStep delegates to setClarityTag which handles SSR/consent.
-    // If setClarityTag itself throws (edge case), the error propagates —
-    // this test ensures our wrapper is transparent.
-    expect(() => tagOnboardingStep('signup_form')).toThrow('Clarity not available');
+    expect(() => tagOnboardingStep('signup_form')).not.toThrow();
   });
 });

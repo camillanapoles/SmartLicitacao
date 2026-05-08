@@ -31,5 +31,9 @@ export type OnboardingStep =
  * LGPD-safe: no-op when analytics consent has not been given.
  */
 export function tagOnboardingStep(step: OnboardingStep): void {
-  setClarityTag('onboarding_step', step);
+  try {
+    setClarityTag('onboarding_step', step);
+  } catch {
+    // Swallow — never throws per JSDoc contract
+  }
 }
