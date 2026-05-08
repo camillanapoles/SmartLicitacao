@@ -120,11 +120,13 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
             if (matchedPrefix) {
               // Strip trailing slash from prefix to get the section name (e.g. "/cnpj/" → "/cnpj")
               const pseoOriginValue = matchedPrefix.slice(0, -1);
-              sessionStorage.setItem(PSEO_ORIGIN_KEY, pseoOriginValue);
               try {
                 mixpanel.register({ pseo_origin: pseoOriginValue });
+                // Write session guard only AFTER register succeeds — prevents a silent
+                // register failure from permanently blocking retry in the same session.
+                sessionStorage.setItem(PSEO_ORIGIN_KEY, pseoOriginValue);
               } catch {
-                // ignore
+                // ignore — guard key intentionally not written on failure
               }
             }
           }

@@ -781,5 +781,30 @@ describe('AnalyticsProvider Component', () => {
 
       expect(mockMixpanel.register).not.toHaveBeenCalled();
     });
+
+    it('does NOT write sessionStorage guard key when mixpanel.register throws (race condition fix)', async () => {
+      getCookieConsent.mockReturnValue({ analytics: true });
+      setReferrer('http://localhost/cnpj/12345678000195');
+
+      // Make register throw only for pseo_origin call
+      (mockMixpanel.register as jest.Mock).mockImplementation((props: Record<string, unknown>) => {
+        if ('pseo_origin' in props) {
+          throw new Error('register failed');
+        }
+      });
+
+      render(
+        <AnalyticsProvider>
+          <div>Test Content</div>
+        </AnalyticsProvider>
+      );
+
+      await waitFor(() => {
+        expect(mockMixpanel.init).toHaveBeenCalled();
+      });
+
+      // Guard key must NOT be written when register failed — so next navigation can retry
+      expect(sessionStorage.getItem('smartlic_pseo_origin_recorded')).toBeNull();
+    });
   });
 });
