@@ -1,14 +1,19 @@
 import Link from 'next/link';
 import BlogInlineCTA from '../components/BlogInlineCTA';
+import ContratosHubPanel from '@/components/blog/hubs/ContratosHubPanel';
 
 /**
- * SEO-12.3.3 Art-01: Como consultar contratos públicos no PNCP: Guia completo
+ * SEO-12.3.3 Art-01: Hub de Contratos Públicos — busque por fornecedor/órgão/objeto
  * Content cluster: contratos públicos
+ * PSEO-HUB-002: Transformado em hub utilitário com dados reais acima da dobra.
  * Target: ~3,000 words | Primary KW: consultar contratos públicos PNCP
  */
 export default function ComoConsultarContratosPublicosPncp() {
   return (
     <>
+      {/* Hub Contratos — acima da dobra com navegação por fornecedor/órgão (PSEO-HUB-002) */}
+      <ContratosHubPanel />
+
       {/* FAQPage JSON-LD */}
       <script
         type="application/ld+json"

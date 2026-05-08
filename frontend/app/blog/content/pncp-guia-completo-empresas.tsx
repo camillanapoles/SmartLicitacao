@@ -1,15 +1,19 @@
 import Link from 'next/link';
 import BlogInlineCTA from '../components/BlogInlineCTA';
+import PncpHubPanel from '@/components/blog/hubs/PncpHubPanel';
 
 /**
- * T3: PNCP: Guia Completo para Empresas — Como Buscar e Monitorar Editais
+ * T3: PNCP na prática — Hub de editais, contratos e fornecedores públicos
  *
+ * PSEO-HUB-002: Transformado em hub utilitário com dados reais acima da dobra.
  * Target: 3,000+ words | Cluster: guias transversais
- * Primary keyword: pncp como usar
+ * Primary keyword: pncp licitações
  */
 export default function PncpGuiaCompletoEmpresas() {
   return (
     <>
+      {/* Hub PNCP — acima da dobra com dados reais e CTAs (PSEO-HUB-002) */}
+      <PncpHubPanel />
       {/* FAQPage JSON-LD */}
       <script
         type="application/ld+json"

@@ -1,15 +1,60 @@
 import Link from 'next/link';
 import BlogInlineCTA from '../components/BlogInlineCTA';
+import SectorHubPanel from '@/components/blog/hubs/SectorHubPanel';
+import type { SectorHubConfig } from '@/components/blog/hubs/SectorHubPanel';
 
 /**
- * SEO Sector Guide S2: Licitações de TI e Software 2026
+ * SEO Sector Guide S2: Licitações de TI e Software 2026 — Hub Setorial
  *
+ * PSEO-HUB-002: Transformado em hub utilitário com dados reais acima da dobra.
  * Content cluster: guias setoriais de licitações
  * Target: 3,000-3,500 words | Primary KW: licitações tecnologia
  */
+
+const TI_HUB_CONFIG: SectorHubConfig = {
+  sectorSlug: 'informatica',
+  sectorName: 'TI e Tecnologia',
+  title: 'Editais abertos de TI e Software — consulte agora',
+  subtitle:
+    'Software, hardware, suporte técnico e consultoria em TI. Filtre por UF e modalidade — dados reais do PNCP atualizados a cada hora.',
+  ctaText: 'Receber alertas de licitações de TI',
+  ctaHref:
+    '/signup?source=ti-hub&utm_source=blog&utm_medium=hub&utm_content=licitacoes-ti-software-2026',
+  subcategories: [
+    { label: 'Software e licenças', href: '/blog/licitacoes/software/SP' },
+    { label: 'Hardware e equipamentos', href: '/blog/licitacoes/informatica/SP' },
+    { label: 'Suporte técnico', href: '/blog/licitacoes/informatica/MG' },
+    { label: 'Consultoria em TI', href: '/blog/licitacoes/informatica/DF' },
+    { label: 'Infraestrutura de redes', href: '/blog/licitacoes/informatica/PR' },
+  ],
+  priorityUfs: [
+    { uf: 'SP', name: 'São Paulo' },
+    { uf: 'DF', name: 'Distrito Federal' },
+    { uf: 'MG', name: 'Minas Gerais' },
+    { uf: 'RJ', name: 'Rio de Janeiro' },
+    { uf: 'PR', name: 'Paraná' },
+    { uf: 'RS', name: 'Rio Grande do Sul' },
+    { uf: 'GO', name: 'Goiás' },
+    { uf: 'SC', name: 'Santa Catarina' },
+    { uf: 'BA', name: 'Bahia' },
+    { uf: 'PE', name: 'Pernambuco' },
+    { uf: 'CE', name: 'Ceará' },
+    { uf: 'RN', name: 'Rio Grande do Norte' },
+  ],
+  internalLinks: [
+    { href: '/blog/licitacoes/software/SP', label: 'Editais de software em SP' },
+    { href: '/blog/licitacoes/informatica/DF', label: 'Editais de TI no DF' },
+    { href: '/contratos/informatica/SP', label: 'Contratos de TI assinados em SP' },
+    { href: '/fornecedores', label: 'Fornecedores de TI mais contratados' },
+    { href: '/orgaos', label: 'Órgãos que mais compram TI' },
+  ],
+};
+
 export default function LicitacoesTISoftware2026() {
   return (
     <>
+      {/* Hub TI — acima da dobra com dados reais e CTAs (PSEO-HUB-002) */}
+      <SectorHubPanel config={TI_HUB_CONFIG} />
       {/* FAQPage JSON-LD */}
       <script
         type="application/ld+json"

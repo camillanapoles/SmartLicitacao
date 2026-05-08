@@ -908,13 +908,14 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-S1
   {
     slug: 'licitacoes-engenharia-2026',
-    title: 'Licitações de Engenharia 2026: obras, projetos e serviços técnicos',
-    h1: 'Editais de engenharia em 2026: obras, projetos e serviços técnicos por estado',
+    title: 'Licitações de Engenharia 2026: obras, projetos e serviços técnicos por estado',
+    h1: 'Editais abertos de engenharia em 2026: obras, projetos e serviços por estado',
     description:
-      'Editais de obras, projetos de engenharia, manutenção predial e consultoria técnica por estado.',
+      'Editais abertos de obras, projetos de engenharia, manutenção predial e consultoria técnica. Filtre por estado, modalidade e sub-categoria.',
     category: 'Guias',
     tags: ['engenharia', 'construção civil', 'licitações 2026', 'guia setorial'],
     publishDate: '2026-04-04',
+    lastModified: '2026-05-08',
     readingTime: calculateReadingTime(3400),
     wordCount: 3400,
     keywords: [
@@ -940,10 +941,11 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-S2
   {
     slug: 'licitacoes-ti-software-2026',
-    title: 'Licitações de TI e Software 2026: editais abertos por UF e modalidade',
-    h1: 'Editais de TI e Software abertos em 2026: filtre por UF e modalidade',
+    title: 'Licitações de TI e Software 2026: editais abertos — filtre por UF e sub-setor',
+    h1: 'Editais abertos de TI e Software em 2026: filtre por UF e sub-setor',
     description:
-      'Editais de tecnologia, software, suporte e consultoria em TI. Filtro por estado e modalidade.',
+      'Editais abertos de tecnologia, software, hardware, suporte e consultoria em TI. Filtro por estado e sub-setor com dados reais do PNCP.',
+    lastModified: '2026-05-08',
     category: 'Guias',
     tags: ['tecnologia', 'software', 'TI', 'licitações 2026', 'guia setorial'],
     publishDate: '2026-04-04',
@@ -972,13 +974,14 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-S3
   {
     slug: 'licitacoes-saude-2026',
-    title: 'Licitações de Saúde 2026: editais de medicamentos, equipamentos e serviços',
-    h1: 'Editais de saúde em 2026: medicamentos, equipamentos e serviços hospitalares',
+    title: 'Licitações de Saúde 2026: editais abertos de medicamentos, equipamentos e serviços',
+    h1: 'Editais abertos de saúde em 2026: medicamentos, equipamentos e serviços hospitalares',
     description:
-      'Editais abertos na área da saúde: medicamentos, insumos, equipamentos e serviços hospitalares por UF.',
+      'Consulte editais abertos na área da saúde: medicamentos, insumos, equipamentos e serviços hospitalares por UF. Dados reais do PNCP.',
     category: 'Guias',
     tags: ['saúde', 'medicamentos', 'equipamentos médicos', 'licitações 2026', 'guia setorial'],
     publishDate: '2026-04-04',
+    lastModified: '2026-05-08',
     readingTime: calculateReadingTime(3400),
     wordCount: 3400,
     keywords: [
@@ -1864,12 +1867,13 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // SEO-12.3.3 Art-01: como consultar contratos públicos PNCP
   {
     slug: 'como-consultar-contratos-publicos-pncp',
-    title: 'Contratos Públicos no PNCP: como consultar fornecedores, valores e vigências',
-    h1: 'Como consultar contratos públicos no PNCP: fornecedores, valores e vigências',
+    title: 'Contratos Públicos no PNCP: busque por fornecedor, órgão ou objeto',
+    h1: 'Busque contratos públicos no PNCP por fornecedor, órgão ou objeto',
     description:
-      'Consulte contratos públicos federais e estaduais: fornecedor, valor, órgão, vigência e objeto.',
+      'Consulte contratos públicos por CNPJ do fornecedor, órgão contratante ou objeto. Dados reais do PNCP — mais de 2 milhões de contratos.',
     category: 'Guias',
     tags: ['contratos públicos', 'PNCP', 'consultar contratos', 'fornecedores', 'inteligência de mercado'],
+    lastModified: '2026-05-08',
     publishDate: '2026-04-08',
     readingTime: calculateReadingTime(3000),
     wordCount: 3000,

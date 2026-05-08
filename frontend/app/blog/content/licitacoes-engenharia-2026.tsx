@@ -1,15 +1,60 @@
 import Link from 'next/link';
 import BlogInlineCTA from '../components/BlogInlineCTA';
+import SectorHubPanel from '@/components/blog/hubs/SectorHubPanel';
+import type { SectorHubConfig } from '@/components/blog/hubs/SectorHubPanel';
 
 /**
- * SEO Sector Guide S1: Licitações de Engenharia e Construção 2026
+ * SEO Sector Guide S1: Licitações de Engenharia e Construção 2026 — Hub Setorial
  *
+ * PSEO-HUB-002: Transformado em hub utilitário com dados reais acima da dobra.
  * Content cluster: guias setoriais de licitações
  * Target: 3,000-3,500 words | Primary KW: licitações engenharia
  */
+
+const ENGENHARIA_HUB_CONFIG: SectorHubConfig = {
+  sectorSlug: 'engenharia',
+  sectorName: 'Engenharia',
+  title: 'Editais abertos de Engenharia e Obras — consulte agora',
+  subtitle:
+    'Obras públicas, projetos de engenharia, manutenção predial e consultoria técnica. Dados reais do PNCP filtrados por UF e modalidade.',
+  ctaText: 'Ver todas as obras abertas',
+  ctaHref:
+    '/signup?source=engenharia-hub&utm_source=blog&utm_medium=hub&utm_content=licitacoes-engenharia-2026',
+  subcategories: [
+    { label: 'Obras e construção', href: '/blog/licitacoes/engenharia/SP' },
+    { label: 'Projetos e consultoria', href: '/blog/licitacoes/engenharia/DF' },
+    { label: 'Manutenção predial', href: '/blog/licitacoes/engenharia/MG' },
+    { label: 'Fiscalização de obras', href: '/blog/licitacoes/engenharia/RJ' },
+    { label: 'Engenharia ambiental', href: '/blog/licitacoes/engenharia/PR' },
+  ],
+  priorityUfs: [
+    { uf: 'SP', name: 'São Paulo' },
+    { uf: 'MG', name: 'Minas Gerais' },
+    { uf: 'RJ', name: 'Rio de Janeiro' },
+    { uf: 'DF', name: 'Distrito Federal' },
+    { uf: 'PR', name: 'Paraná' },
+    { uf: 'RS', name: 'Rio Grande do Sul' },
+    { uf: 'BA', name: 'Bahia' },
+    { uf: 'GO', name: 'Goiás' },
+    { uf: 'SC', name: 'Santa Catarina' },
+    { uf: 'CE', name: 'Ceará' },
+    { uf: 'PE', name: 'Pernambuco' },
+    { uf: 'PA', name: 'Pará' },
+  ],
+  internalLinks: [
+    { href: '/blog/licitacoes/engenharia/SP', label: 'Obras abertas em SP' },
+    { href: '/blog/licitacoes/engenharia/MG', label: 'Obras abertas em MG' },
+    { href: '/contratos/engenharia/SP', label: 'Contratos de engenharia em SP' },
+    { href: '/fornecedores', label: 'Construtoras mais contratadas' },
+    { href: '/orgaos', label: 'Prefeituras que mais licitam obras' },
+  ],
+};
+
 export default function LicitacoesEngenharia2026() {
   return (
     <>
+      {/* Hub Engenharia — acima da dobra com dados reais e CTAs (PSEO-HUB-002) */}
+      <SectorHubPanel config={ENGENHARIA_HUB_CONFIG} />
       {/* FAQPage JSON-LD */}
       <script
         type="application/ld+json"

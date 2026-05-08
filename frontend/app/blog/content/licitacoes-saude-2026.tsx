@@ -1,15 +1,60 @@
 import Link from 'next/link';
 import BlogInlineCTA from '../components/BlogInlineCTA';
+import SectorHubPanel from '@/components/blog/hubs/SectorHubPanel';
+import type { SectorHubConfig } from '@/components/blog/hubs/SectorHubPanel';
 
 /**
- * SEO GUIA-S3: Licitações de Saúde 2026 — Guia Completo
+ * SEO GUIA-S3: Licitações de Saúde 2026 — Hub Setorial
  *
+ * PSEO-HUB-002: Transformado em hub utilitário com dados reais acima da dobra.
  * Content cluster: guias setoriais
  * Target: 3,000+ words | Primary KW: licitações saúde
  */
+
+const SAUDE_HUB_CONFIG: SectorHubConfig = {
+  sectorSlug: 'saude',
+  sectorName: 'Saúde',
+  title: 'Editais abertos de Saúde — medicamentos, equipamentos e serviços',
+  subtitle:
+    'Monitore licitações de medicamentos, equipamentos médicos e insumos hospitalares. Dados reais do PNCP atualizados a cada hora.',
+  ctaText: 'Monitorar licitações de saúde',
+  ctaHref:
+    '/signup?source=saude-hub&utm_source=blog&utm_medium=hub&utm_content=licitacoes-saude-2026',
+  subcategories: [
+    { label: 'Medicamentos', href: '/blog/licitacoes/saude/SP' },
+    { label: 'Equipamentos médicos', href: '/blog/licitacoes/saude/MG' },
+    { label: 'Insumos hospitalares', href: '/blog/licitacoes/saude/RJ' },
+    { label: 'Serviços hospitalares', href: '/blog/licitacoes/saude/DF' },
+    { label: 'Materiais cirúrgicos', href: '/blog/licitacoes/saude/PR' },
+  ],
+  priorityUfs: [
+    { uf: 'SP', name: 'São Paulo' },
+    { uf: 'MG', name: 'Minas Gerais' },
+    { uf: 'RJ', name: 'Rio de Janeiro' },
+    { uf: 'DF', name: 'Distrito Federal' },
+    { uf: 'BA', name: 'Bahia' },
+    { uf: 'RS', name: 'Rio Grande do Sul' },
+    { uf: 'PR', name: 'Paraná' },
+    { uf: 'GO', name: 'Goiás' },
+    { uf: 'PE', name: 'Pernambuco' },
+    { uf: 'CE', name: 'Ceará' },
+    { uf: 'SC', name: 'Santa Catarina' },
+    { uf: 'PA', name: 'Pará' },
+  ],
+  internalLinks: [
+    { href: '/blog/licitacoes/saude/SP', label: 'Editais de saúde em SP' },
+    { href: '/blog/licitacoes/saude/MG', label: 'Editais de saúde em MG' },
+    { href: '/contratos/saude/SP', label: 'Contratos de saúde assinados em SP' },
+    { href: '/fornecedores', label: 'Fornecedores de saúde mais contratados' },
+    { href: '/orgaos', label: 'Órgãos de saúde que mais compram' },
+  ],
+};
+
 export default function LicitacoesSaude2026() {
   return (
     <>
+      {/* Hub Saúde — acima da dobra com dados reais e CTAs (PSEO-HUB-002) */}
+      <SectorHubPanel config={SAUDE_HUB_CONFIG} />
       {/* FAQPage JSON-LD */}
       <script
         type="application/ld+json"
