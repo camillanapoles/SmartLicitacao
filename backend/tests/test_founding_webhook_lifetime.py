@@ -28,6 +28,8 @@ from webhooks.handlers.founding import (  # noqa: E402
     _activate_lifetime_founder_entitlement,
     _read_consulting_discount_pct,
     _resolve_user_id_from_email,
+    _resolve_user_display_name,
+    _dispatch_founders_welcome_email,
 )
 
 
@@ -356,3 +358,150 @@ def test_lifetime_no_email_in_session_does_not_raise():
     _activate_lifetime_founder_entitlement(direct_sb, session, None)
 
     assert not direct_sb.table.called
+
+
+# ---------------------------------------------------------------------------
+# _resolve_user_display_name
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_user_display_name_returns_full_name():
+    """Returns full_name when the profile has one."""
+    fake_sb = MagicMock()
+    fake_sb.table.return_value = fake_sb
+    fake_sb.select.return_value = fake_sb
+    fake_sb.eq.return_value = fake_sb
+    fake_sb.limit.return_value = fake_sb
+    fake_sb.execute.return_value = MagicMock(data=[{"full_name": "Carlos Silva"}])
+
+    result = _resolve_user_display_name(fake_sb, "user-1", "carlos@empresa.com")
+    assert result == "Carlos Silva"
+
+
+def test_resolve_user_display_name_falls_back_to_email_prefix():
+    """Returns email prefix when no full_name in profile."""
+    fake_sb = MagicMock()
+    fake_sb.table.return_value = fake_sb
+    fake_sb.select.return_value = fake_sb
+    fake_sb.eq.return_value = fake_sb
+    fake_sb.limit.return_value = fake_sb
+    fake_sb.execute.return_value = MagicMock(data=[{"full_name": None}])
+
+    result = _resolve_user_display_name(fake_sb, "user-2", "maria@empresa.com")
+    assert result == "maria"
+
+
+def test_resolve_user_display_name_falls_back_on_db_error():
+    """Returns email prefix when DB raises."""
+    fake_sb = MagicMock()
+    fake_sb.table.return_value = fake_sb
+    fake_sb.select.return_value = fake_sb
+    fake_sb.eq.return_value = fake_sb
+    fake_sb.limit.return_value = fake_sb
+    fake_sb.execute.side_effect = RuntimeError("DB down")
+
+    result = _resolve_user_display_name(fake_sb, "user-3", "joao@empresa.com")
+    assert result == "joao"
+
+
+# ---------------------------------------------------------------------------
+# _dispatch_founders_welcome_email — thread dispatch
+# ---------------------------------------------------------------------------
+
+
+def test_dispatch_founders_welcome_email_calls_send_function():
+    """Dispatches send_founders_welcome_email in a background thread."""
+    import time
+
+    with patch("email_service.send_founders_welcome_email", return_value="email-id-ok") as mock_send:
+        _dispatch_founders_welcome_email(email="founder@empresa.com", user_name="Fundador")
+        # Give the daemon thread time to run
+        time.sleep(0.1)
+
+    mock_send.assert_called_once_with(user_email="founder@empresa.com", user_name="Fundador")
+
+
+def test_dispatch_founders_welcome_email_never_raises_on_exception():
+    """Fire-and-forget: never raises even if send function throws."""
+    import time
+
+    with patch("email_service.send_founders_welcome_email", side_effect=RuntimeError("SMTP down")):
+        # Must not raise
+        _dispatch_founders_welcome_email(email="err@empresa.com", user_name="Erro")
+        time.sleep(0.1)
+
+
+# ---------------------------------------------------------------------------
+# Welcome email dispatched on successful entitlement activation
+# ---------------------------------------------------------------------------
+
+
+def test_welcome_email_dispatched_after_successful_activation():
+    """_activate_lifetime_founder_entitlement dispatches welcome email on success."""
+    direct_sb = MagicMock()
+    direct_sb.table.return_value = direct_sb
+    direct_sb.select.return_value = direct_sb
+    direct_sb.update.return_value = direct_sb
+    direct_sb.eq.return_value = direct_sb
+    direct_sb.limit.return_value = direct_sb
+
+    # profile lookup → user_id; policy lookup → discount pct; update → ok;
+    # display name lookup → full_name
+    profile_result = MagicMock(data=[{"id": _DEFAULT_USER_ID}])
+    policy_result = MagicMock(data=[{"consulting_discount_pct": 50}])
+    update_result = MagicMock(data=[])
+    name_result = MagicMock(data=[{"full_name": "Ana Fundadora"}])
+    direct_sb.execute.side_effect = [profile_result, policy_result, update_result, name_result]
+
+    session = _founding_session()
+
+    with patch(
+        "webhooks.handlers.founding._dispatch_founders_welcome_email"
+    ) as mock_dispatch:
+        _activate_lifetime_founder_entitlement(direct_sb, session, _DEFAULT_LEAD_ID)
+
+    mock_dispatch.assert_called_once_with(email=_DEFAULT_EMAIL, user_name="Ana Fundadora")
+
+
+def test_welcome_email_not_dispatched_when_profiles_update_fails():
+    """Welcome email must NOT be dispatched when the profiles upsert raises."""
+    direct_sb = MagicMock()
+    direct_sb.table.return_value = direct_sb
+    direct_sb.select.return_value = direct_sb
+    direct_sb.update.return_value = direct_sb
+    direct_sb.eq.return_value = direct_sb
+    direct_sb.limit.return_value = direct_sb
+
+    profile_result = MagicMock(data=[{"id": _DEFAULT_USER_ID}])
+    policy_result = MagicMock(data=[{"consulting_discount_pct": 50}])
+    direct_sb.execute.side_effect = [profile_result, policy_result, RuntimeError("DB down")]
+
+    session = _founding_session()
+
+    with patch(
+        "webhooks.handlers.founding._dispatch_founders_welcome_email"
+    ) as mock_dispatch:
+        # Must not raise
+        _activate_lifetime_founder_entitlement(direct_sb, session, _DEFAULT_LEAD_ID)
+
+    mock_dispatch.assert_not_called()
+
+
+def test_welcome_email_not_dispatched_when_profile_missing():
+    """Welcome email not dispatched when user hasn't signed up yet (deferred path)."""
+    direct_sb = MagicMock()
+    direct_sb.table.return_value = direct_sb
+    direct_sb.select.return_value = direct_sb
+    direct_sb.update.return_value = direct_sb
+    direct_sb.eq.return_value = direct_sb
+    direct_sb.limit.return_value = direct_sb
+    direct_sb.execute.return_value = MagicMock(data=[])  # no profile
+
+    session = _founding_session(email="unknown@empresa.com")
+
+    with patch(
+        "webhooks.handlers.founding._dispatch_founders_welcome_email"
+    ) as mock_dispatch:
+        _activate_lifetime_founder_entitlement(direct_sb, session, None)
+
+    mock_dispatch.assert_not_called()

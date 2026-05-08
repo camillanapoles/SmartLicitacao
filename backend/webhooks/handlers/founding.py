@@ -29,6 +29,7 @@ BIZ-FOUND-002 race guard:
 from __future__ import annotations
 
 import os
+import threading
 from datetime import datetime, timezone
 from typing import Any
 
@@ -223,12 +224,65 @@ def _read_consulting_discount_pct(sb) -> int:
     return 50
 
 
+def _resolve_user_display_name(sb, user_id: str, fallback_email: str) -> str:
+    """Return profiles.full_name for user_id, falling back to email prefix.
+
+    Never raises — returns fallback_email on any DB error.
+    """
+    try:
+        res = (
+            sb.table("profiles")
+            .select("full_name")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+        if rows and rows[0].get("full_name"):
+            return rows[0]["full_name"]
+    except Exception as e:
+        logger.warning(f"founding lifetime: could not resolve display name for user_id={user_id} — {e}")
+    return fallback_email.split("@")[0]
+
+
+def _dispatch_founders_welcome_email(email: str, user_name: str) -> None:
+    """Fire-and-forget dispatch of the founders welcome email.
+
+    Runs in a background daemon thread so it never blocks the webhook handler.
+    Uses send_founders_welcome_email which enforces idempotency via
+    founding_leads.welcome_sent_at — safe to call multiple times.
+
+    Never raises.
+    """
+    def _send() -> None:
+        try:
+            from email_service import send_founders_welcome_email
+
+            email_id = send_founders_welcome_email(user_email=email, user_name=user_name)
+            if email_id:
+                logger.info(
+                    f"founding welcome email sent — email={email} email_id={email_id}"
+                )
+            else:
+                logger.info(
+                    f"founding welcome email skipped (already sent or no lead) — email={email}"
+                )
+        except Exception as exc:
+            logger.error(f"founding welcome email dispatch failed — email={email} err={exc}")
+
+    thread = threading.Thread(target=_send, daemon=True)
+    thread.start()
+
+
 def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None) -> None:
     """Upsert the lifetime founder entitlement on ``profiles``.
 
     Sets is_founder=True, founder_since, founder_offer_version,
     founder_checkout_source, consulting_discount_pct, plan_type,
     and clears trial_expires_at.
+
+    On success, dispatches the founders welcome email (fire-and-forget via
+    background thread, idempotency enforced inside send_founders_welcome_email).
 
     Gracefully defers if the user profile does not exist yet (founding is
     sold to unauthenticated visitors who sign up after payment).
@@ -275,6 +329,10 @@ def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None
             f"session_id={sid} offer_version={offer_version} "
             f"consulting_discount_pct={consulting_discount_pct}"
         )
+        # Dispatch founders welcome email after successful entitlement activation.
+        # Fire-and-forget via background thread — never blocks the webhook response.
+        user_name = _resolve_user_display_name(sb, user_id, email)
+        _dispatch_founders_welcome_email(email=email, user_name=user_name)
     except Exception as e:
         logger.error(
             f"founding lifetime: profiles upsert failed — user_id={user_id} "
