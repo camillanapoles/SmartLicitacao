@@ -536,7 +536,7 @@ def _make_invite_sb(invite_sent_at: str | None = None, raise_idempotency: bool =
     if raise_idempotency:
         t.execute.side_effect = RuntimeError("DB error")
     else:
-        idempotency_result = MagicMock(data=[{"invite_sent_at": invite_sent_at}])
+        idempotency_result = MagicMock(data=[{"magic_link_sent_at": invite_sent_at}])
         update_result = MagicMock(data=[])
         t.execute.side_effect = [idempotency_result, update_result]
 
@@ -609,4 +609,8 @@ def test_invite_sent_when_no_account_via_activate_entitlement():
 
         mock_invite.assert_called_once()
         call_args = mock_invite.call_args
-        assert call_args.args[1] == "newfounder@empresa.com" or call_args[0][1] == "newfounder@empresa.com"
+        email_arg = (
+            call_args.kwargs.get("email")
+            or (call_args.args[1] if len(call_args.args) > 1 else None)
+        )
+        assert email_arg == "newfounder@empresa.com"

@@ -1,11 +1,23 @@
-"""STORY-BIZ-001 + BIZ-FOUND-002 + #785: side-effect handlers that keep
-``founding_leads`` in sync with Stripe checkout-session lifecycle events,
-plus the cap-violation race guard introduced by BIZ-FOUND-002, and lifetime
-entitlement activation (#785).
+"""STORY-BIZ-001 + BIZ-FOUND-002 + #785 + FOUND-CRIT-006: side-effect handlers
+that keep ``founding_leads`` in sync with Stripe checkout-session lifecycle
+events, plus the cap-violation race guard introduced by BIZ-FOUND-002, and
+lifetime entitlement activation (#785).
 
 Invoked from ``webhooks.handlers.checkout.handle_checkout_session_completed``
 and from the webhook dispatcher in ``webhooks.stripe`` when session metadata
 contains ``source='founding'``.
+
+FOUND-CRIT-006 mode=payment support:
+- The founding checkout uses ``mode='payment'`` (one-time R$997 BRL) not
+  ``mode='subscription'``. The session object therefore has ``payment_intent``
+  populated and ``subscription=None``.
+- All handler functions here are already mode-agnostic: ``_is_founding_session``
+  reads ``metadata.source``, refund helpers read ``payment_intent``, and
+  ``_activate_lifetime_founder_entitlement`` does not reference ``subscription``.
+- FOUND-CRIT-003 invite: when the buyer has not yet created an account
+  (founding is sold to unauthenticated visitors), ``_send_founding_invite``
+  dispatches a Supabase magic-link invite email and stamps
+  ``founding_leads.magic_link_sent_at`` for idempotency.
 
 BIZ-FOUND-002 race guard:
 - Two concurrent checkouts can both pass the pre-checkout availability gate
@@ -23,7 +35,8 @@ BIZ-FOUND-002 race guard:
 - After the race guard confirms the checkout is valid (not cap_violated),
   the handler activates the lifetime founder entitlement on ``profiles``.
 - If the user hasn't signed up yet (founding is sold to unauthenticated
-  visitors), the activation is gracefully deferred with a log entry.
+  visitors), the activation is gracefully deferred AND a Supabase invite
+  email is dispatched (FOUND-CRIT-003) so the buyer can create their account.
 """
 
 from __future__ import annotations
@@ -274,69 +287,68 @@ def _dispatch_founders_welcome_email(email: str, user_name: str) -> None:
     thread.start()
 
 
-def _send_founding_invite(sb, email: str, lead_id: str | None, session: Any) -> None:
-    """Send a Supabase auth invite to a founding buyer who has no account yet.
+def _send_founding_invite(sb, email: str, lead_id: str | None, sid: str | None) -> None:
+    """FOUND-CRIT-003: dispatch a Supabase magic-link invite when the founder
+    has paid but has not yet created an account.
 
-    Idempotent: queries ``founding_leads.invite_sent_at`` before sending —
-    skips if the invite has already been dispatched (prevents double-emails on
-    Stripe retry / webhook replay).
+    Stamps ``founding_leads.magic_link_sent_at`` for idempotency so that
+    re-delivery of the webhook does not send multiple invites.
 
-    Never raises — a failure here must not break the 200 response to Stripe.
+    Never raises — the webhook must always return 200 to Stripe.
     """
-    sid = _session_id(session)
-
-    # ---- Idempotency check ----
-    try:
-        filter_col = "id" if lead_id else "email"
-        filter_val = lead_id if lead_id else email
-        res = (
-            sb.table("founding_leads")
-            .select("invite_sent_at")
-            .eq(filter_col, filter_val)
-            .limit(1)
-            .execute()
-        )
-        rows = getattr(res, "data", None) or []
-        if rows and rows[0].get("invite_sent_at") is not None:
-            logger.info(
-                f"founding invite already sent, skipping — "
-                f"email={email[:3]}*** lead_id={lead_id}"
+    # Idempotency check — skip if invite was already sent for this lead.
+    if lead_id:
+        try:
+            res = (
+                sb.table("founding_leads")
+                .select("magic_link_sent_at")
+                .eq("id", lead_id)
+                .limit(1)
+                .execute()
             )
-            return
-    except Exception as e:
-        logger.warning(
-            f"founding invite: idempotency check failed — will attempt send anyway "
-            f"(email={email[:3]}*** err={e})"
-        )
+            rows = getattr(res, "data", None) or []
+            if rows and rows[0].get("magic_link_sent_at"):
+                logger.info(
+                    f"founding invite: already sent — lead_id={lead_id} email={email}"
+                )
+                return
+        except Exception as e:
+            logger.warning(
+                f"founding invite: idempotency check failed (proceeding) — "
+                f"lead_id={lead_id} err={e}"
+            )
 
-    # ---- Send invite via Supabase Admin API ----
-    try:
-        sb.auth.admin.invite_user_by_email(
-            email,
-            options={"data": {"is_founder": True, "lead_id": lead_id}},
-        )
-        logger.info(
-            f"founding invite sent — email={email[:3]}*** session_id={sid}"
-        )
-    except Exception as e:
-        logger.error(
-            f"founding invite: auth.admin.invite_user_by_email failed — "
-            f"email={email[:3]}*** lead_id={lead_id} err={e}"
-        )
-        return
+    def _invite() -> None:
+        try:
+            sb.auth.admin.invite_user_by_email(
+                email,
+                options={
+                    "redirect_to": "https://smartlic.tech/fundadores/obrigado",
+                    "data": {"is_founder": True},
+                },
+            )
+            logger.info(
+                f"founding invite sent — email={email} lead_id={lead_id} session_id={sid}"
+            )
+            # Stamp magic_link_sent_at for idempotency on webhook re-delivery.
+            if lead_id:
+                try:
+                    sb.table("founding_leads").update({
+                        "magic_link_sent_at": datetime.now(timezone.utc).isoformat(),
+                    }).eq("id", lead_id).execute()
+                except Exception as stamp_err:
+                    logger.warning(
+                        f"founding invite: failed to stamp magic_link_sent_at — "
+                        f"lead_id={lead_id} err={stamp_err}"
+                    )
+        except Exception as exc:
+            logger.error(
+                f"founding invite: Supabase invite_user_by_email failed — "
+                f"email={email} lead_id={lead_id} session_id={sid} err={exc}"
+            )
 
-    # ---- Record invite timestamp ----
-    try:
-        filter_col = "id" if lead_id else "email"
-        filter_val = lead_id if lead_id else email
-        sb.table("founding_leads").update(
-            {"invite_sent_at": datetime.now(timezone.utc).isoformat()}
-        ).eq(filter_col, filter_val).execute()
-    except Exception as e:
-        logger.error(
-            f"founding invite: failed to record invite_sent_at — "
-            f"lead_id={lead_id} err={e}"
-        )
+    thread = threading.Thread(target=_invite, daemon=True)
+    thread.start()
 
 
 def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None) -> None:
@@ -349,8 +361,9 @@ def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None
     On success, dispatches the founders welcome email (fire-and-forget via
     background thread, idempotency enforced inside send_founders_welcome_email).
 
-    Gracefully defers if the user profile does not exist yet (founding is
-    sold to unauthenticated visitors who sign up after payment).
+    FOUND-CRIT-003: if the user profile does not exist yet (founding is sold
+    to unauthenticated visitors), dispatches a Supabase magic-link invite
+    email instead of silently deferring.
 
     Never raises — a failure here must not break the 200 response to Stripe.
     """
@@ -367,10 +380,11 @@ def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None
     user_id = _resolve_user_id_from_email(sb, email)
     if not user_id:
         logger.info(
-            f"founding lifetime activation deferred — user signup pending "
+            f"founding lifetime activation deferred — user signup pending, dispatching invite "
             f"(session_id={sid} email={email} lead_id={lead_id})"
         )
-        _send_founding_invite(sb, email, lead_id, session)
+        # FOUND-CRIT-003: send Supabase magic-link invite so the buyer can sign up.
+        _send_founding_invite(sb, email=email, lead_id=lead_id, sid=sid)
         return
 
     consulting_discount_pct = _read_consulting_discount_pct(sb)

@@ -154,6 +154,22 @@ async def handle_checkout_session_completed(sb, event: stripe.Event) -> None:
         await handle_intel_report_checkout_completed(sb, session_data)
         return
 
+    # FOUND-CRIT-006: founding mode=payment one-time checkout — routed entirely
+    # through mark_founding_lead_completed (which handles entitlement + invite).
+    # These sessions have no plan_id/subscription in metadata, so they must be
+    # dispatched early and returned before the subscription-activation path.
+    if session_data.get("mode") == "payment" and metadata.get("source") == "founding":
+        logger.info(
+            f"checkout.session.completed: founding mode=payment — "
+            f"routing to mark_founding_lead_completed"
+        )
+        try:
+            from webhooks.handlers.founding import mark_founding_lead_completed
+            mark_founding_lead_completed(sb, session_data)
+        except Exception as e:
+            logger.error(f"founding mode=payment handler failed (non-fatal): {e}")
+        return
+
     user_id = resolve_user_id(sb, session_data)
     plan_id = metadata.get("plan_id")
     billing_period = metadata.get("billing_period", "monthly")
@@ -162,6 +178,7 @@ async def handle_checkout_session_completed(sb, event: stripe.Event) -> None:
     payment_status = session_data.get("payment_status", "paid")
 
     # STORY-BIZ-001: keep founding_leads in sync regardless of regular-checkout path.
+    # Note: founding mode=subscription sessions (legacy) still go through this path.
     try:
         from webhooks.handlers.founding import mark_founding_lead_completed
         mark_founding_lead_completed(sb, session_data)
