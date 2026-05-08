@@ -128,7 +128,7 @@ export default async function PerguntaPage({
               <span className="mx-2">›</span>
               <span className="text-ink-primary">{CATEGORY_META[question.category].label}</span>
             </nav>
-            <h1 className="text-3xl font-bold text-ink-primary">{question.title}</h1>
+            <h1 className="text-3xl font-bold text-ink-primary">{question.h1 ?? question.title}</h1>
             <div className="flex flex-wrap gap-2 mt-4">
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-brand-blue/10 text-brand-blue">
                 {CATEGORY_META[question.category].label}

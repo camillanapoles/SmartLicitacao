@@ -10,6 +10,8 @@ export type BlogCategory = 'Empresas B2G' | 'Consultorias de Licitação' | 'Gui
 export interface BlogArticleMeta {
   slug: string;
   title: string;
+  /** On-page H1, when it should differ from the SEO <title>. Falls back to title. */
+  h1?: string;
   description: string;
   category: BlogCategory;
   tags: string[];
@@ -906,9 +908,10 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-S1
   {
     slug: 'licitacoes-engenharia-2026',
-    title: 'Engenharia e Licitações 2026: 4 Critérios de Viabilidade',
+    title: 'Licitações de Engenharia 2026: obras, projetos e serviços técnicos',
+    h1: 'Editais de engenharia em 2026: obras, projetos e serviços técnicos por estado',
     description:
-      '2.400+ licitações de engenharia abertas em 2026 no PNCP. Filtre por UF, valor e modalidade. Configure alertas e teste grátis por 14 dias.',
+      'Editais de obras, projetos de engenharia, manutenção predial e consultoria técnica por estado.',
     category: 'Guias',
     tags: ['engenharia', 'construção civil', 'licitações 2026', 'guia setorial'],
     publishDate: '2026-04-04',
@@ -937,9 +940,10 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-S2
   {
     slug: 'licitacoes-ti-software-2026',
-    title: 'TI e Licitações 2026: 5 Critérios para Ganhar do Governo',
+    title: 'Licitações de TI e Software 2026: editais abertos por UF e modalidade',
+    h1: 'Editais de TI e Software abertos em 2026: filtre por UF e modalidade',
     description:
-      'Descubra o que ATA, pregão eletrônico e habilitação técnica exigem para sua empresa de TI ganhar contratos do governo em 2026.',
+      'Editais de tecnologia, software, suporte e consultoria em TI. Filtro por estado e modalidade.',
     category: 'Guias',
     tags: ['tecnologia', 'software', 'TI', 'licitações 2026', 'guia setorial'],
     publishDate: '2026-04-04',
@@ -968,9 +972,10 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-S3
   {
     slug: 'licitacoes-saude-2026',
-    title: 'Licitações de Saúde em 2026: 4 Setores com mais Editais',
+    title: 'Licitações de Saúde 2026: editais de medicamentos, equipamentos e serviços',
+    h1: 'Editais de saúde em 2026: medicamentos, equipamentos e serviços hospitalares',
     description:
-      'Medicamentos, equipamentos médicos e insumos hospitalares: quais modalidades dominam e o que exigem das empresas fornecedoras em 2026.',
+      'Editais abertos na área da saúde: medicamentos, insumos, equipamentos e serviços hospitalares por UF.',
     category: 'Guias',
     tags: ['saúde', 'medicamentos', 'equipamentos médicos', 'licitações 2026', 'guia setorial'],
     publishDate: '2026-04-04',
@@ -1064,9 +1069,10 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-T1
   {
     slug: 'como-participar-primeira-licitacao-2026',
-    title: '1ª Licitação em 2026: 12 Passos do Cadastro ao Contrato',
+    title: 'Licitações Públicas 2026: editais abertos, contratos e oportunidades por setor',
+    h1: 'Editais abertos e oportunidades de licitação por setor em 2026',
     description:
-      'Do SICAF à entrega de proposta: roteiro com 12 passos validados para vencer na primeira tentativa — sem erros de documentação que desclassificam.',
+      'Veja editais abertos, contratos vigentes e oportunidades filtradas por setor. Atualizado diariamente.',
     category: 'Guias',
     tags: ['primeira licitação', 'guia iniciante', 'passo a passo', 'cadastro'],
     publishDate: '2026-04-04',
@@ -1125,9 +1131,10 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // GUIA-T3
   {
     slug: 'pncp-guia-completo-empresas',
-    title: 'PNCP 2026: Ache Editais do Seu Setor em 5 Minutos',
+    title: 'PNCP: encontre editais, contratos e fornecedores públicos em 2026',
+    h1: 'Encontre editais, contratos e fornecedores públicos no PNCP',
     description:
-      'Acesse 1,5M+ licitações do PNCP em tempo real. Filtre por setor, UF e valor estimado. Teste grátis por 14 dias — sem cartão.',
+      'Consulte oportunidades abertas no PNCP sem garimpar manualmente. Filtros por setor, UF e modalidade.',
     category: 'Guias',
     tags: ['PNCP', 'portal de contratações', 'busca de editais', 'monitoramento'],
     publishDate: '2026-04-04',
@@ -1857,9 +1864,10 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // SEO-12.3.3 Art-01: como consultar contratos públicos PNCP
   {
     slug: 'como-consultar-contratos-publicos-pncp',
-    title: 'PNCP 2026: Consulte Contratos por CNPJ em 3 Cliques',
+    title: 'Contratos Públicos no PNCP: como consultar fornecedores, valores e vigências',
+    h1: 'Como consultar contratos públicos no PNCP: fornecedores, valores e vigências',
     description:
-      'Consulte contratos públicos do PNCP por CNPJ, órgão ou setor. Histórico de 400 dias. Grátis para testar — sem cadastro de cartão.',
+      'Consulte contratos públicos federais e estaduais: fornecedor, valor, órgão, vigência e objeto.',
     category: 'Guias',
     tags: ['contratos públicos', 'PNCP', 'consultar contratos', 'fornecedores', 'inteligência de mercado'],
     publishDate: '2026-04-08',
@@ -2053,9 +2061,10 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
   // SEO-12.3.3 Art-07: Subcontratação em licitações — contratos cluster
   {
     slug: 'subcontratacao-licitacoes-regras-lei-14133',
-    title: 'Subcontratação em Licitações 2026: As 3 Regras da Lei 14.133',
+    title: 'Subcontratação em Licitações: limites, riscos e oportunidades pela Lei 14.133',
+    h1: 'Subcontratação em contratos públicos: limites, vedações e como aproveitar oportunidades',
     description:
-      'Lei 14.133 permite subcontratação de até 30% em licitações. Veja as regras completas e monitore editais com subcontratação grátis.',
+      'Regras de subcontratação em contratos públicos: percentual máximo, vedações e responsabilidade.',
     category: 'Guias',
     tags: [
       'subcontratação',

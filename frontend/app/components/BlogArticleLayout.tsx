@@ -234,7 +234,7 @@ export default function BlogArticleLayout({
                 <h1
                   className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-ink leading-tight tracking-tight mb-4 font-serif"
                 >
-                  {article.title}
+                  {article.h1 ?? article.title}
                 </h1>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-secondary">
                   <time dateTime={article.publishDate}>

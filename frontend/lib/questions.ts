@@ -24,6 +24,8 @@ export type QuestionCategory =
 export interface Question {
   slug: string;
   title: string;
+  /** On-page H1, when it should differ from the SEO <title>. Falls back to title. */
+  h1?: string;
   category: QuestionCategory;
   answer: string;
   legalBasis?: string;
@@ -407,7 +409,8 @@ export const QUESTIONS: Question[] = [
   },
   {
     slug: 'prazo-publicacao-edital',
-    title: 'Qual o prazo mínimo de publicação de edital na Lei 14.133?',
+    title: 'Prazo de Publicação de Edital: regras da Lei 14.133/2021',
+    h1: 'Prazos mínimos de publicação de edital por modalidade licitatória',
     category: 'prazos-cronogramas',
     answer:
       'A Lei 14.133/2021 estabelece prazos mínimos entre a publicação do edital e a data de abertura das propostas, variando conforme a modalidade e o critério de julgamento. Esses prazos estão definidos no artigo 55.\n\n' +
@@ -437,7 +440,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: [],
     relatedArticles: [],
     metaDescription:
-      'Prazo mínimo de edital: 8 dias úteis (pregão) a 25 dias úteis (concorrência) — Lei 14.133/2021, art. 55. Consulte editais abertos agora — grátis.',
+      'Prazos mínimos de publicação por modalidade licitatória conforme a Nova Lei de Licitações.',
   },
   {
     slug: 'vigencia-contrato-administrativo',
@@ -765,7 +768,8 @@ export const QUESTIONS: Question[] = [
   },
   {
     slug: 'qualificacao-tecnica-lei-14133',
-    title: 'O que mudou na qualificação técnica com a Lei 14.133?',
+    title: 'Qualificação Técnica em Licitações: exigências da Lei 14.133 com exemplos',
+    h1: 'O que a Lei 14.133 permite exigir como qualificação técnica em licitações',
     category: 'documentacao-habilitacao',
     answer:
       'A Lei 14.133/2021 trouxe mudancas significativas na qualificação técnica exigida em licitações, buscando equilibrar a necessidade de comprovar capacidade com o principio da competitividade. As regras estão no artigo 67.\n\n' +
@@ -789,7 +793,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: ['engenharia', 'construcao'],
     relatedArticles: ['checklist-habilitacao-licitacao-2026'],
     metaDescription:
-      'Veja as mudancas na qualificação técnica da Lei 14.133: novos limites para atestados, soma de experiências e mais.',
+      'O que pode ser exigido como qualificação técnica em pregão, concorrência e RDC. Modelos práticos.',
   },
   {
     slug: 'me-epp-beneficios-licitacao',
@@ -1262,7 +1266,8 @@ export const QUESTIONS: Question[] = [
   },
   {
     slug: 'indice-reajuste-contrato-publico',
-    title: 'Qual índice usar para reajuste de contrato público?',
+    title: 'Índice de Reajuste de Contrato Público: calcule IPCA, INPC e IGP-M',
+    h1: 'Como calcular o reajuste do seu contrato público: IPCA, INPC e IGP-M',
     category: 'precos-propostas',
     answer:
       'O reajuste contratual e a correção periódica dos preços do contrato para compensar a inflação e manter o poder de compra do valor pactuado. A Lei 14.133/2021 trata do reajuste no artigo 92, parágrafo 3, e artigos 134-135.\n\n' +
@@ -1294,7 +1299,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: [],
     relatedArticles: [],
     metaDescription:
-      'Saiba qual índice usar para reajuste de contrato público: IPCA, IGP-M, SINAPI e regras da Lei 14.133/2021.',
+      'Calcule o reajuste do seu contrato público com base nos índices oficiais. Resultado imediato.',
   },
 
   /* ================================================================ */
