@@ -22,7 +22,7 @@ Call 2 — replay of same event_id:
 
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, call
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -122,9 +122,6 @@ class TestIntelReportWebhookReplayIdempotency:
             "status": "completed",
             "received_at": completed_iso,
         }])
-
-        # Global call counter for stripe_webhook_events calls (upsert vs select)
-        events_table_call_index = {"n": 0}
 
         def _make_events_chain():
             """Return a fresh chain wired to the current call index."""
