@@ -30,6 +30,7 @@ from webhooks.handlers.founding import (  # noqa: E402
     _resolve_user_id_from_email,
     _resolve_user_display_name,
     _dispatch_founders_welcome_email,
+    _send_founding_invite,
 )
 
 
@@ -272,6 +273,10 @@ def test_lifetime_metadata_propagation():
 def test_lifetime_deferred_when_profile_not_found(caplog):
     """When user hasn't signed up yet, entitlement defers gracefully — no
     profiles.update call, log says 'deferred — user signup pending'.
+
+    _send_founding_invite is patched here because it has its own set of tests
+    (test_invite_*) and would call .update() on the shared mock, making the
+    assertion on profiles.update meaningless.
     """
     import logging
 
@@ -288,10 +293,11 @@ def test_lifetime_deferred_when_profile_not_found(caplog):
 
     session = _founding_session(email="notregistered@empresa.com")
 
-    with caplog.at_level(logging.INFO, logger="webhooks.handlers.founding"):
+    with patch("webhooks.handlers.founding._send_founding_invite"), \
+         caplog.at_level(logging.INFO, logger="webhooks.handlers.founding"):
         _activate_lifetime_founder_entitlement(direct_sb, session, _DEFAULT_LEAD_ID)
 
-    # update must NOT have been called
+    # profiles.update must NOT have been called
     assert not direct_sb.update.called, "profiles.update should not be called when user missing"
     assert "deferred" in caplog.text or "signup pending" in caplog.text
 
@@ -505,3 +511,102 @@ def test_welcome_email_not_dispatched_when_profile_missing():
         _activate_lifetime_founder_entitlement(direct_sb, session, None)
 
     mock_dispatch.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _send_founding_invite — STORY-863 invite after payment
+# ---------------------------------------------------------------------------
+
+
+def _make_invite_sb(invite_sent_at: str | None = None, raise_idempotency: bool = False) -> MagicMock:
+    """Build a fake supabase client for invite tests.
+
+    ``invite_sent_at`` simulates the current DB value for idempotency.
+    ``raise_idempotency=True`` makes the idempotency select raise an exception.
+    """
+    fake_sb = MagicMock()
+
+    # Table chain
+    t = MagicMock()
+    t.select.return_value = t
+    t.update.return_value = t
+    t.eq.return_value = t
+    t.limit.return_value = t
+
+    if raise_idempotency:
+        t.execute.side_effect = RuntimeError("DB error")
+    else:
+        idempotency_result = MagicMock(data=[{"invite_sent_at": invite_sent_at}])
+        update_result = MagicMock(data=[])
+        t.execute.side_effect = [idempotency_result, update_result]
+
+    fake_sb.table.return_value = t
+
+    # auth.admin.invite_user_by_email — success by default
+    fake_sb.auth = MagicMock()
+    fake_sb.auth.admin = MagicMock()
+    fake_sb.auth.admin.invite_user_by_email = MagicMock(return_value=MagicMock())
+
+    return fake_sb
+
+
+def test_invite_sent_when_user_has_no_account():
+    """When user_id is None (no pre-existing account), invite is dispatched."""
+    fake_sb = _make_invite_sb(invite_sent_at=None)
+    session = _founding_session()
+
+    _send_founding_invite(fake_sb, _DEFAULT_EMAIL, _DEFAULT_LEAD_ID, session)
+
+    fake_sb.auth.admin.invite_user_by_email.assert_called_once()
+    call_args = fake_sb.auth.admin.invite_user_by_email.call_args
+    assert call_args.args[0] == _DEFAULT_EMAIL or call_args[0][0] == _DEFAULT_EMAIL
+    # options data must mark the user as founder
+    options = call_args.kwargs.get("options") or (call_args[1].get("options") if len(call_args) > 1 else {})
+    if options:
+        assert options.get("data", {}).get("is_founder") is True
+
+
+def test_invite_not_sent_when_invite_already_sent(caplog):
+    """Idempotency: if invite_sent_at is set, skip the invite and log."""
+    import logging
+
+    fake_sb = _make_invite_sb(invite_sent_at="2026-05-08T10:00:00+00:00")
+    session = _founding_session()
+
+    with caplog.at_level(logging.INFO, logger="webhooks.handlers.founding"):
+        _send_founding_invite(fake_sb, _DEFAULT_EMAIL, _DEFAULT_LEAD_ID, session)
+
+    # auth.admin.invite_user_by_email must NOT be called
+    fake_sb.auth.admin.invite_user_by_email.assert_not_called()
+    assert "already sent" in caplog.text or "skipping" in caplog.text
+
+
+def test_invite_supabase_error_does_not_raise():
+    """auth.admin.invite_user_by_email failure must not raise — swallowed."""
+    fake_sb = _make_invite_sb(invite_sent_at=None)
+    fake_sb.auth.admin.invite_user_by_email.side_effect = RuntimeError("Supabase admin error")
+
+    session = _founding_session()
+
+    # Must not raise
+    _send_founding_invite(fake_sb, _DEFAULT_EMAIL, _DEFAULT_LEAD_ID, session)
+
+
+def test_invite_sent_when_no_account_via_activate_entitlement():
+    """_activate_lifetime_founder_entitlement calls _send_founding_invite when user is None."""
+    session = _founding_session(email="newfounder@empresa.com")
+
+    with patch("webhooks.handlers.founding._send_founding_invite") as mock_invite:
+        direct_sb = MagicMock()
+        direct_sb.table.return_value = direct_sb
+        direct_sb.select.return_value = direct_sb
+        direct_sb.eq.return_value = direct_sb
+        direct_sb.limit.return_value = direct_sb
+        # profile lookup returns empty — user not yet signed up
+        direct_sb.execute.return_value = MagicMock(data=[])
+
+        _activate_lifetime_founder_entitlement(direct_sb, session, _DEFAULT_LEAD_ID)
+
+        mock_invite.assert_called_once()
+        call_args = mock_invite.call_args
+        assert call_args.args[1] == "newfounder@empresa.com" or call_args[0][1] == "newfounder@empresa.com"

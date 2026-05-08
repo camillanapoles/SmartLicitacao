@@ -274,6 +274,71 @@ def _dispatch_founders_welcome_email(email: str, user_name: str) -> None:
     thread.start()
 
 
+def _send_founding_invite(sb, email: str, lead_id: str | None, session: Any) -> None:
+    """Send a Supabase auth invite to a founding buyer who has no account yet.
+
+    Idempotent: queries ``founding_leads.invite_sent_at`` before sending —
+    skips if the invite has already been dispatched (prevents double-emails on
+    Stripe retry / webhook replay).
+
+    Never raises — a failure here must not break the 200 response to Stripe.
+    """
+    sid = _session_id(session)
+
+    # ---- Idempotency check ----
+    try:
+        filter_col = "id" if lead_id else "email"
+        filter_val = lead_id if lead_id else email
+        res = (
+            sb.table("founding_leads")
+            .select("invite_sent_at")
+            .eq(filter_col, filter_val)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+        if rows and rows[0].get("invite_sent_at") is not None:
+            logger.info(
+                f"founding invite already sent, skipping — "
+                f"email={email[:3]}*** lead_id={lead_id}"
+            )
+            return
+    except Exception as e:
+        logger.warning(
+            f"founding invite: idempotency check failed — will attempt send anyway "
+            f"(email={email[:3]}*** err={e})"
+        )
+
+    # ---- Send invite via Supabase Admin API ----
+    try:
+        sb.auth.admin.invite_user_by_email(
+            email,
+            options={"data": {"is_founder": True, "lead_id": lead_id}},
+        )
+        logger.info(
+            f"founding invite sent — email={email[:3]}*** session_id={sid}"
+        )
+    except Exception as e:
+        logger.error(
+            f"founding invite: auth.admin.invite_user_by_email failed — "
+            f"email={email[:3]}*** lead_id={lead_id} err={e}"
+        )
+        return
+
+    # ---- Record invite timestamp ----
+    try:
+        filter_col = "id" if lead_id else "email"
+        filter_val = lead_id if lead_id else email
+        sb.table("founding_leads").update(
+            {"invite_sent_at": datetime.now(timezone.utc).isoformat()}
+        ).eq(filter_col, filter_val).execute()
+    except Exception as e:
+        logger.error(
+            f"founding invite: failed to record invite_sent_at — "
+            f"lead_id={lead_id} err={e}"
+        )
+
+
 def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None) -> None:
     """Upsert the lifetime founder entitlement on ``profiles``.
 
@@ -305,6 +370,7 @@ def _activate_lifetime_founder_entitlement(sb, session: Any, lead_id: str | None
             f"founding lifetime activation deferred — user signup pending "
             f"(session_id={sid} email={email} lead_id={lead_id})"
         )
+        _send_founding_invite(sb, email, lead_id, session)
         return
 
     consulting_discount_pct = _read_consulting_discount_pct(sb)
