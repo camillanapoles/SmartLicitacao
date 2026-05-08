@@ -1,3 +1,9 @@
+---
+paths:
+  - "backend/**"
+  - "frontend/**"
+---
+
 # Architecture Detail — SmartLic Backend & Frontend
 
 ## Backend Architecture (backend/)

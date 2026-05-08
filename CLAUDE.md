@@ -312,225 +312,23 @@ git add frontend/app/api-types.generated.ts
 
 ## Key Architecture Patterns
 
-### Data Architecture (3 Layers)
+**3-layer data architecture:** Ingestion ETL (pncp_raw_bids 1.5M rows, 400d retention) → Search Pipeline (datalake RPC <100ms p95, SSE async) → Results Cache (L1 InMemoryCache 4h + L2 Supabase 24h, SWR reactive). LLM classification tiers (keyword > llm_standard > llm_zero_match). ARQ background jobs for summaries/Excel.
 
-**Layer 1: Periodic Ingestion (ETL → Supabase)**
-- ARQ cron jobs: full daily (2am BRT), incremental 3x/day (8am/2pm/8pm BRT), purge daily (4am BRT)
-- Table `pncp_raw_bids` (~1.5M rows @ 400d): open + historical bids — content_hash dedup, GIN full-text index (Portuguese), **400-day retention** (STORY-OBS-001 — required by observatório/SEO programmatic pages)
-- Table `pncp_supplier_contracts` (~2M+ rows): historical contracts feeding SEO organic inbound (drives 10k+ programmatic ISR pages) — 3x/week full crawl (mon/wed/fri 06 UTC), incremental same days {12,18,0}h UTC
-- Config: `backend/ingestion/` (config, crawler, transformer, loader, checkpoint, scheduler)
-- Checkpoint tracking: `ingestion_checkpoints` + `ingestion_runs` tables for resumable crawls
-- Feature flag: `DATALAKE_ENABLED` (default true)
-
-**Layer 2: Search Pipeline (queries local DB, NOT live APIs)**
-- `DATALAKE_QUERY_ENABLED=true` (default): `execute.py` → `query_datalake()` → `search_datalake` RPC
-- PostgreSQL full-text search (tsquery Portuguese) with UF/date/modality/value/esfera filters, returns <100ms at p95
-- Fallback: if datalake returns 0 results, falls through to live multi-source API fetch
-- Async-first (CRIT-072): POST /buscar → 202 in <2s, results via SSE + polling
-- SSE chain: bodyTimeout(0) + heartbeat(15s) > Railway idle(60s) | SSE inactivity timeout(120s)
-
-**Layer 3: Search Results Cache (passive, per-request)**
-- L1: InMemoryCache (4h, hot/warm/cold priority)
-- L2: Supabase `search_results_cache` (24h, persistent)
-- SWR (per-request reactive): when a request touches a stale entry (6-24h), serve stale + trigger background revalidation in `cache/swr.py::trigger_background_revalidation` (max 3 concurrent, 180s timeout)
-- **No proactive warming.** Cache warming jobs (startup/cron/coverage-check) were deprecated 2026-04-18 (STORY-CIG-BE-cache-warming-deprecate). DataLake query latency <100ms made pre-population overhead pure waste. Cache populates on-demand from real user requests.
-
-**Legacy Fallback: Live API Fetch (only when datalake returns 0 or DATALAKE_QUERY_ENABLED=false)**
-- `pncp_client.py` (PNCP), `portal_compras_client.py` (PCP v2), `compras_gov_client.py` (ComprasGov v3)
-- Per-source circuit breakers, priority-based dedup (PNCP=1 > PCP=2), phased UF batching
-- Timeout chain: ARQ Job(300s) > Pipeline(110s) > Consolidation(100s) > PerSource(80s) > PerUF(30s)
-
-### LLM Classification
-- Keywords match -> "keyword" source (>5% density)
-- Low density -> "llm_standard" (2-5%), "llm_conservative" (1-2%)
-- Zero match -> "llm_zero_match" (GPT-4.1-nano YES/NO)
-- Fallback = PENDING_REVIEW on LLM failure when `LLM_FALLBACK_PENDING_ENABLED=true` (gray zone + zero-match); hard REJECT when disabled
-- Classification SLA: precision >= 85%, recall >= 70% (benchmark-validated, 15 samples/sector). NOT zero FN/FP — impossible with ambiguous government text.
-- Observability: `smartlic_filter_decisions_by_setor_total`, `smartlic_llm_fallback_rejects_total`, `smartlic_feedback_negative_total` Prometheus counters
-
-### SSE Progress Tracking
-- `search_id` links SSE stream to POST request
-- Dual-connection: `GET /buscar-progress/{id}` (SSE) + `POST /buscar` (JSON)
-- In-memory asyncio.Queue-based tracker
-- Frontend graceful fallback: if SSE fails, uses time-based simulation
-
-### ARQ Job Queue
-- LLM summaries + Excel generation dispatched as background jobs
-- Immediate response with fallback summary (`gerar_resumo_fallback()`)
-- SSE events `llm_ready` / `excel_ready` update result in real-time
-- Web + Worker separated via `PROCESS_TYPE` in `start.sh`
-
-For detailed module tables and route maps, see `.claude/rules/architecture-detail.md` (auto-loaded).
+Full details: `.claude/rules/architecture-patterns.md` (loads with `backend/**` or `frontend/**`). Module tables + route maps: `.claude/rules/architecture-detail.md` (same paths).
 
 ## Critical Implementation Notes
 
-### Ingestion Pipeline (Layer 1)
-- **Schedule:** Full crawl daily 5 UTC (2am BRT), incremental 11/17/23 UTC, purge 7 UTC
-- **Scope:** 27 UFs × 6 modalidades (4,5,6,7,8,12), 10-day window (full), 3-day (incremental)
-- **Concurrency:** 5 UFs parallel, 2s delay between batches, max 50 pages per (UF, modalidade)
-- **Upsert:** 500 rows/batch via `upsert_pncp_raw_bids` RPC with content_hash dedup
-- **Retention:** 400 days (STORY-OBS-001 — hard-delete via `purge_old_bids(400)` pg_cron daily 07 UTC). Previously 12d; bumped because `/observatorio/raio-x-*` and other programmatic SEO routes (alertas, municipios, orgao) query historical windows and were rendering 200 OK with zero data.
-- **Tables:** `pncp_raw_bids` (data), `ingestion_checkpoints` (progress), `ingestion_runs` (audit)
-- **Worker:** `PROCESS_TYPE=worker` → `arq job_queue.WorkerSettings`
-- **pg_cron backup (STORY-1.2):** `purge-old-bids` scheduled via `cron.schedule('purge-old-bids', '0 7 * * *', ...)` — runs server-side even if Railway worker is offline. Monitored by STORY-1.1.
-
-### pg_cron Monitoring (STORY-1.1 EPIC-TD-2026Q2)
-
-All scheduled pg_cron jobs (purge-old-bids, cleanup-search-cache, cleanup-search-store, and any future additions) are monitored end-to-end:
-
-- **View:** `public.cron_job_health` joins `cron.job` + `cron.job_run_details` over a 7-day window.
-- **RPC:** `public.get_cron_health()` (SECURITY DEFINER) — invoked by backend only.
-- **Endpoint:** `GET /v1/admin/cron-status` (admin-only) returns JSON snapshot — shape `{status, count, jobs: [{jobname, last_status, last_run_at, runs_24h, failures_24h, latency_avg_ms}]}`.
-- **Alerting:** hourly ARQ cron `cron_monitoring_job` (in `backend/jobs/cron/cron_monitor.py`) emits a Sentry `capture_message(level="error")` for any job that is `failed` or stale (>25h since last run). Fingerprint `["cron_job", jobname, reason]` dedups across runs.
-
-**To add a new scheduled cron:**
-1. Create a migration `supabase/migrations/YYYYMMDDHHMMSS_schedule_<name>.sql` calling `cron.schedule(...)`.
-2. That's it — the existing monitor will start checking the new job on the next hourly tick. No code changes required unless you want custom thresholds.
-
-### PNCP API (used by ingestion + legacy fallback)
-- **Max tamanhoPagina = 50** (reduced from 500 in Feb 2026, >50 -> HTTP 400 silent)
-- Search period default: 10 days (frontend + backend)
-- Phased UF batching: PNCP_BATCH_SIZE=5, PNCP_BATCH_DELAY_S=2.0
-- Retry: exponential backoff, HTTP 422 is retryable (max 1 retry)
-- Circuit breaker: 15 failures threshold, 60s cooldown
-- Fast health canary (`backend/health.py`) validates `tamanhoPagina=50` succeeds (production value) + delegates to `pncp_canary.validate_page_size_limit` to probe `tamanhoPagina=51` on every health cycle.
-
-### PNCP Breaking Change Canary (STORY-4.5)
-
-Background ARQ cron in `backend/jobs/cron/pncp_canary.py` runs every `PNCP_CANARY_INTERVAL_S` seconds (default 600s = 10 min) and triggers Sentry fatal alerts when:
-
-| Reason | Probe | Sentry gate |
-|--------|-------|-------------|
-| `max_page_size_changed` | `tamanhoPagina=51` accepted (HTTP < 400) | immediate (1 occurrence) |
-| `canary_3x_failed` | `tamanhoPagina=50` fails or returns non-JSON for 3 consecutive runs | threshold gated |
-| `shape_drift` | `tamanhoPagina=50` payload fails `backend/contracts/schemas/pncp_search_response.schema.json` | immediate |
-
-Dedup: each reason uses a Redis flag with 6h TTL so operators get one Sentry event per incident, not 36/day. Tags: `pncp_breaking_change={reason}`, `source=pncp`. Fingerprint: `["pncp_canary", reason]`.
-
-Metrics (Prometheus): `smartlic_pncp_max_page_size_changed_total`, `smartlic_pncp_canary_consecutive_failures`, `smartlic_pncp_canary_shape_drift_total`. Disable the cron with `PNCP_CANARY_INTERVAL_S=0`; raise/lower the threshold via `PNCP_CANARY_FAIL_THRESHOLD` (default 3).
-
-### PCP v2 (Secondary)
-- No auth required (fully public v2 API)
-- Fixed 10/page pagination (`pageCount`/`nextPage`)
-- Client-side UF filtering only (no server-side UF param)
-- `valor_estimado=0.0` (v2 has no value data)
-
-### ComprasGov v3 (Tertiary)
-- Dual-endpoint: legacy + Lei 14.133
-- Base URL: `dadosabertos.compras.gov.br`
-
-### Filtering Pipeline (order matters — fail-fast)
-1. UF check (fastest)
-2. Value range check
-3. Keyword matching (density scoring)
-4. LLM zero-match classification (for 0% keyword density)
-5. Status/date validation
-6. Viability assessment (post-filter)
-
-**Feature Flags:** `DATALAKE_ENABLED`, `DATALAKE_QUERY_ENABLED`, `LLM_ZERO_MATCH_ENABLED`, `LLM_ARBITER_ENABLED`, `VIABILITY_ASSESSMENT_ENABLED`, `SYNONYM_MATCHING_ENABLED`
-
-### LLM Integration
-- GPT-4.1-nano for classification + summaries
-- Zero-match prompt: `_build_zero_match_prompt()` in `llm_arbiter/zero_match.py` (`llm_arbiter/` is a package — classification.py, zero_match.py, async_runtime.py, batch_api.py, prompt_builder.py)
-- Fallback = PENDING_REVIEW on failure (gray zone + zero-match) when `LLM_FALLBACK_PENDING_ENABLED=true`; REJECT when disabled
-- ARQ background jobs for summaries (immediate fallback response)
-- ThreadPoolExecutor(max_workers=10) for parallel LLM calls
-
-### Cache Strategy (Layer 3 — caches search results, NOT raw bids)
-- L1 InMemoryCache: 4h TTL, hot/warm/cold priority
-- L2 Supabase `search_results_cache`: 24h TTL, persistent
-- Fresh (0-6h) -> Stale (6-24h, served + background refresh) -> Expired (>24h, not served)
-- Patch `supabase_client.get_supabase` for cache tests (not `search_cache.get_supabase`)
-
-### Billing & Auth
-- **Pricing (STORY-277/360):** SmartLic Pro R$397/mes (mensal), R$357/mes (semestral, 10% off), R$297/mes (anual, 25% off). Consultoria R$997/mes, R$897/sem (10%), R$797/anual (20%). Source of truth: `plan_billing_periods` table (synced from Stripe)
-- **Trial:** 14 dias gratis (STORY-264/277/319), sem cartao
-- Stripe handles proration automatically — NO custom prorata code
-- "Fail to last known plan": never fall back to free_trial on DB errors
-- 3-day grace period for subscription gaps (`SUBSCRIPTION_GRACE_DAYS`)
-- ALL Stripe webhook handlers sync `profiles.plan_type`
-- Frontend localStorage plan cache (1hr TTL) prevents UI downgrades
-- Tests mocking `/buscar` MUST also mock `check_and_increment_quota_atomic`
-
-### Railway/Gunicorn Critical Notes
-- **Railway hard timeout: ~120s** — requests exceeding this are killed by Railway proxy
-- Gunicorn timeout: 180s (env var `GUNICORN_TIMEOUT` overrides)
-- Sync PNCPClient fallback wrapped in `asyncio.to_thread()` — never blocks event loop
-- Gunicorn keep-alive: 75s (> Railway proxy 60s) prevents intermittent 502s
-
-#### Runner History (CRIT-083 → CRIT-084 → RES-BE-016)
-- **CRIT-083:** Gunicorn prefork (os.fork) + `cryptography>=46` OpenSSL C bindings = SIGSEGV on POST requests (TLS handshake in forked child). GET worked; POST crashed.
-- **CRIT-084 (active):** Switched to `RUNNER=uvicorn` with `--workers` flag. uvicorn uses `multiprocessing.spawn()` not `os.fork()`, eliminating the SIGSEGV. Gunicorn config still present in `start.sh` but NOT active.
-- **RES-BE-016 AC4 (active):** Route-level asyncio timeout middleware at 60s (`ROUTE_TIMEOUT_S`). Returns 503 + Retry-After:5 before Railway's 120s proxy kill, freeing the event loop. **Underlying threads continue** until Supabase `statement_timeout=15s` kills the query — this is expected (asyncio.wait_for + Starlette's internal asyncio.shield means the route coroutine keeps running). SSE/search-polling/health/webhooks exempt via `_ROUTE_TIMEOUT_EXEMPT_PREFIXES`.
-- **AC1 (NOT executed):** Gunicorn staging validation requires `cryptography` to be fork-safe. `requirements.txt` explicitly marks it NOT fork-safe — skip AC1, AC4 is the correct path.
-- **Rollback:** Set `ROUTE_TIMEOUT_S=0` in Railway env to disable middleware without deploy.
-- **Re-validation cadence:** If `cryptography` drops its OpenSSL fork restriction in a future release (check release notes), re-run AC1 staging test before switching back to Gunicorn.
-- **Sentry alert:** `rate(smartlic_route_timeout_total[1h]) > 10` indicates routes not covered by `_run_with_budget` (budget module should catch these first).
-
-### Time Budget Waterfall (STORY-4.4 TD-SYS-003)
-
-Defaults tightened in `backend/config/pncp.py` so the inner timeout always expires before Railway kills the request — leaving ~20s headroom for response serialization:
-
-```
-Railway proxy     [========================== 120s ==========================]
-Gunicorn worker   [======================= 110s ========================]
-Pipeline budget   [==================== 100s ====================]
-  Consolidation   [================== 90s ===================]
-    PerSource     [============= 70s =============]
-      PerUF       [===== 25s =====]
-        httpx r/w [10c+15r]
-```
-
-Invariant (enforced by `backend/tests/test_timeout_invariants.py`): `pipeline(100) > consolidation(90) > per_source(70) > per_uf(25) > (per_modality 20 + httpx 15)`.
-
-Both knobs (`config/pncp.py` and `source_config/sources.ConsolidationConfig`) now share defaults — the "divergência 300s vs 100s" documented pre-STORY-4.4 is resolved.
-
-Pipeline call sites go through `backend/pipeline/budget.py::_run_with_budget` so every TimeoutError increments `smartlic_pipeline_budget_exceeded_total{phase,source}`. Query `histogram_quantile(0.95, rate(smartlic_pipeline_duration_seconds_bucket[5m]))` for the current p95; alert `rate(smartlic_pipeline_budget_exceeded_total[5m]) > 0`.
-
-To unblock a specific deploy (emergency), override via Railway vars: `PIPELINE_TIMEOUT=110`, `CONSOLIDATION_TIMEOUT=100`, `PNCP_TIMEOUT_PER_SOURCE=80`, etc. — no code change needed.
-
-### Type Safety
-- **Python:** Type hints on all functions, Pydantic for API contracts, pattern validation for dates
-- **TypeScript:** Interfaces over types, no `any`, strict null checks enabled
+Full details in `.claude/rules/critical-impl-notes.md` (loads with `backend/**` or `supabase/**`). Covers: ingestion pipeline (27 UFs × 6 modalidades, 400d retention), pg_cron monitoring, PNCP/PCP/ComprasGov API quirks (tamanhoPagina=50 hard limit), filtering pipeline order, LLM integration, cache strategy, billing/auth, Railway runner history (CRIT-083→084→RES-BE-016), time budget waterfall (pipeline 100s > per_source 70s > per_uf 25s), resilience CI gates.
 
 ## Testing Strategy
 
-### Backend (backend/tests/)
+**Stats:** 454 backend test files (5131+ passing), 376 frontend test files (2681+ passing), 60 E2E tests. Zero-failure policy — fix all failures, never treat as pre-existing.
 
-**454 test files, 5131+ passing (last verified), 0 failures** — CI gate: `.github/workflows/backend-tests.yml`
-
-**Zero-Failure Policy:** 0 failures is the only acceptable baseline. Fix them, never treat as "pre-existing".
-
-**Key Testing Patterns (IMPORTANT — wrong mocks cause hard-to-debug failures):**
-- Auth: Use `app.dependency_overrides[require_auth]` NOT `patch("routes.X.require_auth")`
-- Cache: Patch `supabase_client.get_supabase` (not `search_cache.get_supabase`)
-- Config: Use `@patch("config.FLAG_NAME", False)` not `os.environ`
-- LLM: Mock at `@patch("llm_arbiter._get_client")` level
-- Quota: Tests mocking `/buscar` MUST also mock `check_and_increment_quota_atomic`
-- ARQ: Mock with `sys.modules["arq"]` (not installed locally). Conftest autouse fixture `_isolate_arq_module` handles cleanup automatically — do NOT do raw `sys.modules["arq"] = ...` without cleanup
-
-**Anti-Hang Rules (CRITICAL — violations cause full-suite freezes):**
-- **pytest-timeout**: Every test has a 30s timeout (`pyproject.toml`). Override with `@pytest.mark.timeout(60)` for slow integration tests
-- **NEVER use `asyncio.get_event_loop().run_until_complete()`** in tests — use `async def` + `@pytest.mark.asyncio` instead
-- **NEVER use `sys.modules["arq"] = MagicMock()`** without cleanup — the conftest fixture handles isolation automatically
-- **Fire-and-forget tasks**: Conftest `_cleanup_pending_async_tasks` cancels lingering `asyncio.create_task()` after each test
-- **subprocess in tests**: Always use `timeout` parameter in `Popen.communicate()` and clean up with `proc.kill()`
-- **Full-suite validation**: Run `pytest --timeout=30 -q` periodically to catch hanging tests early
-- **timeout_method = "thread"**: Required for Windows compatibility (signal method is Unix-only)
-
-### Frontend (frontend/__tests__/)
-
-**376 test files, 2681+ passing (last verified), 0 failures** — CI gate: `.github/workflows/frontend-tests.yml`
-
-**jest.setup.js polyfills:** `crypto.randomUUID` + `EventSource` (jsdom lacks both)
-
-### E2E (Playwright)
-
-**60 critical user flow tests** in `frontend/e2e-tests/`. CI: `.github/workflows/e2e.yml`
+Full patterns in `.claude/rules/testing-strategy.md` (loads with test files). Key: mock auth via `dependency_overrides`, patch `supabase_client.get_supabase` for cache, never `asyncio.get_event_loop().run_until_complete()` in tests (hangs).
 
 ## AIOS Framework & Agents
 
-This project uses the AIOS Framework for AI-orchestrated development. Full agent, task, workflow, and script documentation is in `.claude/rules/aios-framework.md` (auto-loaded).
+This project uses the AIOS Framework for AI-orchestrated development. Full agent, task, workflow, and script documentation is in `.claude/rules/aios-framework.md` (loads with `docs/stories/**`, `.aios-core/**`).
 
 **Quick Reference:**
 - Agents: `@dev`, `@qa`, `@architect`, `@pm`, `@devops`, `@data-engineer`, `@ux-design-expert`, `@analyst`, `@sm`, `@po`, `@aios-master`
@@ -540,7 +338,7 @@ This project uses the AIOS Framework for AI-orchestrated development. Full agent
 
 ## Common Development Recipes
 
-For step-by-step procedures (adding filters, modifying Excel, changing LLM prompts, syncing sectors), see `.claude/rules/dev-recipes.md` (auto-loaded).
+For step-by-step procedures (adding filters, modifying Excel, changing LLM prompts, syncing sectors), see `.claude/rules/dev-recipes.md` (loads with `backend/**`, `frontend/**`).
 
 ## Security Notes
 
@@ -586,11 +384,4 @@ Three-layer defense against unapplied migrations (prevents CRIT-039/CRIT-045 rec
 
 ## Resilience CI Gates (EPIC-RES-BE-2026-Q2)
 
-Determinístic gates derived from the 2026-04-27 → 2026-04-30 outage cycle (Stages 2–8). Each gate operationalises a specific incident memory as a system check.
-
-| Gate | Workflow | Origem | Failure mode |
-|---|---|---|---|
-| `.execute()` without `_run_with_budget` | `audit-execute-without-budget.yml` (RES-BE-001/015) | Stage 2-8 wedge (sync `.execute()` in async route) | Hard fail on PR; sticky comment + inline annotations |
-| Railway prod env vars drift | `audit-prod-env.yml` (RES-BE-013) | Stage 2 — `PYTHONASYNCIODEBUG=1` in prod with no PR trail (memory `feedback_audit_env_vars_after_incident`) | Daily cron + manual dispatch; advisory only — see `docs/runbooks/audit-prod-env.md` |
-
-Both gates accept decremental baselines: shrinking the violation set is always allowed; growing it fails the gate. Adding entries to `prod-env-blocklist.txt` requires `@architect` + `@devops` review.
+Two deterministic gates from 2026-04-27→30 outage: (1) `audit-execute-without-budget.yml` — blocks PRs with `.execute()` outside `_run_with_budget`; (2) `audit-prod-env.yml` — daily drift check for debug flags in Railway prod. Full details in `.claude/rules/critical-impl-notes.md`.

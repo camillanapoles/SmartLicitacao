@@ -1,3 +1,11 @@
+---
+paths:
+  - "docs/stories/**"
+  - ".aios-core/**"
+  - ".aiox-core/**"
+  - "squads/**"
+---
+
 # AIOS Framework Integration
 
 This project uses the AIOS Framework for AI-orchestrated development.

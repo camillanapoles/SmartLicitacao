@@ -1,3 +1,10 @@
+---
+paths:
+  - "docs/stories/**"
+  - ".aios-core/**"
+  - ".aiox-core/**"
+---
+
 # Agent Authority — Detailed Rules
 
 ## Delegation Matrix

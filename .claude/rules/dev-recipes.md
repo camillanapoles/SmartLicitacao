@@ -1,3 +1,9 @@
+---
+paths:
+  - "backend/**"
+  - "frontend/**"
+---
+
 # Development Recipes — SmartLic
 
 Common step-by-step procedures for recurring development tasks.

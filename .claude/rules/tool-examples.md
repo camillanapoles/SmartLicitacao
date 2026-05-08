@@ -1,3 +1,12 @@
+---
+paths:
+  - "backend/**"
+  - "frontend/**"
+  - "supabase/**"
+  - ".aios-core/**"
+  - ".aiox-core/**"
+---
+
 # Tool Input Examples — Selection Guidance
 
 ## Purpose

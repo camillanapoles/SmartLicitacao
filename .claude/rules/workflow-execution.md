@@ -1,3 +1,10 @@
+---
+paths:
+  - "docs/stories/**"
+  - ".aios-core/**"
+  - ".aiox-core/**"
+---
+
 # Workflow Execution — Detailed Rules
 
 ## Task-First Principle

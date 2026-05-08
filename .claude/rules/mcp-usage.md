@@ -1,5 +1,10 @@
 ---
-paths: **/*
+paths:
+  - "backend/**"
+  - "frontend/**"
+  - "supabase/**"
+  - ".aios-core/**"
+  - ".aiox-core/**"
 ---
 
 # MCP Server Usage Rules - AIOX Architecture
