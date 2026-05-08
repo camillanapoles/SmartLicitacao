@@ -19196,7 +19196,7 @@
     },
     "/v1/intel-reports/{purchase_id}": {
       "get": {
-        "description": "Poll status of an Intel Report purchase.\n\nFrontend uses this endpoint after being redirected back from Stripe\n(/intel-reports/{CHECKOUT_SESSION_ID}?status=processing).\nPoll until status is \"completed\" or \"failed\".",
+        "description": "Poll status of an Intel Report purchase.\n\nFrontend uses this endpoint after being redirected back from Stripe\n(/intel-reports/{CHECKOUT_SESSION_ID}?status=processing).\nPoll until status is \"ready\" or \"failed\".\n\nReturns:\n- 404 if purchase does not exist\n- 403 if purchase belongs to a different user",
         "operationId": "get_intel_report_status_v1_intel_reports__purchase_id__get",
         "parameters": [
           {
@@ -19244,7 +19244,7 @@
     },
     "/v1/intel-reports/{purchase_id}/download": {
       "get": {
-        "description": "Stream the Intel Report PDF.\n\nRequires:\n- Authentication\n- Ownership: purchase must belong to the authenticated user\n- Status: purchase must be \"completed\" (pdf_url present)\n\nReturns the PDF as a streaming attachment.",
+        "description": "Stream the Intel Report PDF.\n\nRequires:\n- Authentication\n- Ownership: purchase must belong to the authenticated user\n- Status: purchase must be \"ready\" (pdf_url present)\n\nReturns:\n- 401 if not authenticated\n- 404 if purchase does not exist\n- 403 if purchase belongs to a different user\n- 400 if purchase status is not \"ready\"\n- PDF stream if all checks pass",
         "operationId": "download_intel_report_v1_intel_reports__purchase_id__download_get",
         "parameters": [
           {

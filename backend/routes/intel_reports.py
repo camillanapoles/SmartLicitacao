@@ -113,20 +113,30 @@ async def get_intel_report_status(
 
     Frontend uses this endpoint after being redirected back from Stripe
     (/intel-reports/{CHECKOUT_SESSION_ID}?status=processing).
-    Poll until status is "completed" or "failed".
+    Poll until status is "ready" or "failed".
+
+    Returns:
+    - 404 if purchase does not exist
+    - 403 if purchase belongs to a different user
     """
+    # First: look up by id only (without user_id filter) to distinguish 404 vs 403
     result = await sb_execute(
         db.table("intel_report_purchases")
         .select("id, user_id, status, pdf_url, expires_at")
         .eq("id", purchase_id)
-        .eq("user_id", user["id"])  # ownership check
         .single()
     )
 
     if not result.data:
         raise HTTPException(
             status_code=404,
-            detail="Compra não encontrada ou não pertence ao usuário autenticado.",
+            detail="Compra não encontrada.",
+        )
+
+    if result.data["user_id"] != user["id"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso negado: esta compra não pertence ao usuário autenticado.",
         )
 
     purchase = result.data
@@ -148,29 +158,40 @@ async def download_intel_report(
     Requires:
     - Authentication
     - Ownership: purchase must belong to the authenticated user
-    - Status: purchase must be "completed" (pdf_url present)
+    - Status: purchase must be "ready" (pdf_url present)
 
-    Returns the PDF as a streaming attachment.
+    Returns:
+    - 401 if not authenticated
+    - 404 if purchase does not exist
+    - 403 if purchase belongs to a different user
+    - 400 if purchase status is not "ready"
+    - PDF stream if all checks pass
     """
     import httpx
 
+    # First: look up by id only (without user_id filter) to distinguish 404 vs 403
     result = await sb_execute(
         db.table("intel_report_purchases")
         .select("id, user_id, status, pdf_url")
         .eq("id", purchase_id)
-        .eq("user_id", user["id"])  # ownership check
         .single()
     )
 
     if not result.data:
         raise HTTPException(
             status_code=404,
-            detail="Compra não encontrada ou não pertence ao usuário autenticado.",
+            detail="Compra não encontrada.",
+        )
+
+    if result.data["user_id"] != user["id"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso negado: este relatório não pertence ao usuário autenticado.",
         )
 
     purchase = result.data
 
-    if purchase["status"] != "completed":
+    if purchase["status"] != "ready":
         raise HTTPException(
             status_code=400,
             detail=f"Relatório ainda não disponível (status={purchase['status']}). "

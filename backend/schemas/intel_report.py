@@ -33,7 +33,7 @@ class IntelReportPurchase(BaseModel):
     user_id: str
     product_type: str
     entity_key: str
-    status: str  # "pending" | "completed" | "failed"
+    status: str  # "pending" | "generating" | "ready" | "failed"
     pdf_url: Optional[str] = None
     created_at: str
     expires_at: Optional[str] = None
@@ -49,6 +49,6 @@ class IntelReportCheckoutResponse(BaseModel):
 class IntelReportStatusResponse(BaseModel):
     """Response for GET /v1/intel-reports/{purchase_id}."""
 
-    status: str  # "pending" | "processing" | "completed" | "failed"
+    status: str  # "pending" | "generating" | "ready" | "failed"
     pdf_url: Optional[str] = None
     expires_at: Optional[str] = None
