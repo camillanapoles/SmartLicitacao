@@ -5,34 +5,34 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    title: 'Busca multi-fonte unificada',
+    title: 'Encontra licitações do seu setor automaticamente',
     description:
-      'Fontes oficiais consolidadas em uma busca unificada com deduplicação automática.',
+      'Agrega PNCP, ComprasGov e Portal de Compras Públicas em uma busca única — sem abrir três portais, sem duplicatas.',
   },
   {
-    title: 'Classificação por IA',
+    title: 'IA classifica relevância — você só vê o que importa',
     description:
-      'GPT-4.1-nano classifica relevância setorial com precisão ≥85%. Menos falso positivo, menos tempo perdido.',
+      'Classificação setorial com precisão ≥85%. Menos tempo em editais irrelevantes, mais tempo elaborando propostas.',
   },
   {
-    title: 'Análise de viabilidade',
+    title: 'Análise de viabilidade em 4 fatores',
     description:
-      'Quatro fatores (modalidade, timeline, valor, geografia) pontuam cada edital antes de você abrir o PDF.',
+      'Modalidade, timeline, valor e geografia pontuam cada edital antes de você abrir o PDF. Decida em segundos se vale a pena.',
   },
   {
-    title: 'Pipeline Kanban',
+    title: 'Pipeline Kanban de oportunidades',
     description:
-      'Gestão de oportunidades com drag-and-drop. Do radar à proposta enviada em uma tela.',
+      'Do radar até a proposta enviada em uma tela. Acompanhe cada edital com drag-and-drop sem planilha paralela.',
   },
   {
-    title: 'Relatórios Excel + IA',
+    title: 'Relatórios Excel prontos para apresentar',
     description:
-      'Excel estilizado + resumo executivo gerado por IA para cada busca. Pronto para apresentar ao time.',
+      'Exporte resultados formatados com resumo executivo gerado por IA. Leve para a reunião sem trabalho extra.',
   },
   {
-    title: '2 milhões de contratos indexados',
+    title: 'Histórico de 2 milhões de contratos públicos',
     description:
-      'Histórico de licitações para benchmark de preço, mapeamento de concorrentes e análise de mercado B2G.',
+      'Benchmarke preços, mapeie concorrentes e entenda o mercado B2G antes de entrar em qualquer disputa.',
   },
 ];
 

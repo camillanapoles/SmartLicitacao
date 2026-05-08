@@ -25,32 +25,30 @@ describe('FundadoresClient', () => {
   it('contains the hero headline', () => {
     render(<FundadoresClient />);
     expect(
-      screen.getByText(/Entre cedo na infraestrutura de inteligência B2G do SmartLic/i)
+      screen.getByText(/Pare de perder licitações por falta de informação/i)
     ).toBeInTheDocument();
   });
 
-  it('contains the CTA "Garantir acesso"', () => {
+  it('contains the CTA "Garantir acesso vitalício"', () => {
     render(<FundadoresClient />);
-    // There are two FundadoresForm instances (hero + CTA final) — both should have the button
-    const ctaButtons = screen.getAllByText(/Garantir acesso/i);
+    const ctaButtons = screen.getAllByText(/Garantir acesso vitalício/i);
     expect(ctaButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('contains sub-headline about vitalício access', () => {
+  it('contains urgency copy about encerra date', () => {
     render(<FundadoresClient />);
-    expect(
-      screen.getByText(/Acesso vitalício antes da estrutura comercial definitiva/i)
-    ).toBeInTheDocument();
+    const matches = screen.getAllByText(/Encerra 30\/06\/2026/i);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('contains "Menos PDF. Mais decisão." message', () => {
+  it('contains comparison section headline', () => {
     render(<FundadoresClient />);
-    expect(screen.getByText(/Menos PDF\. Mais decisão\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Fundador vs Assinatura recorrente/i)).toBeInTheDocument();
   });
 
-  it('contains "A IA encontra. A inteligência decide." message', () => {
+  it('contains "Por que empresas B2G perdem licitações" section', () => {
     render(<FundadoresClient />);
-    expect(screen.getByText(/A IA encontra\. A inteligência decide\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Por que empresas B2G perdem licitações/i)).toBeInTheDocument();
   });
 
   it('contains "Ajude a financiar a próxima fase" message', () => {

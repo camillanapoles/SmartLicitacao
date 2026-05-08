@@ -9,28 +9,28 @@ interface FaqItem {
 
 const FAQS: FaqItem[] = [
   {
-    q: 'O que está incluído no Plano Fundadores?',
-    a: 'Acesso vitalício à plataforma SmartLic (busca multi-fonte, classificação IA, pipeline kanban, relatórios Excel, análise de viabilidade). Pagamento único de R$997 — sem mensalidade, sem surpresas.',
+    q: 'R$997 é muito — e se eu não usar?',
+    a: 'Quanto vale uma licitação ganha? Para a maioria das empresas B2G, o ROI aparece no primeiro contrato obtido com informação melhor. E sem mensalidade, não existe risco de esquecer de cancelar: você paga uma vez e o acesso está lá quando precisar.',
   },
   {
-    q: 'Qual a diferença entre Fundador e assinante regular?',
-    a: 'O assinante regular paga R$397/mês (Pro) ou R$997/mês (Consultoria) recorrente. O Fundador paga R$997 uma única vez e tem acesso permanente, incluindo todas as atualizações futuras da plataforma.',
+    q: 'Plano vitalício parece arriscado — e se a empresa fechar?',
+    a: 'O SmartLic está em produção com clientes reais e infraestrutura estável (Railway + Supabase). Mas, mais importante: seu acesso não depende de renovação — está ativado permanentemente na sua conta. Se quiser transparência sobre a saúde do produto, é só perguntar.',
   },
   {
-    q: 'Posso cancelar ou pedir reembolso?',
-    a: 'Sim. Oferecemos 7 dias de garantia. Se não ficar satisfeito por qualquer motivo dentro deste prazo, devolvemos 100% do valor pago sem questionamentos.',
+    q: 'O que exatamente está incluído no plano vitalício?',
+    a: 'Busca unificada nos três principais portais (PNCP, ComprasGov, Portal de Compras Públicas), classificação por IA para o seu setor, análise de viabilidade em 4 fatores, pipeline Kanban para acompanhar oportunidades, relatórios Excel estilizados, e todas as novas funcionalidades lançadas futuramente — sem custo adicional.',
   },
   {
-    q: 'O SmartLic funciona para meu setor?',
-    a: 'O SmartLic cobre 20 setores B2G com classificação por IA (GPT-4.1-nano). Se seu setor não estiver listado, entre em contato — adicionamos novos setores com base na demanda dos fundadores.',
+    q: 'Funciona para o meu setor?',
+    a: 'O SmartLic cobre 20 setores B2G: construção civil, TI, saúde, limpeza e conservação, segurança, engenharia elétrica, hidráulica, rodoviário, entre outros. A classificação é automática por IA — você configura seu setor no onboarding e a plataforma filtra por relevância.',
   },
   {
-    q: 'Quantas vagas restam?',
-    a: 'O Plano Fundadores é limitado. As vagas são preenchidas por ordem de chegada. O contador ao topo da página mostra a disponibilidade em tempo real.',
+    q: 'Como funciona o pagamento?',
+    a: 'Cartão de crédito ou boleto bancário, processado com segurança via Stripe. O acesso é ativado imediatamente após a confirmação do pagamento — sem espera, sem burocracia.',
   },
   {
-    q: 'Que suporte recebo como Fundador?',
-    a: 'Acesso à linha direta com o fundador (Tiago Sasaki) via email/WhatsApp. Response time < 4h úteis para bugs críticos. Sessão de onboarding inclusa para os primeiros clientes.',
+    q: 'Posso testar antes de comprar?',
+    a: 'Sim. O plano trial está disponível em smartlic.tech — sem cartão, acesso imediato. O Plano Fundadores é para quem já testou (ou já decidiu) e quer garantir o acesso vitalício antes de 30/06/2026.',
   },
 ];
 

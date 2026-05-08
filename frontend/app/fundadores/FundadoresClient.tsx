@@ -92,13 +92,13 @@ export default function FundadoresClient() {
       <section className="bg-slate-900 text-white">
         <div className="mx-auto max-w-3xl px-4 py-16">
           <p className="text-sm uppercase tracking-widest text-blue-400 font-semibold mb-3">
-            Plano Fundadores — vagas limitadas
+            Plano Fundadores — encerra 30/06/2026
           </p>
           <h1 className="text-3xl sm:text-5xl font-bold leading-tight mb-4">
-            Entre cedo na infraestrutura de inteligência B2G do SmartLic.
+            Pare de perder licitações por falta de informação.
           </h1>
           <p className="text-lg sm:text-xl text-slate-300 mb-8">
-            Acesso vitalício antes da estrutura comercial definitiva.
+            IA que encontra e classifica editais do seu setor — R$997 uma única vez, sem mensalidade, para sempre.
           </p>
 
           <div className="mb-8">
@@ -107,7 +107,7 @@ export default function FundadoresClient() {
 
           <div className="rounded-xl border border-blue-500/30 bg-blue-950/40 p-6">
             <p className="text-2xl font-bold text-white mb-1">{price} <span className="text-base font-normal text-slate-400">pagamento único</span></p>
-            <p className="text-slate-300 text-sm mb-4">Sem mensalidade. Sem renovação. Acesso permanente.</p>
+            <p className="text-slate-300 text-sm mb-4">Sem mensalidade. Sem renovação. Acesso permanente. Encerra 30/06/2026.</p>
             <FundadoresForm availability={snapshot} price={price} />
           </div>
         </div>
@@ -117,24 +117,25 @@ export default function FundadoresClient() {
         {/* Problema */}
         <section aria-labelledby="problema-heading" className="mb-16">
           <h2 id="problema-heading" className="text-2xl font-semibold text-slate-900 mb-4">
-            Por que B2G é difícil
+            Por que empresas B2G perdem licitações
           </h2>
           <div className="prose prose-slate max-w-none">
             <p>
-              Licitações públicas são publicadas em dezenas de portais diferentes, em formatos
-              inconsistentes, com terminologias confusas e prazos que mudam sem aviso. Empresas B2G
-              gastam horas toda semana só para descobrir o que está aberto — antes mesmo de
-              qualificar se vale a pena participar.
+              Editais relevantes para o seu setor são publicados todos os dias — em portais
+              diferentes, com formatação inconsistente, prazos curtos. Sua equipe gasta horas
+              vasculhando PNCP, ComprasGov e portais estaduais antes de saber se vale a pena
+              participar.
             </p>
             <p className="mt-4">
-              <strong>Menos PDF. Mais decisão.</strong> O SmartLic agrega, filtra e classifica
-              automaticamente para que sua equipe foque no que importa: construir propostas
-              competitivas.
+              <strong>Enquanto você está pesquisando, o concorrente está elaborando a proposta.</strong>{' '}
+              O SmartLic faz a triagem automaticamente: agrega, filtra por setor e aponta os
+              editais com maior probabilidade de viabilidade — para que sua equipe foque no que
+              importa.
             </p>
             <p className="mt-4">
-              <strong>A IA encontra. A inteligência decide.</strong> Classificação setorial por
-              GPT-4.1-nano com precisão ≥85%, análise de viabilidade em quatro fatores e histórico
-              de 2 milhões de contratos públicos para benchmark de preço.
+              <strong>Informação certa, na hora certa.</strong> Classificação setorial por IA
+              com precisão ≥85%, análise de viabilidade em quatro fatores e histórico de 2 milhões
+              de contratos públicos para benchmark de preço.
             </p>
           </div>
         </section>
@@ -167,8 +168,8 @@ export default function FundadoresClient() {
                   ['Acesso', 'Vitalício', 'Enquanto pagar'],
                   ['Todas as funcionalidades', '✓', '✓'],
                   ['Atualizações futuras', '✓ incluídas', '✓ incluídas'],
-                  ['Vagas disponíveis', 'Limitadas', 'Ilimitadas'],
-                  ['Ajude a financiar a próxima fase', '✓', '—'],
+                  ['Encerra em', '30/06/2026', 'A qualquer momento'],
+                  ['Influência no roadmap', '✓ direto', '—'],
                 ].map(([label, founder, regular]) => (
                   <tr key={label} className="border border-slate-200 hover:bg-slate-50">
                     <td className="px-4 py-3 text-slate-700 border border-slate-200">{label}</td>
@@ -207,10 +208,10 @@ export default function FundadoresClient() {
           className="mt-16 rounded-xl border border-blue-200 bg-blue-50 p-8"
         >
           <h2 id="cta-final-heading" className="text-2xl font-semibold text-slate-900 mb-2">
-            Reserve sua vaga agora
+            Garanta acesso vitalício agora
           </h2>
           <p className="text-slate-700 mb-6">
-            Acesso vitalício por {price}. Pagamento único via Stripe — cartão de crédito ou boleto.
+            {price} uma única vez. Sem mensalidade. Sem renovação. Encerra 30/06/2026 — depois disso, apenas planos mensais.
           </p>
           <FundadoresForm availability={snapshot} price={price} />
         </section>
