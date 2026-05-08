@@ -197,6 +197,8 @@ railway variables                             # List env variables
 railway variables set KEY=value               # Set env variable
 ```
 
+**Railway hard timeout: ~120s** — requests exceeding this are killed by Railway proxy. All backend routes must complete within this limit; use route-level timeout middleware (60s) to return 503 before Railway's 120s proxy kill.
+
 **CRITICAL — Railway Deploy Rules:**
 - **NEVER run `railway up` from inside `backend/` or `frontend/`** — always from project root. Running from a subdirectory uploads wrong structure → `Could not find root directory` build failure.
 - **Prefer GitHub auto-deploy over `railway up`** — push to `main` triggers deploys automatically with correct monorepo structure.
