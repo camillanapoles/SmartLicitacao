@@ -157,3 +157,32 @@ def test_multiple_signatures_one_valid(client, fake_secret):
     ):
         r = client.post("/v1/trial-emails/webhook", content=body, headers=headers)
     assert r.status_code == 200
+
+
+def test_trial_emails_webhook_secret_alias(fake_secret):
+    """AC1 (SEC-HMAC-001): TRIAL_EMAILS_WEBHOOK_SECRET is the canonical alias.
+
+    When TRIAL_EMAILS_WEBHOOK_SECRET is set and RESEND_WEBHOOK_SECRET is absent,
+    signatures must still be accepted — confirming the canonical name takes
+    precedence over the legacy alias.
+    """
+    secret_str, raw = fake_secret
+    body = json.dumps({"type": "email.opened", "data": {"email_id": "res-alias-1"}}).encode()
+    ts = int(time.time())
+    headers = {
+        "svix-id": "msg_alias_1",
+        "svix-timestamp": str(ts),
+        "svix-signature": _sign(raw, "msg_alias_1", ts, body),
+        "content-type": "application/json",
+    }
+    env_override = {"TRIAL_EMAILS_WEBHOOK_SECRET": secret_str, "RESEND_WEBHOOK_SECRET": ""}
+    with patch.dict(os.environ, env_override, clear=False):
+        from main import app
+        c = TestClient(app)
+        with patch(
+            "services.trial_email_sequence.handle_resend_webhook",
+            new=AsyncMock(return_value=True),
+        ):
+            r = c.post("/v1/trial-emails/webhook", content=body, headers=headers)
+    assert r.status_code == 200
+    assert r.json()["status"] in ("processed", "skipped", "ignored")

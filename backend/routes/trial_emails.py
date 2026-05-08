@@ -97,7 +97,9 @@ def _verify_svix_signature(
     Fail-closed: missing secret, header, or invalid signature → False.
     Constant-time comparison via secrets.compare_digest.
     """
-    secret_raw = os.getenv("RESEND_WEBHOOK_SECRET", "")
+    # AC1 (SEC-HMAC-001): TRIAL_EMAILS_WEBHOOK_SECRET is the canonical name;
+    # RESEND_WEBHOOK_SECRET is kept as a legacy alias for backward compatibility.
+    secret_raw = os.getenv("TRIAL_EMAILS_WEBHOOK_SECRET", "") or os.getenv("RESEND_WEBHOOK_SECRET", "")
     if not secret_raw or not svix_id or not svix_timestamp or not svix_signature:
         return False
 
@@ -142,7 +144,8 @@ async def resend_webhook(
 ):
     """Handle Resend webhook events for email tracking.
 
-    Security: Svix HMAC-SHA256 signature verified against `RESEND_WEBHOOK_SECRET`.
+    Security: Svix HMAC-SHA256 signature verified against `TRIAL_EMAILS_WEBHOOK_SECRET`
+    (or legacy alias `RESEND_WEBHOOK_SECRET`).
     Replay protection: timestamp must be within 5 minutes of now.
     Fail-closed — missing secret or invalid signature returns 401.
 
