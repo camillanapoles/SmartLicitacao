@@ -57,7 +57,7 @@ const ERROR_MAP: Record<string, string> = {
 
   // Timeout / PNCP specific (from backend detail messages)
   "excedeu o tempo limite": "A busca está demorando. Tente novamente em alguns minutos.",
-  "PNCP está temporariamente": "Uma das fontes está temporariamente indisponivel. Tente novamente em instantes.",
+    "PNCP está temporariamente": "Nossas fontes estão temporariamente indisponíveis. Tente novamente em instantes.",
   "tempo limite de": "A busca está demorando. Tente novamente em alguns minutos.",
 
   // UX FIX: Plan limit errors (date range)

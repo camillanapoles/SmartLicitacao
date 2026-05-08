@@ -51,7 +51,7 @@ export function LeadCapture({ source, heading, description, setor, uf }: LeadCap
         {heading || 'Receba alertas semanais do seu setor por email'}
       </h3>
       <p className="text-ink-secondary text-sm mb-4">
-        {description || 'Dados semanais do PNCP sobre seu setor. Sem spam — cancele a qualquer momento.'}
+        {description || 'Dados semanais das nossas fontes oficiais sobre seu setor. Sem spam — cancele a qualquer momento.'}
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
         <input

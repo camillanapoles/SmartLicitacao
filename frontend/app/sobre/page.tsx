@@ -18,7 +18,7 @@ import LandingNavbar from '../components/landing/LandingNavbar';
 // GTM-COPY-006 pattern: Per-page metadata for SEO
 export const metadata = {
   title: 'Metodologia e Critérios de Avaliação',
-  description: 'Conheça a metodologia SmartLic: critérios objetivos, fontes oficiais do PNCP e IA aplicada à avaliação de licitações públicas.',
+  description: 'Conheça a metodologia SmartLic: critérios objetivos, fontes públicas consolidadas e IA aplicada à avaliação de licitações públicas.',
   alternates: {
     canonical: 'https://smartlic.tech/sobre',
   },

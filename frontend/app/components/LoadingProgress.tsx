@@ -17,7 +17,7 @@ const CURIOSIDADES = [
   { texto: "O portal nacional centraliza todas as licitações do Brasil desde 2023, abrangendo União, estados e municípios.", fonte: "Lei 14.133/2021, Art. 174" },
   { texto: "Qualquer cidadão pode consultar licitações em andamento nos portais oficiais sem necessidade de cadastro.", fonte: "Lei 14.133/2021" },
   { texto: "Fontes oficiais disponibilizam APIs públicas que permitem consultas automatizadas de contratações.", fonte: "Portais Oficiais" },
-  { texto: "Os portais oficiais já acumulam mais de 3 milhões de publicações de contratações de todo o Brasil.", fonte: "PNCP" },
+  { texto: "Os portais oficiais já acumulam mais de 3 milhões de publicações de contratações de todo o Brasil.", fonte: "Portais Oficiais" },
   { texto: "O Brasil realiza mais de 40 mil licitações por mês, movimentando bilhões em contratações públicas.", fonte: "Portal de Compras do Governo" },
   { texto: "O pregão eletrônico representa cerca de 80% de todas as licitações realizadas no país.", fonte: "Painel de Compras Governamentais" },
   { texto: "Compras públicas representam aproximadamente 12% do PIB brasileiro.", fonte: "OCDE" },

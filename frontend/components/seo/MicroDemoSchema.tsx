@@ -4,7 +4,7 @@ const VARIANT_META: Record<string, { name: string; description: string }> = {
   busca: {
     name: 'SmartLic — Como Funciona a Busca Multi-Fonte',
     description:
-      'Demonstração animada de como o SmartLic busca licitações em PNCP, PCP e ComprasGov simultaneamente.',
+      'Demonstração animada de como o SmartLic busca licitações em nossas fontes oficiais simultaneamente.',
   },
   resultado: {
     name: 'SmartLic — Resultados com Score de Viabilidade',

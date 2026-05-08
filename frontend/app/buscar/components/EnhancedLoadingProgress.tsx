@@ -81,7 +81,7 @@ const B2G_TIPS = [
   'O Brasil homologou mais de R$ 1 trilhão em contratações públicas em 2025. Sua empresa pode capturar parte desse mercado.',
   'Empate ficto (5%): No pregão eletrônico, se sua proposta estiver até 5% acima e você for ME/EPP, você pode cobrir o lance vencedor.',
   'Licitações exclusivas até R$ 80 mil podem ser reservadas para micro e pequenas empresas (LC 123/2006).',
-  'Desde a Lei 14.133/2021, o PNCP é o canal oficial obrigatório para publicação de editais de todos os entes federativos.',
+  'Desde a Lei 14.133/2021, todas as licitações são publicadas em portais oficiais obrigatórios, abrangendo todos os entes federativos.',
   'Inversão de fases: Na nova lei, propostas são julgadas ANTES da habilitação — agilizando o processo decisivamente.',
   'Pregão eletrônico é a modalidade mais usada no Brasil, representando mais de 60% das contratações públicas.',
   'Você pode participar de licitações em qualquer estado do Brasil, independente de onde sua empresa está sediada.',
@@ -91,7 +91,7 @@ const B2G_TIPS = [
   'O prazo médio para pagamento em contratos públicos é de 30 dias após a entrega — preveja isso no fluxo de caixa.',
   'Atestados de capacidade técnica são o documento mais importante na habilitação. Mantenha-os sempre atualizados.',
   'Inexigibilidade de licitação: Se sua empresa oferece serviço exclusivo, pode contratar diretamente com o órgão público.',
-  'A pesquisa de preços no PNCP permite consultar valores históricos para formar preço competitivo nas suas propostas.',
+  'A pesquisa de preços em nossas fontes permite consultar valores históricos para formar preço competitivo nas suas propostas.',
   'Certidões negativas (FGTS, INSS, Fazenda) são exigidas em praticamente todas as licitações. Mantenha-as em dia.',
 ];
 

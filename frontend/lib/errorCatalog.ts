@@ -67,7 +67,7 @@ export const ERROR_MESSAGES: Record<string, ErrorEntry> = {
   },
   'search.source_unavailable': {
     title: 'Uma das fontes está em manutenção',
-    body: 'O PNCP ou outra fonte está temporariamente indisponível. Os resultados podem estar parciais. Tente novamente em instantes.',
+    body: 'Uma das fontes está temporariamente indisponível. Os resultados podem estar parciais. Tente novamente em instantes.',
     severity: 'warning',
     action: { label: 'Tentar novamente', kind: 'retry' },
   },

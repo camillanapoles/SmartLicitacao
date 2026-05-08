@@ -9,11 +9,11 @@ import PerguntasFilter from './PerguntasFilter';
 export const metadata: Metadata = {
   title: 'Perguntas Frequentes sobre Licitações Públicas',
   description:
-    'Respostas completas para 53 perguntas sobre licitações públicas: modalidades, prazos, habilitação, preços, setores e sistemas. Dados verificáveis do PNCP.',
+    'Respostas completas para 53 perguntas sobre licitações públicas: modalidades, prazos, habilitação, preços, setores e sistemas. Dados verificáveis de fontes oficiais.',
   alternates: { canonical: buildCanonical('/perguntas') },
   openGraph: {
     title: 'Perguntas Frequentes sobre Licitações Públicas | SmartLic',
-    description: '53 perguntas respondidas com base na Lei 14.133/2021 e dados do PNCP.',
+    description: '53 perguntas respondidas com base na Lei 14.133/2021 e dados de fontes oficiais.',
     type: 'website',
     url: buildCanonical('/perguntas'),
     siteName: 'SmartLic',
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Perguntas Frequentes sobre Licitações Públicas | SmartLic',
-    description: '53 perguntas respondidas com base na Lei 14.133/2021 e dados do PNCP.',
+    description: '53 perguntas respondidas com base na Lei 14.133/2021 e dados de fontes oficiais.',
   },
 };
 
@@ -80,7 +80,7 @@ export default function PerguntasPage() {
             </h1>
             <p className="mt-4 text-lg text-ink-secondary max-w-2xl mx-auto">
               {QUESTIONS.length} perguntas respondidas com base na Lei 14.133/2021
-              e dados verificáveis do PNCP. Encontre respostas objetivas para suas dúvidas sobre
+              e dados verificáveis de fontes oficiais. Encontre respostas objetivas para suas dúvidas sobre
               contratações públicas.
             </p>
           </div>

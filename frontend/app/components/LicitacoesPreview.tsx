@@ -660,7 +660,7 @@ function BidCard({
               {/* UX-418 AC7: Fonte do dado */}
               {item._source && (
                 <p className="text-sm text-ink-muted text-xs">
-                  Fonte: {item._source === 'pncp' ? 'PNCP' : item._source === 'pcp' ? 'Portal de Compras Públicas' : item._source === 'compras_gov' ? 'ComprasGov' : item._source}
+                  Fonte: {item._source === 'pncp' ? 'Portal Nacional de Contratações' : item._source === 'pcp' ? 'Portal de Compras Públicas' : item._source === 'compras_gov' ? 'ComprasGov' : item._source}
                 </p>
               )}
               <div className="flex flex-wrap gap-2 mt-1">

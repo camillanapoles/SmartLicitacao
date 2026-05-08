@@ -250,7 +250,7 @@ export function DataQualityBanner(props: DataQualityBannerProps) {
   if (props.sourcesDegraded && props.sourcesDegraded.length > 0) {
     const hasPncp = props.sourcesDegraded.includes("PNCP");
     if (hasPncp) {
-      segments.push("A fonte principal (PNCP) esta com lentidao. Resultados podem estar incompletos.");
+      segments.push("A fonte principal esta com lentidao. Resultados podem estar incompletos.");
     } else {
       segments.push(`Fontes degradadas: ${props.sourcesDegraded.join(", ")}`);
     }

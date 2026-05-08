@@ -172,7 +172,7 @@ export default function StackPage() {
               className="p-4 rounded-xl border border-[var(--border)] hover:border-brand-blue/30 transition-colors text-center"
             >
               <p className="font-semibold text-ink-primary">Estatísticas</p>
-              <p className="text-sm text-ink-muted mt-1">Dados públicos do PNCP</p>
+              <p className="text-sm text-ink-muted mt-1">Dados públicos das fontes oficiais</p>
             </Link>
             <Link
               href="/casos"

@@ -497,7 +497,7 @@ export default function PlanosPage() {
               sector="Limpeza e Conservação"
               location="Curitiba-PR"
               companySize="12 funcionários"
-              problem="Monitorava editais manualmente no PNCP 2h por dia"
+              problem="Monitorava editais manualmente nos portais oficiais 2h por dia"
               result="Encontrou Pregão Eletrônico de R$87.000 (prefeitura vizinha) que não apareceu na busca manual"
               highlight={{
                 value: "R$ 87.000",
