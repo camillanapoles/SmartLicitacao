@@ -1,6 +1,6 @@
 # ROADMAP — SmartLic
 
-**Versao:** 4.2 | **Atualizado:** 2026-04-24 | **Status:** Growth Viral Epic Q3 Drafted, Active Backlog
+**Versao:** 5.0 | **Atualizado:** 2026-05-08 | **Status:** Founders Plan Live, Intel Reports Em Progresso
 
 ## 2026-04-24 — EPIC-GROWTH-VIRAL-2026-Q3: On-Page CAC-Zero
 
@@ -41,7 +41,10 @@ GTM LAUNCH:          [####################] 100% (10/10 stories)
 GTM FIXES:           [####################] 100% (37 fixes)
 GTM RESILIENCE:      [####################] 100% (25/25 stories)
 RELIABILITY SPRINT:  [####################] 100% (13/13 stories, 4 sprints)
-TECH DEBT (TD):      [####................] ~20% (19 stories)
+REPOSICIONAMENTO B2G:[###################.] ~96% (22/23 issues)
+FOUNDERS PLAN:       [####################] 100% (23 issues — #782–#872)
+TECH DEBT (TD):      [##################..] ~90% (144/160 issues fechadas)
+INTEL REPORTS:       [##########..........] ~71% (5/7 issues, 2 open blockers)
 UX PREMIUM:          [##..................] ~6% (2/36 stories)
 ```
 
@@ -88,13 +91,66 @@ Market-validated pricing realignment.
 | STORY-280 | Boleto + PIX via Stripe | Completed |
 | STORY-284 | GTM Quick Wins | Completed |
 
+### Fase 4.2 — Reposicionamento B2G Phase 0 (Mai 2026) — 96% Concluido
+
+22 de 23 issues fechadas. Reposicionamento completo do produto para B2G, novas páginas e disclaimers legais.
+
+| Série | Entregáveis |
+|-------|-------------|
+| REPO-001–005 | Labels GitHub, doc copywriting guidelines, audit disclaimers legais, lead_capture estendido, fix CNPJ footer |
+| REPO-006–012 | Hero homepage reescrito, REPO-007 disclaimer servidor público, bloco 3 níveis, /consultoria-b2g, /navbar dropdown, footer colunas, componente DiagnosticForm |
+| REPO-013–018 | ViabilityVerdict plug pSEO, CTA contextual 4 rotas, REPO-015, title/meta GSC-driven, Mixpanel eventos padronizados, Rename PNCP→nossas fontes |
+| REPO-019–022 | Mixpanel funnel, remover copy garantia ganho, Disclaimer recomendação algorítmica, Gate decision doc 14d |
+
+Milestone: `Reposicionamento B2G Phase 0` (#5) — 1 issue open (#775 INDEX tracker).
+
+### Fase 4.3 — pSEO Health Sprint (Mai 2026) — Concluido
+
+10 issues P0 qualidade de sinal Google (#656–#665). BreadcrumbList JSON-LD, DISTINCT queries, og:image dinâmica, sitemap freshness, robots.ts fix, sameAs bug fix. Milestone fechado.
+
+### Fase 4.4 — On-Page CTA & Copy Sprint (Mai 2026) — Concluido
+
+10 issues (#619–#627, #651, #652). CTAs inline programmatic pages, TrialCountdown copy, social proof, meta descriptions GSC. Milestone fechado.
+
+### Fase 4.5 — Conversão + Instrumentação (Mai 2026) — Concluido
+
+CONV-INST-001–005: Mixpanel page-load, signup lifecycle events, email confirmation, CNPJ deep-link onboarding, MS Clarity trial tagging. SEC-HMAC-001: HMAC verify webhook. SEC-SECDEF-001/002: SECURITY DEFINER audit + CI guard.
+
+### Fase 5 — Founders Plan (Mai 2026) — Concluido
+
+Plano Fundadores vitalício R$997 one-time. 23 issues (#782–#872) implementados em 2 dias.
+
+| Entregável | Issues |
+|-----------|--------|
+| Backend: pivot checkout one-time, webhook entitlement, session-status endpoint | #782, #783, #785, #861, #862, #863, #865 |
+| DB: campos founder em profiles, feature flag FOUNDERS_OFFER_ENABLED | #784, #794 |
+| Frontend: /fundadores page, banner global, CTAs pSEO, /pricing comparação, /obrigado dual-state | #786, #787, #788, #789, #792, #864, #870, #872 |
+| Tracking: founders_* events Mixpanel | #790 |
+| Email: welcome founders template | #791, #868 |
+| Legal: /termos/fundadores, founders-policy.md | #793, #795 |
+| Copy: headline pain-focused, FAQ objeções reais, features benefit-driven | #867 |
+
 ---
 
 ## Backlog Ativo
 
-### Technical Debt (TD-001 to TD-019)
+### Intel Reports Epic (71% — 2 blockers open)
 
-Source: `docs/stories/epic-technical-debt.md`
+Milestone: `Intel Reports Epic` (#1) — open:2, closed:5.
+
+| Story | Título | Status |
+|-------|--------|--------|
+| #628 | Migration + RPC cnpj_supplier_intel | Closed |
+| #629 | PDF Generator + LLM narrative Raio-X | Closed |
+| #630 | Stripe checkout + webhook fulfillment | Closed |
+| #631 | ARQ background job + Storage delivery | Closed |
+| #632 | Frontend CTA + checkout flow + polling | Closed |
+| #633 | Mapa de Oportunidade Setorial (R47) | **OPEN — BLOCKER** |
+| #826 | RPC sector_uf_intel (INTEL-REPORT-002) | **OPEN — BLOCKER** |
+
+### Technical Debt (TD — ~90% concluido)
+
+160 TD issues no tracker. 144 fechadas. 16 abertas (maioria accessibilidade/tests):
 
 | Sprint | Stories | Focus |
 |--------|---------|-------|
@@ -102,6 +158,8 @@ Source: `docs/stories/epic-technical-debt.md`
 | Sprint 1 | TD-006, TD-007, TD-008 | Architecture (god function, Redis, frontend CI) |
 | Sprint 2 | TD-009 to TD-014 | Testing, logging, analytics |
 | Sprint 3 | TD-015 to TD-019 | Email, API contracts, polish |
+
+Open residuais: accessibilidade (TD-FE-019, TD-FE-027, TD-UX-002, TD-UX-004), testes (TD-TEST-022, TD-TEST-025, TD-TEST-028), performance (TD-SCALE-004, TD-SCALE-011), outros 7.
 
 ### UX Premium (UX-301 to UX-335)
 
@@ -114,30 +172,6 @@ Source: `docs/stories/EPIC-UX-PREMIUM-2026-02.md` (35 problems from production a
 | P2 Medium | UX-319 to UX-331 | Heartbeat, dark mode, skeletons, keyboard nav |
 | P3 Low | UX-332 to UX-335 | Sound feedback, SEO, accessibility |
 
-### Active Feature Stories (STORY-240+)
-
-| Story | Title |
-|-------|-------|
-| STORY-240 | Buscar licitacoes abertas |
-| STORY-241 | Excluir inexigibilidade, ampliar modalidades |
-| STORY-242 | Novos setores (rodoviaria, eletricos, hidraulicos) |
-| STORY-243 | Renomear setores inclusividade |
-| STORY-244 | Copy estrategica landing page |
-| STORY-245 | Curadoria acionavel LLM consultor |
-| STORY-246 | Experiencia one-click |
-| STORY-247 | Onboarding profundo perfil contextualizacao |
-| STORY-248 | Precisao absoluta filtros |
-| STORY-249 | Sync setores backend/frontend/signup |
-| STORY-250 | Gestao pipeline oportunidades |
-| STORY-251 | LLM arbiter sector-aware prompts |
-| STORY-252 | PNCP API mass timeout/zero results |
-| STORY-253 | JWT token refresh fix |
-| STORY-254 | Portal transparencia adapter |
-| STORY-255 | Querido diario adapter |
-| STORY-256 | Sanctions check integration |
-| STORY-257A | Backend busca inquebravel |
-| STORY-257B | Frontend UX transparente |
-
 ### Growth Viral Epic Q3 (GV-001 to GV-021)
 
 Source: `docs/stories/2026-04/EPIC-GROWTH-VIRAL-2026-Q3.md`
@@ -149,14 +183,25 @@ Source: `docs/stories/2026-04/EPIC-GROWTH-VIRAL-2026-Q3.md`
 | 3 | GV-004, 007, 010, 014, 016 | Embed + trending + badges + consultoria | 45 |
 | 4 | GV-008, 011, 015, 019, 020 | Ticker + wins digest + concorrente + content | 29 |
 
-Status: todas Draft — Sprint 1 aguarda STORY-289 Done (pré-req de GV-018).
+Status: todas Draft — Sprint 1 aguarda STORY-289 Done (pré-req de GV-018). Milestone criado (#4), issues a criar.
 
-### GTM Remaining (GTM-001, GTM-002)
+### Open P0 (38 issues abertas — 2026-05-08)
 
-| Story | Title | Status |
-|-------|-------|--------|
-| GTM-001 | Reescrita copy landing | In progress |
-| GTM-002 | Modelo assinatura unico | In progress |
+Issues críticos sem milestone:
+
+| # | Título | Área |
+|---|--------|------|
+| #869 | E2E Playwright fluxo checkout fundadores | testing |
+| #866 | Webhook checkout.session.completed mode=payment | backend |
+| #871 | Mixpanel + backend metrics pipeline founders | tracking |
+| #886 | pSEO desktop CTR — snippet e CTA above fold | seo |
+| #884 | Micro-conversões pSEO instrumentação | seo |
+| #883 | Auditoria indexação canônicos/noindex/lang | seo |
+| #882 | Enriquecer templates vencedores pSEO | seo |
+| #827 | E2E Playwright Intel Reports compra | testing |
+| #825 | Smoke test go-live Intel Reports staging | qa |
+| #856 | RES-BE-017: Pool leak asyncio.wait_for cleanup | backend |
+| #800 | OBS-SENTRY-FE-F: 1460 quiescent events /contratos | frontend |
 
 ---
 
@@ -189,7 +234,13 @@ Obsolete stories and docs moved to `docs/archive/` (Feb 20, 2026):
 | 2026-02-25 | GTM Repricing — R$1.999 → R$397 (STORY-277) |
 | 2026-02-26 | Boleto + PIX payment methods (STORY-280) |
 | 2026-02-27 | Reliability Sprint complete v0.5.2 (13/13 stories) |
+| 2026-05-03 | pSEO Health Sprint complete (10/10 issues, milestone fechado) |
+| 2026-05-04 | On-Page CTA & Copy Sprint complete (10/10 issues, milestone fechado) |
+| 2026-05-05 | Conversão + Instrumentação completo (CONV-INST, SEC-HMAC, SEC-SECDEF) |
+| 2026-05-07 | Reposicionamento B2G Phase 0 — 96% (22/23 REPO issues) |
+| 2026-05-08 | Founders Plan live — R$997 one-time, 23 issues shipped em 2 dias |
+| 2026-05-08 | ROADMAP v5.0 — sync com tracker (394 issues, velocity 18/dia) |
 
 ---
 
-*Ultima atualizacao: 2026-02-27*
+*Ultima atualizacao: 2026-05-08*
