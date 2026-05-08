@@ -1,8 +1,19 @@
 # SmartLic — Public Procurement Intelligence for Brazil
 
-> **Brazil has a massive public procurement market, but opportunity discovery is fragmented, noisy and slow. SmartLic crawls, normalizes, enriches and ranks public tenders so B2G companies can find winnable opportunities faster.**
+[![Live](https://img.shields.io/badge/status-production-brightgreen)](https://smartlic.tech)
+[![Backend Tests](https://github.com/tjsasakifln/SmartLic/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/tjsasakifln/SmartLic/actions/workflows/backend-tests.yml)
+[![Frontend Tests](https://github.com/tjsasakifln/SmartLic/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/tjsasakifln/SmartLic/actions/workflows/frontend-tests.yml)
+[![CodeQL](https://github.com/tjsasakifln/SmartLic/actions/workflows/codeql.yml/badge.svg)](https://github.com/tjsasakifln/SmartLic/actions/workflows/codeql.yml)
 
-**Built for companies, consultants and sales teams selling to government.**
+**Live product:** [smartlic.tech](https://smartlic.tech) · **Status:** Production · Paid trials · Stripe live
+
+> AI-powered intelligence layer on top of Brazil's $500B/year public procurement market.
+> We crawl, classify and rank ~10,000 daily tenders so B2G suppliers find winnable contracts
+> in minutes — not days.
+
+**For B2G suppliers, procurement consultancies and government sales teams** who need to monitor 10,000+ daily tenders across 27 states without drowning in noise.
+
+<!-- Add screenshot: docs/assets/hero-screenshot.png -->
 
 ---
 
@@ -42,7 +53,16 @@ A production procurement intelligence layer on top of PNCP, ComprasGov and PCP v
 | Full-text search latency | **< 100ms at p95** |
 | Test suite | **5,131+ passing · 0 failures** |
 | Organic reach | **10,000+ programmatic SEO pages** (ISR, Google-indexed) |
-| Status | **Production** · paid trials active · Stripe billing live |
+| Production since | **v0.5 · Stripe billing live · paid trials active** |
+
+## Traction
+
+- **Paid trials:** Active — Stripe billing live, 14-day trial, no credit card required
+- **Organic reach:** 10,000+ programmatic SEO pages indexed by Google, driving inbound from suppliers searching by sector and geography
+- **Test coverage:** 5,131+ passing tests · 0 failures · CI green on every commit
+- **Data compounding:** 3.5M+ records growing daily — 1.5M tenders (400-day window) + 2M+ historical contracts
+
+> For MRR, conversion rate and growth metrics, request the investor data room: tiago.sasaki@confenge.com.br
 
 ## Architecture
 
@@ -101,7 +121,7 @@ flowchart LR
 
 The DataLake is the core defensible asset. This dataset does not exist anywhere else in a clean, normalized, searchable form:
 
-- **1.5M+ tenders** with 400-day rolling retention — full-text search in Portuguese, < 100ms at p95
+- **1.5M+ tenders** with 400-day rolling retention — full-text search in Portuguese, < 100ms at p95, and growing daily
 - **2M+ historical contracts** — price benchmarking, supplier win-rate analysis, agency spending patterns by CNPJ
 - **20-sector AI classification** using keyword density + GPT-4.1-nano arbiter for edge cases
 - **Daily ETL** across all 27 states and 6 procurement modalities, incremental refresh 3×/day
@@ -111,47 +131,63 @@ The DataLake is the core defensible asset. This dataset does not exist anywhere 
 
 SaaS, 14-day free trial, no credit card required.
 
-| Plan | BRL/mo |
-|------|--------|
-| Pro (monthly) | R$ 397 |
-| Pro (annual) | R$ 297 |
-| Consultoria (monthly) | R$ 997 |
-| Consultoria (annual) | R$ 797 |
+| Plan | BRL/mo | USD/mo (approx) |
+|------|--------|-----------------|
+| Pro (monthly) | R$ 397 | ~$80 |
+| Pro (annual) | R$ 297 | ~$60 |
+| Consultoria (monthly) | R$ 997 | ~$200 |
+| Consultoria (annual) | R$ 797 | ~$160 |
 
 ## Stack
 
 FastAPI · Python 3.12 · Next.js 16 · Supabase (PostgreSQL 17) · Redis · ARQ · GPT-4.1-nano · Stripe · Railway
 
-## Contact
+## Team
 
-**Tiago Sasaki — Founder**
-tiago.sasaki@confenge.com.br · +55 (48) 9 8834-4559 · https://smartlic.tech
+**Tiago Sasaki — Founder & CEO**
+[GitHub](https://github.com/tjsasakifln) · tiago.sasaki@confenge.com.br · [smartlic.tech](https://smartlic.tech)
 
-For investment, partnership, or data licensing inquiries, reach out directly.
+Founder of CONFENGE Avaliações e Inteligência Artificial LTDA. Built SmartLic from the PNCP crawler through Stripe billing as a solo technical founder — DataLake architecture, AI classification pipeline, 187 API endpoints, 10k+ programmatic SEO pages.
+
+Backed by **CONFENGE Avaliações e Inteligência Artificial LTDA** — CNPJ 52.407.089/0001-09.
+
+## Where We're Going
+
+**Next 6 months:** Scale paying base in 5 priority sectors (engineering, IT, healthcare, cleaning, food services). Launch supplier intelligence module — CNPJ-level win-rate analytics and competitor spend patterns.
+
+**12–24 months:** Expand to municipal tier (5,500+ city governments). Launch consultancy/partner program. Become the default procurement OS for Brazilian B2G suppliers.
+
+**Vision:** The intelligence layer for every B2G transaction in LATAM. Brazil first — then Mexico, Colombia, Chile (combined $400B+ annual procurement).
+
+## For Investors & Partners
+
+Talking with seed-stage funds focused on LATAM B2B SaaS, govtech and vertical AI.
+
+If you invest in govtech, public-sector SaaS, or vertical AI on regulated data:
+
+→ **tiago.sasaki@confenge.com.br**
+
+Data licensing and enterprise partnerships: same address.
 
 ---
 
-[![Backend Tests](https://github.com/tjsasakifln/SmartLic/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/tjsasakifln/SmartLic/actions/workflows/backend-tests.yml)
-[![Frontend Tests](https://github.com/tjsasakifln/SmartLic/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/tjsasakifln/SmartLic/actions/workflows/frontend-tests.yml)
-[![CodeQL](https://github.com/tjsasakifln/SmartLic/actions/workflows/codeql.yml/badge.svg)](https://github.com/tjsasakifln/SmartLic/actions/workflows/codeql.yml)
-
-> Automação de procurement público com IA · PNCP · ComprasGov · Classificação setorial GPT-4.1-nano · B2G SaaS · Govtech Brasil
+Tags: `govtech` · `b2g-saas` · `pncp` · `comprasgov` · `public-procurement` · `gpt-4-classification` · `brazil` · `latam`
 
 ---
 
-## Documentação Técnica / Technical Docs
+## Technical Docs
 
-- [Arquitetura detalhada](./docs/architecture/) — módulos, fluxos, ERD, ADRs
-- [PRD](./PRD.md) — especificação completa do produto
-- [Roadmap](./ROADMAP.md) — backlog e status
-- [CHANGELOG](./CHANGELOG.md) — histórico de versões
-- [Deploy & Setup](./docs/DEPLOYMENT.md) — Railway, Supabase, variáveis de ambiente
+- [Detailed Architecture](./docs/architecture/) — modules, flows, ERD, ADRs
+- [PRD](./PRD.md) — full product specification
+- [Roadmap](./ROADMAP.md) — backlog and status
+- [CHANGELOG](./CHANGELOG.md) — version history
+- [Deploy & Setup](./docs/DEPLOYMENT.md) — Railway, Supabase, environment variables
 
 ---
 
-## Licença / License
+## License
 
-**© 2024-2026 CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA — Todos os direitos reservados.**
+**© 2024–2026 CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA — All rights reserved.**
 
 Proprietary software. Unauthorized use, copying, or distribution is prohibited.
 
