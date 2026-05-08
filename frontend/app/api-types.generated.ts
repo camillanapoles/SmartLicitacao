@@ -9224,6 +9224,8 @@ export interface components {
             objeto: string;
             /** Orgao */
             orgao: string;
+            /** Orgao Cnpj */
+            orgao_cnpj?: string | null;
             /** Uf */
             uf: string;
             /** Valor */

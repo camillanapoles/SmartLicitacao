@@ -169,6 +169,7 @@ export default async function CnpjPerfilPage({
     <ContentPageLayout
       breadcrumbLabel={empresa.razao_social}
       relatedPages={[
+        { href: `/fornecedores/${cnpj}`, title: `${empresa.razao_social} — Histórico de Fornecedor` },
         { href: '/cnpj', title: 'Nova consulta CNPJ' },
         { href: '/orgaos', title: 'Órgãos Compradores' },
         { href: '/calculadora', title: 'Calculadora de Oportunidades' },
@@ -189,6 +190,26 @@ export default async function CnpjPerfilPage({
       />
 
       <CnpjPerfilClient perfil={perfil} />
+
+      {/* PSEO-TMPL-001 (#882): Link bidirecional para /fornecedores/{cnpj} quando empresa tem contratos */}
+      {perfil.total_contratos_24m > 0 && (
+        <section className="mt-6 rounded-xl border border-indigo-100 bg-indigo-50 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-indigo-900 mb-0.5">
+              {empresa.razao_social} como fornecedor público
+            </p>
+            <p className="text-xs text-indigo-700">
+              Veja o perfil completo de fornecedor com histórico de contratos, órgãos compradores e setores de atuação.
+            </p>
+          </div>
+          <Link
+            href={`/fornecedores/${cnpj}`}
+            className="shrink-0 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+          >
+            Ver perfil de fornecedor →
+          </Link>
+        </section>
+      )}
 
       {/* #632: Intel Report one-time purchase CTA */}
       <section className="mt-8 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-6">

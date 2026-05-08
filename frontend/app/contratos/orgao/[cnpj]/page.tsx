@@ -224,8 +224,11 @@ export default async function OrgaoContratosPage({ params }: Props) {
                       <tr key={f.cnpj} className="border-b border-[var(--border)] hover:bg-surface-1 transition-colors">
                         <td className="py-3 pr-4 text-ink-secondary">{i + 1}</td>
                         <td className="py-3 pr-4">
-                          <Link href={`/cnpj/${f.cnpj}`} className="text-brand-blue hover:underline font-medium">
+                          <Link href={`/fornecedores/${f.cnpj}`} className="text-brand-blue hover:underline font-medium">
                             {f.nome}
+                          </Link>
+                          <Link href={`/cnpj/${f.cnpj}`} className="block text-xs text-ink-secondary hover:underline mt-0.5">
+                            Consulta CNPJ →
                           </Link>
                         </td>
                         <td className="py-3 px-4 text-right font-mono">{f.total_contratos}</td>
@@ -263,7 +266,14 @@ export default async function OrgaoContratosPage({ params }: Props) {
                   <div key={i} className="p-4 rounded-lg border border-[var(--border)]">
                     <p className="text-sm font-medium text-ink mb-1">{c.objeto}</p>
                     <div className="flex flex-wrap gap-3 text-xs text-ink-secondary">
-                      <span>Fornecedor: {c.fornecedor}</span>
+                      <span>
+                        Fornecedor:{' '}
+                        {c.fornecedor && c.fornecedor !== 'Nao informado' ? (
+                          <span className="text-ink">{c.fornecedor}</span>
+                        ) : (
+                          c.fornecedor
+                        )}
+                      </span>
                       {c.valor && <span>Valor: {formatBRL(c.valor)}</span>}
                       <span>Data: {c.data_assinatura}</span>
                     </div>
@@ -272,6 +282,34 @@ export default async function OrgaoContratosPage({ params }: Props) {
               </div>
             </section>
           )}
+
+          {/* Oportunidades Semelhantes — CTA para buscar editais do mesmo órgão */}
+          <section className="rounded-xl border border-green-200 bg-green-50 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Encontrar Oportunidades Semelhantes
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              O SmartLic monitora automaticamente novos editais publicados por{' '}
+              <strong>{stats.orgao_nome}</strong> e por órgãos com perfil de compra semelhante.
+              Receba alertas antes da concorrência.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <TrackingLink
+                href={`/signup?utm_source=programmatic&utm_medium=cta&utm_campaign=conv-cta-001&utm_content=contratos-orgao-similar&page_cnpj=${cnpj}`}
+                eventName="cta_clicked"
+                eventProps={{ cta_name: 'contratos_orgao_similar', destination: '/signup', page_type: 'contratos_orgao', page_cnpj: cnpj, orgao_nome: stats.orgao_nome }}
+                className="inline-block px-5 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors text-center"
+              >
+                Monitorar editais deste órgão →
+              </TrackingLink>
+              <Link
+                href={`/orgaos/${cnpj}`}
+                className="inline-block px-5 py-2.5 bg-white border border-green-300 text-green-700 text-sm font-semibold rounded-lg hover:bg-green-50 transition-colors text-center"
+              >
+                Ver perfil completo do órgão
+              </Link>
+            </div>
+          </section>
 
           {/* Internal Links */}
           <section>

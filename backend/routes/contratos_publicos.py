@@ -618,6 +618,7 @@ class FaqItem(BaseModel):
 class RecentContract(BaseModel):
     objeto: str
     orgao: str
+    orgao_cnpj: Optional[str] = None  # PSEO-TMPL-001 (#882): interlinking contrato → órgão
     valor: Optional[float] = None
     data_assinatura: str
     uf: str
@@ -793,9 +794,11 @@ async def _build_fornecedor_profile(cnpj_clean: str) -> dict:
         obj = (row.get("objeto_contrato") or "").strip()
         if len(obj) > 200:
             obj = obj[:197] + "..."
+        org_cnpj_raw = (row.get("orgao_cnpj") or "").strip() or None
         contratos_recentes.append({
             "objeto": obj or "Nao informado",
             "orgao": (row.get("orgao_nome") or "").strip() or "Nao informado",
+            "orgao_cnpj": org_cnpj_raw,  # PSEO-TMPL-001 (#882): interlinking contrato → órgão
             "valor": _safe_float(row.get("valor_global")) or None,
             "data_assinatura": (row.get("data_assinatura") or "")[:10],
             "uf": (row.get("uf") or "").strip().upper(),

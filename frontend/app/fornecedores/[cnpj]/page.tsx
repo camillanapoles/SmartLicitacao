@@ -18,6 +18,7 @@ type Props = { params: Promise<{ cnpj: string }> };
 interface RecentContract {
   objeto: string;
   orgao: string;
+  orgao_cnpj?: string | null; // PSEO-TMPL-001 (#882): interlinking contrato → órgão
   valor: number | null;
   data_assinatura: string;
   uf: string;
@@ -335,7 +336,19 @@ export default async function FornecedorCnpjPage({ params }: Props) {
                       <td className="px-4 py-2 max-w-xs">
                         <span className="line-clamp-2">{c.objeto}</span>
                       </td>
-                      <td className="px-4 py-2 text-gray-600">{c.orgao}</td>
+                      <td className="px-4 py-2">
+                        {/* PSEO-TMPL-001 (#882): link bidirecional contrato → órgão */}
+                        {c.orgao_cnpj ? (
+                          <Link
+                            href={`/orgaos/${c.orgao_cnpj}`}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            {c.orgao}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-600 text-sm">{c.orgao}</span>
+                        )}
+                      </td>
                       <td className="text-right px-4 py-2 text-green-700 whitespace-nowrap">
                         {c.valor != null ? formatBRL(c.valor) : '—'}
                       </td>
@@ -369,8 +382,15 @@ export default async function FornecedorCnpjPage({ params }: Props) {
                     {profile.top_compradores.map((o) => (
                       <tr key={o.cnpj} className="hover:bg-gray-50">
                         <td className="px-4 py-2">
-                          <Link href={`/orgaos/${o.cnpj}`} className="text-blue-600 hover:underline">
+                          {/* PSEO-TMPL-001 (#882): interlinking bidirecional fornecedor ↔ órgão */}
+                          <Link href={`/orgaos/${o.cnpj}`} className="text-blue-600 hover:underline font-medium">
                             {o.nome}
+                          </Link>
+                          <Link
+                            href={`/contratos/orgao/${o.cnpj}`}
+                            className="block text-xs text-gray-400 hover:text-blue-500 hover:underline mt-0.5"
+                          >
+                            Ver contratos deste órgão →
                           </Link>
                         </td>
                         <td className="text-right px-4 py-2">{o.total_contratos}</td>
@@ -396,17 +416,26 @@ export default async function FornecedorCnpjPage({ params }: Props) {
             </div>
           </section>
 
-          {/* Páginas Relacionadas */}
+          {/* Páginas Relacionadas — PSEO-TMPL-001 (#882): interlinking bidirecional completo */}
           <section className="border-t border-gray-200 pt-8 mb-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Páginas Relacionadas</h2>
             <div className="flex flex-wrap gap-3 text-sm">
               <Link href={`/cnpj/${cnpj}`} className="text-blue-600 hover:underline">
-                Licitações deste CNPJ
+                Consulta CNPJ — {cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}
               </Link>
               <Link href="/fornecedores" className="text-blue-600 hover:underline">
                 Todos os Fornecedores
               </Link>
-              {profile.ufs_atuantes.slice(0, 3).map((uf) => (
+              {profile.top_compradores.slice(0, 2).map((o) => (
+                <Link
+                  key={o.cnpj}
+                  href={`/contratos/orgao/${o.cnpj}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  Contratos de {o.nome.split(' ').slice(0, 3).join(' ')}
+                </Link>
+              ))}
+              {profile.ufs_atuantes.slice(0, 2).map((uf) => (
                 <Link
                   key={uf}
                   href={`/contratos/${uf.toLowerCase()}`}
