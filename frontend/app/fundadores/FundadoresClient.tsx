@@ -41,9 +41,9 @@ export default function FundadoresClient() {
 
   // Track checkout abandoned when user returns from Stripe with ?cancelled=true
   useEffect(() => {
-    if (!abandonedTrackedRef.current && searchParams.get('cancelled') === 'true') {
+    if (!abandonedTrackedRef.current && searchParams?.get('cancelled') === 'true') {
       abandonedTrackedRef.current = true;
-      trackFoundersCheckoutAbandoned({ src: searchParams.get('src') });
+      trackFoundersCheckoutAbandoned({ src: searchParams?.get('src') });
     }
   }, [searchParams]);
 

@@ -8,6 +8,12 @@
 import { render, screen } from '@testing-library/react';
 import FundadoresClient from '../../app/fundadores/FundadoresClient';
 
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/fundadores',
+}));
+
 // Suppress fetch errors from availability polling in tests
 beforeEach(() => {
   (global.fetch as unknown as jest.Mock) = jest.fn().mockResolvedValue({
