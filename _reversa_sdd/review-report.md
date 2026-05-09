@@ -387,3 +387,16 @@ Ready para handoff:
 | **Composite** | 🟢 **84.6%** | **+0.6** (test/CI puxa, demais ≈) |
 
 **Nota:** test/CI score reflete cobertura efetiva contra a classe de incidents real (não comprehensive). Próximo bump dependerá de RES-BE-017 (POOL-LEAK-001 root-cause fix) ou CRIT-084 final closure.
+
+---
+
+## 11. Refresh — 2026-05-08 EOD (SEC-TEST-2026-001)
+
+### 11.1 Score 2026-05-08 EOD
+
+| Dimensão | Score | Delta vs §9.5 (2026-05-02) | Justificativa |
+|----------|-------|----------------------------|---------------|
+| Test/CI gates | 🟢 89% | +5 | **69 tests OWASP Top-5 baseline (SEC-TEST-2026-001) + dedicated security-tests.yml CI gate** |
+| RBAC/Security | 🟢 83% | +6 | **SEC-TEST-2026-001 baseline (auth bypass + SQLi + SSRF guards + Stripe spoof + rate-limit bypass)** |
+
+**SEC-TEST-2026-001 (2026-05-08):** OWASP Top-5 baseline shipped — substitui Issue #201 stale (escopo monolítico >5d nunca executado). 69 tests passing em `backend/tests/security/` (10 auth + 32 sqli + 12 ssrf + 8 stripe + 7 rate-limit), dedicated CI workflow `security-tests.yml`, doc `docs/security/test-baseline.md` com roadmap SEC-TEST-002+ (OWASP A05/A06/A09/SSRF-fuzz). Cobertura 6/10 OWASP categorias (todas P1).
