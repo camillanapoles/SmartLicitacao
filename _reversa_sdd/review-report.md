@@ -16,19 +16,20 @@
 | 5. billing-quota | ✅ | ✅ | ✅ 02 | ✅ | ✅ US-005, US-013 | 🟢 100% |
 | 6. auth-oauth | ✅ | ✅ | ✅ 03 | ✅ | ✅ US-005 (signup) | 🟢 100% |
 | 7. pipeline-kanban | ✅ | ✅ | ✅ 04 | ✅ | ✅ US-002 | 🟢 100% |
-| 8. jobs+cron | ✅ | ✅ | ⏭ deferred | (interno) | ✅ US-028, US-029 | 🟡 80% |
+| 8. jobs+cron | ✅ | ✅ | ✅ 06 | (interno) | ✅ US-028, US-029 | 🟢 100% |
 | 9. routes (registration) | ✅ | ✅ | implícita | ✅ openapi | — | 🟢 90% |
 | 10. schemas+contracts | ✅ | ✅ | implícita | ✅ openapi | — | 🟢 90% |
-| 11. messages+feedback | ✅ | ✅ | ⏭ deferred | ✅ | ✅ US-008, US-009 | 🟡 85% |
-| 12. onboarding+analytics | ✅ | ✅ | ⏭ deferred | ✅ | ✅ US-006, US-007 | 🟡 85% |
-| 13. admin | ✅ | (em routes.md) | ⏭ deferred | ✅ | ✅ US-014–023 | 🟡 80% |
-| 14. exports | ✅ | ✅ | ⏭ deferred | ✅ | ✅ US-004 | 🟡 85% |
-| 15. observatory+seo | ✅ | ✅ | ⏭ deferred | ✅ | ✅ US-024–027 | 🟡 80% |
+| 11. messages+feedback | ✅ | ✅ | ✅ 07 | ✅ | ✅ US-008, US-009 | 🟢 100% |
+| 12. onboarding+analytics | ✅ | ✅ | ✅ 08 | ✅ | ✅ US-006, US-007 | 🟢 100% |
+| 13. admin | ✅ | (em routes.md) | ✅ 09 | ✅ | ✅ US-014–023 | 🟢 100% |
+| 14. exports | ✅ | ✅ | ✅ 10 | ✅ | ✅ US-004 | 🟢 100% |
+| 15. observatory+seo | ✅ | ✅ | ✅ 11 | ✅ | ✅ US-024–027 | 🟢 100% |
 | 16. design-system | ✅ | ✅ (combined) | inline | — | — | 🟢 75% |
-| 17. email-templates | ✅ | ✅ (combined) | ⏭ deferred | (interno) | parte US-005 | 🟡 70% |
+| 17. email-templates | ✅ | ✅ (combined) | ✅ 12 | (interno) | parte US-005 | 🟢 100% |
 | 18. tests+migrations | ✅ | ✅ (combined) | (interno) | (CI) | — | 🟡 70% |
+| 19. intel-reports | ✅ | — | ✅ 13 | ✅ | — | 🟢 100% |
 
-**Cobertura geral: ~85% completo (alvo `doc_level=completo`).** Specs SDD formais para 5/18 módulos críticos; restantes têm cobertura via code-analysis + flowchart + user-stories.
+**Cobertura geral: ~95% completo (alvo `doc_level=completo`).** Specs SDD formais para 13/19 módulos críticos. Módulos 06-13 adicionados em 2026-05-08 (issue #857). Restantes têm cobertura via code-analysis + flowchart + user-stories.
 
 ## 2. Inconsistências Detectadas
 
@@ -202,7 +203,15 @@ _reversa_sdd/
 │   ├── 02-billing-quota.spec.md
 │   ├── 03-auth-oauth.spec.md
 │   ├── 04-pipeline-kanban.spec.md
-│   └── 05-ingestion-datalake.spec.md
+│   ├── 05-ingestion-datalake.spec.md
+│   ├── 06-jobs-cron.spec.md          (adicionado 2026-05-08 #857)
+│   ├── 07-messages-feedback.spec.md  (adicionado 2026-05-08 #857)
+│   ├── 08-onboarding-analytics.spec.md (adicionado 2026-05-08 #857)
+│   ├── 09-admin.spec.md              (adicionado 2026-05-08 #857)
+│   ├── 10-exports.spec.md            (adicionado 2026-05-08 #857)
+│   ├── 11-observatory-seo.spec.md    (adicionado 2026-05-08 #857)
+│   ├── 12-email-templates.spec.md    (adicionado 2026-05-08 #857)
+│   └── 13-intel-reports.spec.md      (adicionado 2026-05-08 #857)
 └── flowcharts/
     ├── search.md
     ├── ingestion-datalake.md
