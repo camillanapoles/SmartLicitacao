@@ -13,8 +13,8 @@ fastapi==0.136.1
 # Performance diff is negligible for single-worker uvicorn standalone mode.
 uvicorn==0.46.0
 gunicorn==23.0.0
-pydantic[email]==2.13.3
-pydantic-settings==2.13.1
+pydantic[email]==2.13.4
+pydantic-settings==2.14.1
 starlette==0.52.1
 python-multipart>=0.0.22           # CVE-2026-24486: Path Traversal fix (STORY-279)
 
@@ -26,7 +26,7 @@ openpyxl==3.1.5
 
 # PDF report generation (STORY-325: Diagnostico de Oportunidades)
 # Pure Python — no C extensions, Railway-safe
-reportlab==4.4.0
+reportlab==4.5.0
 
 # JSON Schema validation (STORY-3.4 contract tests + STORY-4.5 PNCP canary shape drift)
 jsonschema==4.26.0
@@ -35,7 +35,7 @@ jsonschema==4.26.0
 openai==1.109.1
 
 # Auth & Database
-supabase==2.28.0
+supabase==2.30.0
 PyJWT>=2.12.0,<3.0.0  # Local JWT validation + ES256/JWKS support (STORY-227). CVE-2026-32597: crit header bypass fixed in 2.12.0
 bcrypt>=4.0.0,<5.0.0  # STORY-317: Recovery code hashing for MFA TOTP
 stripe==11.6.0
@@ -46,10 +46,10 @@ redis==5.3.1  # Feature flag caching (STORY-171)
 # Google Sheets API integration (STORY-180)
 # ACTIVE: Used in oauth.py, google_sheets.py, routes/export_sheets.py
 # Provides: Google OAuth login + export search results to Google Sheets
-google-api-python-client==2.190.0  # Google Sheets API client
-google-auth==2.50.0                # OAuth 2.0 authentication
-google-auth-oauthlib==1.3.1        # OAuth flow helpers
-google-auth-httplib2==0.3.0        # HTTP transport for Google APIs
+google-api-python-client==2.196.0  # Google Sheets API client
+google-auth==2.52.0                # OAuth 2.0 authentication
+google-auth-oauthlib==1.4.0        # OAuth flow helpers
+google-auth-httplib2==0.4.0        # HTTP transport for Google APIs
 # cryptography pinned <47.0 due to SIGSEGV with C extensions in some environments.
 # See docs/security/cryptography-sigsegv-status.md for monitoring status.
 # Upgrade procedure: run scripts/security/check_cryptography_cves.py quarterly.
@@ -73,7 +73,7 @@ python-json-logger>=3.3.0,<4.0.0
 # Error tracking (STORY-211)
 # STORY-413: Pinned exactly to block transitive upgrades — open pin was the transport
 # for the 2026-04-10 crash loop (StarletteIntegration double-wrap regression).
-sentry-sdk[fastapi]==2.52.0
+sentry-sdk[fastapi]==2.59.0
 
 # Prometheus metrics exporter (GTM-RESILIENCE-E03)
 prometheus_client>=0.20.0
