@@ -1,0 +1,84 @@
+name: "Audit org_id propagation (RBAC-ORG-002)"
+
+# Forward-looking gate: prevents regression of multi-tenant LGPD enforcement.
+# Today the only org-scoped surface is ``backend/routes/organizations.py`` (8
+# endpoints, all enforced by RBAC-ORG-001). When org_id eventually propagates
+# to other tables (pipeline, intel_reports, etc.) this workflow blocks the PR
+# unless the new route declares ``Depends(require_org_role(...))`` or the
+# module is added to ``backend/scripts/exempt_routes.py`` with @architect +
+# @devops sign-off.
+#
+# The audit script is deterministic (AST-based) and runs in <2s — see
+# ``backend/scripts/audit_org_id_propagation.py``.
+
+on:
+  pull_request:
+    paths:
+      - 'backend/routes/**'
+      - 'backend/dependencies/org_auth.py'
+      - 'backend/scripts/audit_org_id_propagation.py'
+      - 'backend/scripts/exempt_routes.py'
+      - '.github/workflows/audit-org-rbac.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/routes/**'
+      - 'backend/dependencies/org_auth.py'
+      - 'backend/scripts/audit_org_id_propagation.py'
+      - 'backend/scripts/exempt_routes.py'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: audit-org-rbac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit routes for unprotected org_id propagation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run audit (CI mode)
+        id: audit
+        run: |
+          set +e
+          python backend/scripts/audit_org_id_propagation.py --json \
+            > /tmp/audit-org-rbac.json
+          python backend/scripts/audit_org_id_propagation.py --ci \
+            > /dev/null 2> /tmp/audit-org-rbac.stderr
+          echo "STATUS=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat /tmp/audit-org-rbac.stderr || true
+
+      - name: Render markdown report
+        if: always()
+        run: |
+          python backend/scripts/audit_org_id_propagation.py \
+            --output /tmp/audit-org-rbac.md
+          echo "## RBAC Org-ID Propagation Audit" >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/audit-org-rbac.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on PR (sticky)
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: rbac-org-audit
+          path: /tmp/audit-org-rbac.md
+
+      - name: Fail if P0 violations found
+        if: steps.audit.outputs.STATUS != '0'
+        run: |
+          echo "::error::RBAC-ORG-002 audit detected P0 multi-tenant leak(s). See PR comment / step summary." >&2
+          cat /tmp/audit-org-rbac.stderr >&2
+          exit 1
