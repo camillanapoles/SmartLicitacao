@@ -255,6 +255,34 @@ def _reset_bulkhead_registry():
 
 
 @pytest.fixture(autouse=True)
+def _bypass_require_mfa_high_impact(request, monkeypatch):
+    """MFA-ENFORCE-EXT-001: Bypass MFA wrapper for TestClient tests by default.
+
+    Existing TestClient tests override `require_auth` with a stub user but
+    do not mock `_get_profile_mfa_state` / `check_user_roles`. Letting
+    `require_mfa` run against MagicMock supabase chains can incorrectly
+    flag the stub user as admin and 403 the request, breaking tests for
+    endpoints that this story now gates (billing-portal, change-password,
+    /me delete, subscriptions cancel/update-billing-period).
+
+    Sets the module-level `auth._MFA_HIGH_IMPACT_TEST_BYPASS` flag so the
+    wrapper short-circuits to a pass-through. Tests that exercise the
+    real enforcement chain (`test_mfa_enforcement_extended.py`) opt out
+    by clearing the flag for their session.
+
+    Module flag (not env var) is used because some tests `@patch` the
+    `os.getenv` attribute globally with a Mock, which breaks env-based
+    flags (Mock returns the mock value for any key).
+    """
+    import auth as _auth_mod
+    if request.node.fspath.basename == "test_mfa_enforcement_extended.py":
+        monkeypatch.setattr(_auth_mod, "_MFA_HIGH_IMPACT_TEST_BYPASS", False)
+    else:
+        monkeypatch.setattr(_auth_mod, "_MFA_HIGH_IMPACT_TEST_BYPASS", True)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _cleanup_pending_async_tasks():
     """Cancel lingering asyncio tasks after each test.
 

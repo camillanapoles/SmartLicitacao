@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 import stripe as stripe_lib
 
-from auth import require_auth
+from auth import require_auth, require_mfa_high_impact
 from services.billing import (
     update_stripe_subscription_billing_period,
     get_next_billing_date,
@@ -73,7 +73,7 @@ class CancelFeedbackResponse(BaseModel):
 @router.post("/update-billing-period", response_model=UpdateBillingPeriodResponse)
 async def update_billing_period(
     request: UpdateBillingPeriodRequest,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_mfa_high_impact),
 ):
     """Update subscription billing period (monthly / semiannual / annual).
 
@@ -192,7 +192,7 @@ async def update_billing_period(
 @router.post("/cancel", response_model=CancelSubscriptionResponse)
 async def cancel_subscription(
     request: Optional[CancelSubscriptionRequest] = None,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_mfa_high_impact),
 ):
     """Cancel subscription at period end.
 
