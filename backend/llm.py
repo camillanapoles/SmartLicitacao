@@ -19,6 +19,7 @@ Usage:
 
 from datetime import datetime
 from typing import Any
+import hashlib
 import json
 import logging
 import os
@@ -793,3 +794,116 @@ def gerar_resumo_fallback(
         alertas_urgencia=alertas_urgencia,
         insight_setorial=insight,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Redis cache layer for LLM summaries (Issue #160)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_LLM_SUMMARY_CACHE_TTL = 7 * 24 * 3600  # 7 days in seconds
+
+
+def _build_resumo_cache_key(
+    licitacoes: list[dict[str, Any]],
+    sector_name: str,
+    termos_busca: str | None,
+    setor_id: str | None,
+) -> str:
+    """Build a deterministic SHA-256 cache key for a gerar_resumo call.
+
+    Key components:
+    - Sorted list of stable bid IDs (``numeroControlePNCP`` or ``codigoCompra``
+      or ``id`` — first truthy wins). Bids without any stable ID are skipped
+      from the key but still included in the LLM payload (they're rare edge cases).
+    - sector_name, termos_busca, setor_id — all affect the generated text.
+    """
+    bid_ids: list[str] = []
+    for lic in licitacoes:
+        bid_id = (
+            lic.get("numeroControlePNCP")
+            or lic.get("codigoCompra")
+            or lic.get("id")
+        )
+        if bid_id:
+            bid_ids.append(str(bid_id))
+
+    payload = {
+        "bid_ids": sorted(bid_ids),
+        "sector_name": sector_name or "",
+        "termos_busca": termos_busca or "",
+        "setor_id": setor_id or "",
+    }
+    raw = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    digest = hashlib.sha256(raw.encode()).hexdigest()
+    return f"llm:summary:{digest}"
+
+
+async def get_or_generate_resumo_cached(
+    licitacoes: list[dict[str, Any]],
+    *,
+    sector_name: str = "licitações",
+    termos_busca: str | None = None,
+    setor_id: str | None = None,
+) -> ResumoLicitacoes:
+    """Async wrapper around gerar_resumo with Redis cache (Issue #160).
+
+    Cache key is a SHA-256 hash of the sorted bid IDs + search parameters.
+    TTL: 7 days (summaries don't change for the same set of bids).
+
+    On cache hit  → returns cached ResumoLicitacoes without calling OpenAI.
+    On cache miss → calls gerar_resumo(), stores result, returns it.
+    Redis unavailable → transparent fallback, calls gerar_resumo() directly.
+
+    NOTE: empty-input case is short-circuited in gerar_resumo() before any
+    OpenAI call, so we let it pass through without caching (TTL would be 0s
+    anyway since the result is deterministic and fast).
+    """
+    from metrics import LLM_SUMMARY_CACHE_HITS, LLM_SUMMARY_CACHE_MISSES
+
+    # Do not cache empty-input case — it's a fast, deterministic response.
+    if not licitacoes:
+        return gerar_resumo(
+            licitacoes,
+            sector_name=sector_name,
+            termos_busca=termos_busca,
+            setor_id=setor_id,
+        )
+
+    cache_key = _build_resumo_cache_key(licitacoes, sector_name, termos_busca, setor_id)
+
+    # --- Try cache read ---
+    try:
+        from cache_module import redis_cache
+
+        cached_raw = await redis_cache.get(cache_key)
+        if cached_raw:
+            resumo = ResumoLicitacoes.model_validate_json(cached_raw)
+            LLM_SUMMARY_CACHE_HITS.inc()
+            logger.debug("llm.cache_hit key=%s", cache_key)
+            # Re-apply temporal alerts (time-sensitive fields must reflect *now*).
+            recompute_temporal_alerts(resumo, licitacoes)
+            return resumo
+    except Exception as _cache_read_err:
+        logger.debug("llm.cache_read_error key=%s err=%s", cache_key, _cache_read_err)
+
+    # --- Cache miss: call OpenAI ---
+    LLM_SUMMARY_CACHE_MISSES.inc()
+    logger.debug("llm.cache_miss key=%s", cache_key)
+
+    resumo = gerar_resumo(
+        licitacoes,
+        sector_name=sector_name,
+        termos_busca=termos_busca,
+        setor_id=setor_id,
+    )
+
+    # --- Store in cache (fire-and-forget on error) ---
+    try:
+        from cache_module import redis_cache as _rc  # same singleton
+
+        await _rc.setex(cache_key, _LLM_SUMMARY_CACHE_TTL, resumo.model_dump_json())
+        logger.debug("llm.cache_stored key=%s ttl=%d", cache_key, _LLM_SUMMARY_CACHE_TTL)
+    except Exception as _cache_write_err:
+        logger.debug("llm.cache_write_error key=%s err=%s", cache_key, _cache_write_err)
+
+    return resumo
