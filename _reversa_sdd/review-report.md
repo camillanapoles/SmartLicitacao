@@ -353,29 +353,62 @@ Ready para handoff:
 
 ---
 
-## 10. Refresh — 2026-05-09 (TEST-ERR-RECOVERY-2026-001)
+## 10. Refresh — 2026-05-08 (Sentry FE Quiescente — SMARTLIC-FE-F)
 
-### 10.1 Stories Shipped
+### 10.3 SMARTLIC-FE-F (Sentry quiescente) — RCA concluído
+
+| Status | Severidade | Story | Anchor |
+|--------|------------|-------|--------|
+| ✅ ROOT CAUSE IDENTIFICADO (downgrade de gap aberto → known cause + follow-up) | 🟡 (era 🔴) | SMARTLIC-FE-F-INVEST-001 (Done); follow-up SMARTLIC-FE-F-FIX-001 a criar | `docs/sessions/2026-05/2026-05-08-sentry-fe-quiescent-rca.md` |
+
+**Premissa do gap revisada empiricamente:** narrativa "0 events Sentry frontend em janela 7d" é **incorreta**. Sentry SDK frontend recebe ~6.150 events/dia. Visibilidade zero no issues stream tem causa dupla:
+
+1. **Plano Sentry com error quota esgotada.** Stats v2 7d (project `4510878216224768`):
+   - `client_discard / ratelimit_backoff = 45.656` (SDK self-throttle on 429)
+   - `rate_limited / error_usage_exceeded = 4.601` (rejeição server-side)
+   - `client_discard / event_processor = 20.233` (beforeSend → null)
+   - **accepted ~5 em 14 dias.**
+2. **`beforeSend` união muito agressiva.** Drop default por AbortError + USER_CANCELLED + NAVIGATION + SSE-pipe `>110s` é defensável individualmente (STORY-422), mas a união silencia ~93% dos events que sobram do quota.
+
+Hypothesis #1 (SSG init) e #2 (DSN ausente em build env) **rejeitadas**: `frontend/Dockerfile` linha 56/89 declara `ARG/ENV NEXT_PUBLIC_SENTRY_DSN`; volume empírico (~80k events/14d transitando pelo SDK) confirma init OK em runtime/CSR. Hypothesis #4 (ad-blocker) **não material**: `tunnelRoute: "/monitoring"` em `next.config.js` neutraliza.
+
+**Cap aplicado (PO Required Fix non-blocker AC3):** fix > 1 dia (plano + 5 issues noisy + filter audit + alerta Prometheus). Investigation story encerrada; correção move para `SMARTLIC-FE-F-FIX-001`.
+
+**Top 5 issues 14d que dominam o volume (Pareto — alvo do fix):**
+
+- `Error: Page changed from static to dynamic at runtime /contratos/orgao/107918310` — 2.238 ocorrências em um dia
+- `TimeoutError: The operation was aborted due to timeout` — ~115 eventos em 7 grupos
+- `InvariantError: Could not resolve param value for segment: mes]-[ano` — 21
+- `EvalError: Refused to evaluate ... unsafe-eval` — 21
+- `Error: You cannot use different slug names for the same dynamic path ('setor' != ...)` — 10
+
+**Diferencial vs gaps anteriores:** gap não era "quiescente"; era "ofuscado por quota + filtro". Próxima vez que sintoma "0 events" aparecer, primeira ação é `stats_v2` com `groupBy=outcome,reason`, não fixar config SDK.
+
+---
+
+## 11. Refresh — 2026-05-09 (TEST-ERR-RECOVERY-2026-001)
+
+### 11.1 Stories Shipped
 
 | Story | Descrição | PR |
 |-------|-----------|----|
 | TEST-ERR-RECOVERY-2026-001 | Error-recovery test coverage (substitui #236 stale): pipeline timeout, pool exhaustion, Redis fallback, Stripe retry idempotency, OpenAI fallback, SSE reconnect, API backoff | feat/test-err-recovery-2026-001 |
 
-### 10.2 Coverage Delta
+### 11.2 Coverage Delta
 
 - **Backend:** +5 test files (3 recovery + 2 integration) com 16 testes verdes
 - **Frontend:** +2 test files com 8 testes verdes
 - **Doc:** `docs/testing/recovery-coverage.md` registra paths cobertos vs deferred
 - **Total:** 24 testes em 7 arquivos
 
-### 10.3 Gaps Resolvidos
+### 11.3 Gaps Resolvidos
 
 | Gap | Resolução | Evidência |
 |-----|-----------|-----------|
 | #236 (stale TD-TEST-025) | Fechado com escopo decomposto: 3 paths críticos cobertos via incidents 2026-04 (CRIT-084, POOL-LEAK-001, OpenAI 503) | TEST-ERR-RECOVERY-2026-001 |
 | Recovery paths sem regressão automatizada | 7 paths agora fail-fast em CI (pipeline timeout, pool sheds, Redis ConnectionError, Stripe retry, OpenAI 503, SSE reconnect, API backoff) | `backend/tests/recovery/`, `frontend/__tests__/recovery/` |
 
-### 10.4 Score 2026-05-09
+### 11.4 Score 2026-05-09
 
 | Dimensão | Score | Delta |
 |----------|-------|-------|
