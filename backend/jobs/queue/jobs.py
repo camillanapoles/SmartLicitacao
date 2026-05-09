@@ -417,14 +417,20 @@ async def llm_summary_job(ctx: dict, search_id: str, licitacoes: list, sector_na
     search_id_var.set(search_id)
     request_id_var.set(kwargs.get("_trace_id", search_id))
 
-    from llm import gerar_resumo, gerar_resumo_fallback
+    from llm import get_or_generate_resumo_cached, gerar_resumo_fallback
     from progress import get_tracker
     from jobs.queue.result_store import persist_job_result
 
     logger.info(f"[LLM Job] search_id={search_id}, bids={len(licitacoes)}, sector={sector_name}")
     _setor_id = kwargs.get("setor_id")
     try:
-        resumo = gerar_resumo(licitacoes, sector_name=sector_name, termos_busca=termos_busca, setor_id=_setor_id)
+        # Issue #160: use Redis-cached wrapper; falls back to direct OpenAI call if Redis unavailable.
+        resumo = await get_or_generate_resumo_cached(
+            licitacoes,
+            sector_name=sector_name,
+            termos_busca=termos_busca,
+            setor_id=_setor_id,
+        )
     except Exception as e:
         logger.warning(f"[LLM Job] LLM failed ({type(e).__name__}), using fallback: {e}")
         resumo = gerar_resumo_fallback(licitacoes, sector_name=sector_name, termos_busca=termos_busca)

@@ -209,12 +209,15 @@ COMMON_PATCHES = [
         try_recover=AsyncMock(),
     )),
     patch("pipeline.stages.validate.get_admin_ids", return_value=set()),
-    patch("pipeline.stages.generate.gerar_resumo", return_value=ResumoEstrategico(
-        resumo_executivo="Resumo de teste para log volume",
-        total_oportunidades=10,
-        valor_total=1000000.0,
-        destaques=["Destaque 1"],
-    )),
+    patch(
+        "pipeline.stages.generate.get_or_generate_resumo_cached",
+        new=AsyncMock(return_value=ResumoEstrategico(
+            resumo_executivo="Resumo de teste para log volume",
+            total_oportunidades=10,
+            valor_total=1000000.0,
+            destaques=["Destaque 1"],
+        )),
+    ),
     patch("pipeline.stages.generate.gerar_resumo_fallback"),
     patch("pipeline.stages.execute.enriquecer_com_status_inferido"),
     patch("pipeline.stages.generate._convert_to_licitacao_items", return_value=[]),

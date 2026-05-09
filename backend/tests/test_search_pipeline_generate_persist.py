@@ -346,7 +346,11 @@ class TestStageGenerate:
             ),
         )
 
-        with patch("pipeline.stages.generate.gerar_resumo", return_value=resumo) as mock_resumo, \
+        with patch(
+            "pipeline.stages.generate.get_or_generate_resumo_cached",
+            new_callable=AsyncMock,
+            return_value=resumo,
+        ) as mock_resumo, \
              patch("pipeline.stages.generate.upload_excel"):
             await pipeline.stage_generate(ctx)
 

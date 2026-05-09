@@ -26,7 +26,7 @@ _tracer = get_tracer("search_pipeline")
 
 import quota  # noqa: E402
 from storage import upload_excel  # noqa: E402
-from llm import gerar_resumo, gerar_resumo_fallback  # noqa: E402
+from llm import gerar_resumo, gerar_resumo_fallback, get_or_generate_resumo_cached  # noqa: E402
 
 
 async def stage_generate(pipeline, ctx: SearchContext) -> None:
@@ -269,7 +269,8 @@ async def stage_generate(pipeline, ctx: SearchContext) -> None:
             try:
                 _sector = ctx.sector.name if ctx.sector else "licitações"
                 _setor_id = ctx.request.setor_id if hasattr(ctx.request, "setor_id") else None
-                ctx.resumo = gerar_resumo(
+                # Issue #160: use Redis-cached wrapper; falls back to direct OpenAI call if Redis unavailable.
+                ctx.resumo = await get_or_generate_resumo_cached(
                     ctx.licitacoes_filtradas,
                     sector_name=_sector,
                     termos_busca=ctx.request.termos_busca if hasattr(ctx.request, "termos_busca") else None,
