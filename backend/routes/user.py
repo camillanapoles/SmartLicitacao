@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import Response
-from auth import require_auth
+from auth import require_auth, require_mfa_high_impact
 from authorization import check_user_roles, get_admin_ids, get_master_quota_info
 from supabase_client import sb_execute
 from config import ENABLE_NEW_PRICING
@@ -90,7 +90,7 @@ def _check_change_password_rate_limit(user_id: str) -> None:
 @router.post("/change-password", response_model=SuccessResponse)
 async def change_password(
     request: Request,
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_mfa_high_impact),
     db=Depends(get_db),  # Admin client — uses db.auth.admin
 ):
     """Change current user's password."""
@@ -587,7 +587,7 @@ async def update_alert_preferences(
 # ============================================================================
 
 @router.delete("/me", response_model=DeleteAccountResponse)
-async def delete_account(user: dict = Depends(require_auth), db=Depends(get_db)):
+async def delete_account(user: dict = Depends(require_mfa_high_impact), db=Depends(get_db)):
     """Delete entire user account and all associated data (LGPD Art. 18 VI).
 
     Uses admin client (get_db) because it needs db.auth.admin.delete_user()

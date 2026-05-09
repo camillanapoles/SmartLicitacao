@@ -255,6 +255,44 @@ def _reset_bulkhead_registry():
 
 
 @pytest.fixture(autouse=True)
+def _bypass_require_mfa_high_impact():
+    """MFA-ENFORCE-EXT-001: Bypass MFA wrapper for TestClient tests by default.
+
+    Existing TestClient tests override `require_auth` with a stub user but
+    do not mock `_get_profile_mfa_state` / `check_user_roles`. Letting
+    `require_mfa` run against MagicMock supabase chains can incorrectly
+    flag the stub user as admin and 403 the request, breaking tests for
+    endpoints that this story now gates (billing-portal, change-password,
+    /me delete, subscriptions cancel/update-billing-period).
+
+    This autouse override aliases `require_mfa_high_impact` back to
+    `require_auth` for the duration of the test. Tests that explicitly
+    validate MFA enforcement (e.g. `test_mfa_enforcement_extended.py`)
+    pop this override and install their own mocks.
+    """
+    try:
+        from fastapi import Depends as _Depends
+        from main import app
+        from auth import require_auth, require_mfa_high_impact
+    except Exception:
+        yield
+        return
+    sentinel_key = "__mfa_high_impact_default_override__"
+    if require_mfa_high_impact not in app.dependency_overrides:
+        async def _bypass(user: dict = _Depends(require_auth)) -> dict:
+            return user
+        app.dependency_overrides[require_mfa_high_impact] = _bypass
+        setattr(app.state, sentinel_key, True)
+    yield
+    if getattr(app.state, sentinel_key, False):
+        app.dependency_overrides.pop(require_mfa_high_impact, None)
+        try:
+            delattr(app.state, sentinel_key)
+        except AttributeError:
+            pass
+
+
+@pytest.fixture(autouse=True)
 def _cleanup_pending_async_tasks():
     """Cancel lingering asyncio tasks after each test.
 

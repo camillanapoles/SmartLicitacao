@@ -7,7 +7,7 @@ import logging
 import os
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
-from auth import require_auth
+from auth import require_auth, require_mfa_high_impact
 from database import get_db
 from rate_limiter import require_rate_limit, SIGNUP_RATE_LIMIT_PER_10MIN
 from schemas import BillingPlansResponse, CheckoutResponse
@@ -197,7 +197,7 @@ async def create_checkout(
 
 @router.post("/billing-portal")
 async def create_billing_portal_session(
-    user: dict = Depends(require_auth),
+    user: dict = Depends(require_mfa_high_impact),
     db=Depends(get_db),
 ):
     """
