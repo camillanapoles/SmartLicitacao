@@ -103,7 +103,7 @@ async def get_sessions(
         raise HTTPException(status_code=503, detail="Histórico temporariamente indisponível")
 
 
-@router.get("/sessions/{search_id}/download")
+@router.get("/sessions/{search_id}/download", response_model=None)
 async def download_session_excel(
     search_id: str,
     user: dict = Depends(require_auth),

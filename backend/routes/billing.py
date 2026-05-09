@@ -12,6 +12,7 @@ from database import get_db
 from rate_limiter import require_rate_limit, SIGNUP_RATE_LIMIT_PER_10MIN
 from schemas import BillingPlansResponse, CheckoutResponse
 from schemas.billing import SetupIntentResponse
+from schemas.parity import BillingPortalResponse, SubscriptionStatusResponse
 from supabase_client import sb_execute
 
 logger = logging.getLogger(__name__)
@@ -195,7 +196,7 @@ async def create_checkout(
 # That handler includes billing_period, subscription_status sync, and Redis cache invalidation.
 
 
-@router.post("/billing-portal")
+@router.post("/billing-portal", response_model=BillingPortalResponse)
 async def create_billing_portal_session(
     user: dict = Depends(require_mfa_high_impact),
     db=Depends(get_db),
@@ -250,7 +251,7 @@ async def create_billing_portal_session(
         raise HTTPException(status_code=500, detail="Erro ao criar sessão do portal de cobrança")
 
 
-@router.get("/subscription/status")
+@router.get("/subscription/status", response_model=SubscriptionStatusResponse)
 async def get_subscription_status(
     user: dict = Depends(require_auth),
     db=Depends(get_db),

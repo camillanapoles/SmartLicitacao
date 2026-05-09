@@ -13,6 +13,15 @@ from auth import require_auth
 from config import ORGANIZATIONS_ENABLED
 from dependencies.org_auth import OrgRole, require_org_role
 from log_sanitizer import mask_email, mask_user_id
+from schemas.parity import (
+    OrganizationAcceptResponse,
+    OrganizationDashboardResponse,
+    OrganizationInviteResponse,
+    OrganizationLogoUpdatedResponse,
+    OrganizationMemberRemovedResponse,
+    OrganizationMembershipResponse,
+    OrganizationResponse,
+)
 from services.organization_service import (
     accept_invite,
     create_organization,
@@ -52,7 +61,7 @@ class UpdateLogoRequest(BaseModel):
 
 
 # Helper: GET /v1/organizations/me — get current user's org
-@router.get("/organizations/me")
+@router.get("/organizations/me", response_model=OrganizationMembershipResponse)
 async def get_my_org(
     user: dict = Depends(require_auth),
 ):
@@ -73,7 +82,7 @@ async def get_my_org(
 
 
 # AC11: POST /v1/organizations — create org
-@router.post("/organizations", status_code=201)
+@router.post("/organizations", status_code=201, response_model=OrganizationResponse)
 async def create_org(
     body: CreateOrgRequest,
     user: dict = Depends(require_auth),
@@ -96,7 +105,7 @@ async def create_org(
 
 
 # AC12: GET /v1/organizations/{org_id} — org details (member+)
-@router.get("/organizations/{org_id}")
+@router.get("/organizations/{org_id}", response_model=OrganizationResponse)
 async def get_org(
     org_id: str,
     user: dict = Depends(require_auth),
@@ -119,7 +128,7 @@ async def get_org(
 
 
 # AC13: POST /v1/organizations/{org_id}/invite — invite member (owner only)
-@router.post("/organizations/{org_id}/invite")
+@router.post("/organizations/{org_id}/invite", response_model=OrganizationInviteResponse)
 async def invite_org_member(
     org_id: str,
     body: InviteMemberRequest,
@@ -156,7 +165,7 @@ async def invite_org_member(
 
 
 # AC14: POST /v1/organizations/{org_id}/accept — accept invite
-@router.post("/organizations/{org_id}/accept")
+@router.post("/organizations/{org_id}/accept", response_model=OrganizationAcceptResponse)
 async def accept_org_invite(
     org_id: str,
     user: dict = Depends(require_auth),
@@ -184,7 +193,7 @@ async def accept_org_invite(
 
 
 # AC15: DELETE /v1/organizations/{org_id}/members/{target_user_id} — remove member (owner only)
-@router.delete("/organizations/{org_id}/members/{target_user_id}")
+@router.delete("/organizations/{org_id}/members/{target_user_id}", response_model=OrganizationMemberRemovedResponse)
 async def remove_org_member(
     org_id: str,
     target_user_id: str,
@@ -226,7 +235,7 @@ async def remove_org_member(
 
 
 # AC16: GET /v1/organizations/{org_id}/dashboard — consolidated stats (owner only)
-@router.get("/organizations/{org_id}/dashboard")
+@router.get("/organizations/{org_id}/dashboard", response_model=OrganizationDashboardResponse)
 async def get_org_dashboard_endpoint(
     org_id: str,
     user: dict = Depends(require_auth),
@@ -255,7 +264,7 @@ async def get_org_dashboard_endpoint(
 
 
 # AC17: PUT /v1/organizations/{org_id}/logo — update logo URL (owner only)
-@router.put("/organizations/{org_id}/logo")
+@router.put("/organizations/{org_id}/logo", response_model=OrganizationLogoUpdatedResponse)
 async def upload_org_logo(
     org_id: str,
     body: UpdateLogoRequest,

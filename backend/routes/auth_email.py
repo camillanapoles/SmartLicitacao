@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 
 from rate_limiter import require_rate_limit, SIGNUP_RATE_LIMIT_PER_10MIN
+from schemas.parity import ValidateSignupEmailResponse
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ def _record_confirm_db(email_lower: str, supabase) -> bool:
         return False
 
 
-@router.post("/validate-signup-email")
+@router.post("/validate-signup-email", response_model=ValidateSignupEmailResponse)
 async def validate_signup_email(
     request: ResendRequest,
     _rl=Depends(require_rate_limit(SIGNUP_RATE_LIMIT_PER_10MIN, 600)),

@@ -114,7 +114,7 @@ async def first_analysis(
     )
 
 
-@router.post("/onboarding/tour-event", status_code=204)
+@router.post("/onboarding/tour-event", status_code=204, response_model=None)
 async def track_tour_event(
     request: TourEventRequest,
     user: dict = Depends(require_auth),

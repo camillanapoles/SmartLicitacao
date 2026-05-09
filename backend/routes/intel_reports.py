@@ -147,7 +147,7 @@ async def get_intel_report_status(
     )
 
 
-@router.get("/{purchase_id}/download")
+@router.get("/{purchase_id}/download", response_model=None)
 async def download_intel_report(
     purchase_id: str,
     user: dict = Depends(require_auth),

@@ -234,6 +234,8 @@ async def get_relatorio_mensal(
 @router.get(
     "/observatorio/relatorio/{mes}/{ano}/csv",
     summary="Download CSV do relatório mensal (público)",
+    # CSV download streams via StreamingResponse — no Pydantic schema applies.
+    response_model=None,
 )
 async def get_relatorio_csv(
     mes: int = Path(..., ge=1, le=12),

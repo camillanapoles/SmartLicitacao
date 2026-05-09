@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from auth import require_auth
 from config import ALERTS_SYSTEM_ENABLED
 from log_sanitizer import mask_user_id
+from schemas.common import SuccessMessageResponse
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +152,7 @@ def _row_to_response(row: Dict[str, Any], sent_count: int = 0) -> AlertResponse:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/alerts", status_code=201)
+@router.post("/alerts", status_code=201, response_model=AlertResponse)
 async def create_alert(
     body: CreateAlertRequest,
     user: dict = Depends(require_auth),
@@ -284,7 +285,7 @@ async def list_alerts(
 # ---------------------------------------------------------------------------
 
 
-@router.patch("/alerts/{alert_id}")
+@router.patch("/alerts/{alert_id}", response_model=AlertResponse)
 async def update_alert(
     alert_id: str,
     body: UpdateAlertRequest,
@@ -350,7 +351,7 @@ async def update_alert(
 # ---------------------------------------------------------------------------
 
 
-@router.delete("/alerts/{alert_id}", status_code=200)
+@router.delete("/alerts/{alert_id}", status_code=200, response_model=SuccessMessageResponse)
 async def delete_alert(
     alert_id: str,
     user: dict = Depends(require_auth),
@@ -408,7 +409,11 @@ async def delete_alert(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/alerts/{alert_id}/unsubscribe", response_class=HTMLResponse)
+@router.get(
+    "/alerts/{alert_id}/unsubscribe",
+    response_class=HTMLResponse,
+    response_model=None,
+)
 async def unsubscribe_alert(
     alert_id: str,
     token: str = Query(..., description="HMAC verification token"),

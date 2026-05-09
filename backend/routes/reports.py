@@ -46,7 +46,7 @@ class DiagnosticoRequest(BaseModel):
 # ============================================================================
 
 
-@router.post("/reports/diagnostico")
+@router.post("/reports/diagnostico", response_model=None)
 async def generate_diagnostico(
     request: DiagnosticoRequest,
     user: dict = Depends(require_auth),

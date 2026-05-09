@@ -11,12 +11,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 
+from schemas.parity import DiscardRateResponse
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 
-@router.get("/discard-rate")
+@router.get("/discard-rate", response_model=DiscardRateResponse)
 async def get_discard_rate(days: int = Query(30, ge=1, le=90)):
     """Return the moving-average filter discard rate.
 
@@ -124,7 +126,7 @@ async def get_daily_volume(days: int = Query(30, ge=1, le=90)):
         )
 
 
-@router.post("/sse-fallback", status_code=204)
+@router.post("/sse-fallback", status_code=204, response_model=None)
 async def report_sse_fallback():
     """STORY-359 AC4: Frontend reports SSE fallback to simulated progress.
 

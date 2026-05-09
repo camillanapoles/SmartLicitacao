@@ -118,7 +118,11 @@ async def send_welcome_email(user: dict = Depends(require_auth)):
     return WelcomeEmailResponse(sent=True, message="Email de boas-vindas enviado")
 
 
-@router.get("/emails/unsubscribe", response_class=HTMLResponse)
+@router.get(
+    "/emails/unsubscribe",
+    response_class=HTMLResponse,
+    response_model=None,
+)
 async def unsubscribe_email(
     user_id: str = Query(..., description="User ID"),
     token: str = Query(..., description="Verification token"),

@@ -533,7 +533,7 @@ class CTAEventRequest(BaseModel):
     variant: str  # "post-search" | "post-download" | "post-pipeline" | "dashboard" | "quota"
 
 
-@router.post("/track-cta", status_code=204)
+@router.post("/track-cta", status_code=204, response_model=None)
 async def track_cta_event(event: CTAEventRequest, user: dict = Depends(require_auth)):
     """Track CTA conversion events for admin dashboard (STORY-312 AC11).
 

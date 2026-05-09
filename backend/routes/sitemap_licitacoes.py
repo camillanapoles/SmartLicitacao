@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from admin import require_admin
 from metrics import record_sitemap_count
 from routes._sitemap_cache_headers import SITEMAP_CACHE_HEADERS
+from schemas.parity import SitemapCacheRefreshResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["sitemap"])
@@ -109,6 +110,7 @@ async def get_licitacoes_indexable(response: Response):
 @router.post(
     "/admin/sitemap-cache/refresh",
     summary="Force-refresh sitemap combos cache (admin only)",
+    response_model=SitemapCacheRefreshResponse,
 )
 async def refresh_sitemap_cache(_admin=Depends(require_admin)):
     """Clears the 24h in-memory sitemap cache and recomputes indexable combos immediately."""

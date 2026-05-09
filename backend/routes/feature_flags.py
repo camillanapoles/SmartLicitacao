@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 
 from admin import require_admin
+from schemas.parity import ExperimentsListResponse
 from auth import require_auth
 from config.features import (
     _FEATURE_FLAG_REGISTRY,
@@ -527,7 +528,7 @@ async def reload_flags_endpoint(
 public_router = APIRouter(prefix="/feature-flags", tags=["feature-flags"])
 
 
-@public_router.get("/experiments")
+@public_router.get("/experiments", response_model=ExperimentsListResponse)
 async def get_experiments(user: dict = Depends(require_auth)):
     """Return active experiment variants for the authenticated user."""
     from services.ab_testing import get_user_experiments

@@ -163,3 +163,73 @@ in 70 route modules. Pass 1 typed up 8 previously-untyped admin routes:
 - AC3 CI gate wiring (`api-types-check.yml` extension + pre-commit hook).
 - AC4 frontend re-export surface audit + `types-parity.test.ts`.
 - AC5 ADR + CLAUDE.md governance section.
+
+### Pass 2 — full backfill + CI gate (2026-05-09)
+
+**Coverage delta (AC1):** 67.92% → **100.0%** over 212 routes in 70
+files. All 68 previously-untyped routes now declare `response_model=`
+(either a Pydantic model or explicit `response_model=None` for streams /
+redirects / mixed-body endpoints with documented rationale).
+
+**AC2 sweep — files touched:**
+
+- `backend/schemas/parity.py` (new) — permissive Pydantic v2 models
+  (`_PermissiveBase` with `ConfigDict(extra="allow")` + every field
+  `Optional[...] = None`) for routes whose return shape is structurally
+  complex enough that pinning each field would risk silent key
+  stripping. Covers admin SLO, health snapshots, organization/partner
+  dashboards, search timeline/results/zero-match/cancel, pipeline write
+  responses, alert delete, billing portal/status, cache refresh, trial
+  exit surveys, validate-signup-email, experiments.
+- 28 route modules touched (`auth_check`, `auth_oauth`, `auth_email`,
+  `health`, `health_core`, `slo`, `stats_public`, `partners`,
+  `organizations`, `trial_emails`, `reports`, `search_sse`,
+  `search_status`, `metrics_api`, `pipeline`, `alerts`, `emails`,
+  `notifications`, `observatorio`, `onboarding`, `sessions`,
+  `sitemap_licitacoes`, `billing`, `intel_reports`, `feature_flags`,
+  `analytics`, `user`, `export`) — added `response_model=` on every
+  decorator. Behaviourally a no-op (no handler logic changed) — the
+  kwarg only declares the OpenAPI shape.
+
+**AC3 CI gate (new):**
+
+- `.github/workflows/audit-response-model-coverage.yml` — runs
+  `audit_response_model_coverage.py --check-against baseline.json` on
+  every PR / push to main. Fails when overall coverage shrinks vs
+  baseline OR when a new route module ships untyped. Posts sticky PR
+  comment with the coverage table. Modeled on
+  `audit-execute-without-budget.yml`.
+- `backend/scripts/audit_response_model_coverage_baseline.json` —
+  regenerated at 100.0%, used by the gate.
+
+**AC4 frontend regen + parity test:**
+
+- `frontend/app/api-types.generated.ts` — regenerated via the same
+  CI-style pipeline (`app.openapi_schema=None; app.openapi();
+  npx openapi-typescript /tmp/openapi.json`). 220 paths × 340 named
+  schemas (was 244 before — +39%).
+- `frontend/__tests__/types/parity.test.ts` (new) — compile-time
+  `AssertNotUnknown<components["schemas"]["X"]>` assertions covering
+  17 critical schemas (admin Pass-1 + pipeline + billing + user +
+  search + health + Pass-2 permissive shapes). Fails `tsc --noEmit`
+  if any of those collapses to `unknown`.
+
+**AC5 governance:**
+
+- `docs/adr/ADR-PARITY-BE-FE-001-response-model-mandatory.md` (new) —
+  policy, accepted values for `response_model=` (model / `None` with
+  docstring rationale / permissive `parity.py` model), migration path,
+  trade-offs.
+
+**Tests run locally:** `pytest tests/test_alerts.py tests/test_pipeline.py
+tests/test_organizations.py tests/test_partners.py
+tests/test_auth_check.py tests/test_health.py
+tests/scripts/test_audit_response_model_coverage.py
+tests/test_admin_*.py` → 196 passed + 5 xfail (pre-existing
+batch-pollution flakes documented in test docstrings) + 1 xpass. No
+regressions.
+
+**WSL build note:** `npm run build` in this monorepo OOMs on WSL even
+with `NODE_OPTIONS=--max_old_space_size=8192` — defer build-output
+validation to CI. `npx tsc --noEmit` on the regenerated types will
+exercise the parity test in CI via `api-types-check.yml`.

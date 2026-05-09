@@ -20,6 +20,10 @@ class NewBidsCountResponse(BaseModel):
     count: int
 
 
+class ClearNewBidsCountResponse(BaseModel):
+    ok: bool
+
+
 @router.get("/new-bids-count", response_model=NewBidsCountResponse)
 async def get_new_bids_count(
     user: dict = Depends(require_auth),
@@ -46,7 +50,7 @@ async def get_new_bids_count(
     return NewBidsCountResponse(count=0)
 
 
-@router.delete("/new-bids-count")
+@router.delete("/new-bids-count", response_model=ClearNewBidsCountResponse)
 async def clear_new_bids_count(
     user: dict = Depends(require_auth),
 ) -> dict:

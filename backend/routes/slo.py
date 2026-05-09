@@ -10,13 +10,14 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from admin import require_admin
+from schemas.parity import SloAlertsResponse, SloDashboardResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin-slo"])
 
 
-@router.get("/slo")
+@router.get("/slo", response_model=SloDashboardResponse)
 async def get_slo_dashboard(user=Depends(require_admin)) -> dict[str, Any]:
     """AC7-AC9: SLO compliance data for admin dashboard.
 
@@ -58,7 +59,7 @@ async def get_slo_dashboard(user=Depends(require_admin)) -> dict[str, Any]:
     }
 
 
-@router.get("/slo/alerts")
+@router.get("/slo/alerts", response_model=SloAlertsResponse)
 async def get_slo_alerts(user=Depends(require_admin)) -> dict[str, Any]:
     """Return current alert evaluation results."""
     from slo import evaluate_all_alerts

@@ -1,0 +1,199 @@
+name: "Audit response_model coverage (PARITY-BE-FE-001)"
+
+# Enforces the CLAUDE.md rule:
+#   "every endpoint exposed to the frontend MUST declare `response_model=`
+#    on its route decorator so the schema ends up in the OpenAPI output —
+#    otherwise CI passes but the frontend stays loosely typed."
+#
+# Strategy:
+#   - audit_response_model_coverage.py walks backend/routes/*.py and counts
+#     `@router.<verb>(...)` decorators that declare `response_model=` (any
+#     value, including `None` — the documented escape hatch for raw /
+#     streaming responses).
+#   - The committed baseline JSON
+#     (backend/scripts/audit_response_model_coverage_baseline.json) records
+#     the post-Pass-2 coverage.
+#   - --check-against fails (exit 1) when:
+#       * Overall coverage % shrinks vs baseline.
+#       * A previously-typed file loses typed routes.
+#       * A brand-new route module is added with any untyped routes.
+#   - Decremental baselines are always allowed (improvements never block).
+#
+# Paired with .github/workflows/api-types-check.yml — that workflow extracts
+# the OpenAPI schema and verifies the committed
+# frontend/app/api-types.generated.ts is in sync. Together they prevent the
+# `{[k: string]: unknown}` drift that motivated PARITY-BE-FE-001.
+
+on:
+  pull_request:
+    paths:
+      - 'backend/routes/**'
+      - 'backend/scripts/audit_response_model_coverage.py'
+      - 'backend/scripts/audit_response_model_coverage_baseline.json'
+      - '.github/workflows/audit-response-model-coverage.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/routes/**'
+      - 'backend/scripts/audit_response_model_coverage.py'
+      - 'backend/scripts/audit_response_model_coverage_baseline.json'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: audit-response-model-coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit response_model coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Render current coverage table
+        run: |
+          python backend/scripts/audit_response_model_coverage.py \
+            > /tmp/response-model-coverage.txt
+          cat /tmp/response-model-coverage.txt
+
+      - name: Compute current coverage JSON
+        run: |
+          python backend/scripts/audit_response_model_coverage.py \
+            --json /tmp/response-model-coverage.json
+          # Surface the headline number in the job log.
+          python - <<'PY'
+          import json
+          with open('/tmp/response-model-coverage.json') as fh:
+              data = json.load(fh)
+          s = data['summary']
+          print(f"coverage_pct={s['coverage_pct']}%")
+          print(f"total_routes={s['total_routes']}")
+          print(f"with_response_model={s['total_with_response_model']}")
+          PY
+
+      - name: Check against baseline (fail on regression)
+        id: gate
+        run: |
+          set +e
+          python backend/scripts/audit_response_model_coverage.py \
+            --check-against backend/scripts/audit_response_model_coverage_baseline.json \
+            > /tmp/response-model-gate.txt 2>&1
+          STATUS=$?
+          set -e
+          cat /tmp/response-model-gate.txt
+          if [ "$STATUS" -ne 0 ]; then
+            echo "has_regression=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_regression=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+      - name: Post / update PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const hasRegression = '${{ steps.gate.outputs.has_regression }}' === 'true';
+
+            const summary = JSON.parse(
+              fs.readFileSync('/tmp/response-model-coverage.json', 'utf8'),
+            ).summary;
+            const table = fs.readFileSync(
+              '/tmp/response-model-coverage.txt', 'utf8',
+            );
+
+            const marker = '<!-- audit-response-model-coverage -->';
+            let body;
+            if (hasRegression) {
+              const gate = fs.readFileSync(
+                '/tmp/response-model-gate.txt', 'utf8',
+              );
+              body = `${marker}
+            ## Audit \`response_model=\` coverage — **FAIL**
+
+            Coverage regressed vs baseline. Either declare \`response_model=\`
+            on every new / changed route, or update
+            \`backend/scripts/audit_response_model_coverage_baseline.json\`
+            in the same PR (only when the baseline genuinely needs to move
+            forward).
+
+            **Current:** ${summary.coverage_pct}% over ${summary.total_routes} routes
+            (\`${summary.total_with_response_model}\` typed).
+
+            <details><summary>Gate output</summary>
+
+            \`\`\`
+            ${gate.slice(0, 30_000)}
+            \`\`\`
+
+            </details>
+
+            <details><summary>Coverage table</summary>
+
+            \`\`\`
+            ${table.slice(0, 30_000)}
+            \`\`\`
+
+            </details>
+
+            Run locally:
+            \`\`\`
+            python backend/scripts/audit_response_model_coverage.py \\
+              --check-against backend/scripts/audit_response_model_coverage_baseline.json
+            \`\`\``;
+            } else {
+              body = `${marker}
+            ## Audit \`response_model=\` coverage — PASS
+
+            Coverage is **${summary.coverage_pct}%** over
+            ${summary.total_routes} routes (\`${summary.total_with_response_model}\` typed,
+            ${summary.files_with_routes} files with route decorators). No
+            regression vs baseline.
+
+            <details><summary>Coverage table</summary>
+
+            \`\`\`
+            ${table.slice(0, 30_000)}
+            \`\`\`
+
+            </details>`;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(
+              c => c.body && c.body.includes(marker),
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail on regression
+        if: steps.gate.outputs.has_regression == 'true'
+        run: exit 1

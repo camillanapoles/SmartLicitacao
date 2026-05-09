@@ -28,7 +28,7 @@ router = APIRouter(tags=["trial-emails"])
 # AC2: One-click unsubscribe (RFC 8058)
 # ============================================================================
 
-@router.get("/trial-emails/unsubscribe")
+@router.get("/trial-emails/unsubscribe", response_model=None)
 async def unsubscribe_trial_emails(
     user_id: str = Query(..., description="User ID"),
     token: str = Query(..., description="HMAC unsubscribe token"),
@@ -135,7 +135,7 @@ def _verify_svix_signature(
     return any(secrets.compare_digest(expected_b64, sig) for sig in candidate_sigs)
 
 
-@router.post("/trial-emails/webhook")
+@router.post("/trial-emails/webhook", response_model=None)
 async def resend_webhook(
     request: Request,
     svix_id: Optional[str] = Header(default=None, alias="svix-id"),
@@ -194,7 +194,7 @@ async def resend_webhook(
 # AC13-AC14: Admin email preview and test send
 # ============================================================================
 
-@router.get("/admin/trial-emails/preview")
+@router.get("/admin/trial-emails/preview", response_model=None)
 async def preview_trial_emails(request: Request):
     """AC15: Preview all 6 trial email templates."""
     from auth import require_auth
@@ -241,7 +241,7 @@ async def preview_trial_emails(request: Request):
     return JSONResponse(previews)
 
 
-@router.post("/admin/trial-emails/test-send")
+@router.post("/admin/trial-emails/test-send", response_model=None)
 async def test_send_trial_email(request: Request):
     """AC14: Send a test trial email to the admin's own email."""
     from auth import require_auth

@@ -25,6 +25,7 @@ from schemas import (
     PipelineListResponse,
     PipelineAlertsResponse,
 )
+from schemas.common import SuccessMessageResponse
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,7 @@ async def _check_pipeline_limit(user: dict) -> None:
         )
 
 
-@router.post("/pipeline", status_code=201)
+@router.post("/pipeline", status_code=201, response_model=PipelineItemResponse)
 async def create_pipeline_item(
     item: PipelineItemCreate,
     user: dict = Depends(require_auth),
@@ -316,7 +317,7 @@ async def list_pipeline_items(
         raise HTTPException(status_code=500, detail="Erro ao listar pipeline.")
 
 
-@router.patch("/pipeline/{item_id}")
+@router.patch("/pipeline/{item_id}", response_model=PipelineItemResponse)
 async def update_pipeline_item(
     item_id: str,
     update: PipelineItemUpdate,
@@ -407,7 +408,7 @@ async def update_pipeline_item(
         raise HTTPException(status_code=500, detail="Erro ao atualizar item do pipeline.")
 
 
-@router.delete("/pipeline/{item_id}", status_code=200)
+@router.delete("/pipeline/{item_id}", status_code=200, response_model=SuccessMessageResponse)
 async def delete_pipeline_item(
     item_id: str,
     user: dict = Depends(require_auth),
