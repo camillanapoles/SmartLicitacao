@@ -282,18 +282,27 @@ async def _fetch_recent_surveys(range_days: int) -> list[dict[str, Any]]:
     cutoff = (datetime.now(timezone.utc) - timedelta(days=int(range_days))).isoformat()
     sb = get_supabase()
 
-    def _sync_query():
-        return (
+    def _sync_query() -> list[dict]:
+        from utils.postgrest_paginate import paginate_full
+        # DATA-CAP-001: paginate past PostgREST max_rows=1000. Previously
+        # .limit(10_000) was silently capped at 1000; calibration sample
+        # statistics were therefore biased toward the most recent 1000
+        # surveys regardless of the requested range_days window.
+        query = (
             sb.table("export_time_saved_survey")
             .select("estimated_manual_hours, bid_count, submitted_at, export_type")
             .gte("submitted_at", cutoff)
             .order("submitted_at", desc=True)
-            .limit(10_000)
-            .execute()
+        )
+        return paginate_full(
+            query,
+            route="admin_calibration.fetch_recent_surveys",
+            entity_type="surveys",
+            max_total=10_000,
         )
 
     try:
-        result = await _run_with_budget(
+        rows = await _run_with_budget(
             asyncio.to_thread(_sync_query),
             budget=5.0,
             phase="route",
@@ -308,7 +317,7 @@ async def _fetch_recent_surveys(range_days: int) -> list[dict[str, Any]]:
     except Exception as exc:
         logger.warning("admin_calibration: survey fetch failed: %s", exc)
         return []
-    return list(getattr(result, "data", None) or [])
+    return list(rows or [])
 
 
 # ---------------------------------------------------------------------------
