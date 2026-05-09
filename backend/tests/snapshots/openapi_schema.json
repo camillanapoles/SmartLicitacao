@@ -1183,6 +1183,25 @@
         "title": "AuthStatusResponse",
         "type": "object"
       },
+      "BackgroundTasksHealthResponse": {
+        "additionalProperties": true,
+        "description": "DEBT-014 SYS-006: TaskRegistry health snapshot (shape varies).",
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "BackgroundTasksHealthResponse",
+        "type": "object"
+      },
       "BillingPlansResponse": {
         "description": "Response for GET /plans (billing.py).",
         "properties": {
@@ -1199,6 +1218,36 @@
           "plans"
         ],
         "title": "BillingPlansResponse",
+        "type": "object"
+      },
+      "BillingPortalResponse": {
+        "additionalProperties": true,
+        "description": "POST /billing-portal \u2014 Stripe customer portal session url.",
+        "properties": {
+          "portal_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portal Url"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "BillingPortalResponse",
         "type": "object"
       },
       "BillingSyncListResponse": {
@@ -2278,6 +2327,183 @@
         "title": "CTAEventRequest",
         "type": "object"
       },
+      "CacheDegradationInfo": {
+        "additionalProperties": true,
+        "description": "B-03/AC9 cache degradation aggregates.",
+        "properties": {
+          "avg_fail_streak": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Fail Streak"
+          },
+          "degraded_keys_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degraded Keys Count"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "keys_with_failures": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keys With Failures"
+          },
+          "priority_distribution": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority Distribution"
+          }
+        },
+        "title": "CacheDegradationInfo",
+        "type": "object"
+      },
+      "CacheHealthResponse": {
+        "additionalProperties": true,
+        "description": "UX-303 AC7: Cache health envelope across all levels.",
+        "properties": {
+          "degradation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CacheDegradationInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "local": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CacheLevelHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "overall": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall"
+          },
+          "redis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CacheLevelHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supabase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CacheLevelHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "title": "CacheHealthResponse",
+        "type": "object"
+      },
+      "CacheLevelHealth": {
+        "additionalProperties": true,
+        "description": "Per-level cache health (supabase / redis / local).",
+        "properties": {
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "CacheLevelHealth",
+        "type": "object"
+      },
       "CalculadoraDadosResponse": {
         "properties": {
           "avg_value": {
@@ -2481,6 +2707,46 @@
         "title": "CancelTrialResponse",
         "type": "object"
       },
+      "CheckEmailResponse": {
+        "additionalProperties": true,
+        "description": "STORY-258 AC15: Pre-signup email validation response.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "corporate": {
+            "title": "Corporate",
+            "type": "boolean"
+          },
+          "disposable": {
+            "title": "Disposable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available",
+          "disposable",
+          "corporate"
+        ],
+        "title": "CheckEmailResponse",
+        "type": "object"
+      },
+      "CheckPhoneResponse": {
+        "additionalProperties": true,
+        "description": "STORY-258 AC11-AC12: Pre-signup phone uniqueness response.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "CheckPhoneResponse",
+        "type": "object"
+      },
       "CheckoutResponse": {
         "description": "Response for POST /checkout.",
         "properties": {
@@ -2616,6 +2882,19 @@
           "last_updated"
         ],
         "title": "CidadeStats",
+        "type": "object"
+      },
+      "ClearNewBidsCountResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "ClearNewBidsCountResponse",
         "type": "object"
       },
       "ComparadorBid": {
@@ -4499,6 +4778,58 @@
         "title": "DimensionItem",
         "type": "object"
       },
+      "DiscardRateResponse": {
+        "additionalProperties": true,
+        "description": "GET /metrics/discard-rate snapshot.",
+        "properties": {
+          "discard_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discard Rate"
+          },
+          "discarded": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discarded"
+          },
+          "period_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Days"
+          },
+          "total_searches": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Searches"
+          }
+        },
+        "title": "DiscardRateResponse",
+        "type": "object"
+      },
       "EditaisAmostra": {
         "properties": {
           "data_encerramento": {
@@ -4661,6 +4992,29 @@
         ],
         "title": "ExperienciaLicitacoes",
         "type": "string"
+      },
+      "ExperimentsListResponse": {
+        "additionalProperties": true,
+        "description": "GET /experiments \u2014 list of experiment definitions.",
+        "properties": {
+          "experiments": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiments"
+          }
+        },
+        "title": "ExperimentsListResponse",
+        "type": "object"
       },
       "ExportTimeSavedSurveyRequest": {
         "description": "Body for POST /v1/survey/export-time-saved.",
@@ -6594,6 +6948,74 @@
         "title": "HistogramBucket",
         "type": "object"
       },
+      "IncidentEntry": {
+        "additionalProperties": true,
+        "description": "One incident record from the public status timeline.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "title": "IncidentEntry",
+        "type": "object"
+      },
+      "IncidentsResponse": {
+        "additionalProperties": true,
+        "description": "STORY-316 AC13: Recent incidents wrapper.",
+        "properties": {
+          "incidents": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IncidentEntry"
+            },
+            "title": "Incidents",
+            "type": "array"
+          }
+        },
+        "title": "IncidentsResponse",
+        "type": "object"
+      },
       "IndiceResult": {
         "properties": {
           "calculado_em": {
@@ -7996,6 +8418,336 @@
         "title": "NewOpportunitiesResponse",
         "type": "object"
       },
+      "OrganizationAcceptResponse": {
+        "additionalProperties": true,
+        "description": "POST /organizations/{org_id}/accept response.",
+        "properties": {
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success"
+          }
+        },
+        "title": "OrganizationAcceptResponse",
+        "type": "object"
+      },
+      "OrganizationDashboardResponse": {
+        "additionalProperties": true,
+        "description": "Aggregated dashboard for an org (extends over time).",
+        "properties": {
+          "members_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members Count"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
+          "pipeline_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Count"
+          },
+          "searches_30d": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Searches 30D"
+          },
+          "seats_used": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seats Used"
+          }
+        },
+        "title": "OrganizationDashboardResponse",
+        "type": "object"
+      },
+      "OrganizationInviteResponse": {
+        "additionalProperties": true,
+        "description": "POST /organizations/{org_id}/invite response.",
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "invite_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Id"
+          },
+          "invite_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Token"
+          },
+          "invite_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Url"
+          }
+        },
+        "title": "OrganizationInviteResponse",
+        "type": "object"
+      },
+      "OrganizationLogoUpdatedResponse": {
+        "additionalProperties": true,
+        "description": "PUT /organizations/{org_id}/logo response.",
+        "properties": {
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success"
+          }
+        },
+        "title": "OrganizationLogoUpdatedResponse",
+        "type": "object"
+      },
+      "OrganizationMemberRemovedResponse": {
+        "additionalProperties": true,
+        "description": "DELETE /organizations/{org_id}/members/{user_id} response.",
+        "properties": {
+          "removed_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed User Id"
+          },
+          "success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success"
+          }
+        },
+        "title": "OrganizationMemberRemovedResponse",
+        "type": "object"
+      },
+      "OrganizationMembershipResponse": {
+        "additionalProperties": true,
+        "description": "`/organizations/me` returns membership + org info.",
+        "properties": {
+          "organization": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "title": "OrganizationMembershipResponse",
+        "type": "object"
+      },
+      "OrganizationResponse": {
+        "additionalProperties": true,
+        "description": "One organization row + denormalized fields the API may add.",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Id"
+          },
+          "seats_used": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seats Used"
+          }
+        },
+        "title": "OrganizationResponse",
+        "type": "object"
+      },
       "OrgaoContratosStatsResponse": {
         "properties": {
           "avg_value": {
@@ -8266,6 +9018,402 @@
           "last_updated"
         ],
         "title": "PanoramaStats",
+        "type": "object"
+      },
+      "PartnerCreateResponse": {
+        "additionalProperties": true,
+        "description": "AC11: Newly-created partner row.",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "PartnerCreateResponse",
+        "type": "object"
+      },
+      "PartnerDashboardResponse": {
+        "additionalProperties": true,
+        "description": "AC14: Partner self-service dashboard payload.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "partner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Id"
+          },
+          "referrals": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referrals"
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "PartnerDashboardResponse",
+        "type": "object"
+      },
+      "PartnerReferralEntry": {
+        "additionalProperties": true,
+        "description": "One partner referral record.",
+        "properties": {
+          "churned_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Churned At"
+          },
+          "converted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Converted At"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "monthly_revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Revenue"
+          },
+          "revenue_share_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Share Amount"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "title": "PartnerReferralEntry",
+        "type": "object"
+      },
+      "PartnerReferralsResponse": {
+        "additionalProperties": true,
+        "description": "AC12: Admin partner referrals wrapper.",
+        "properties": {
+          "referrals": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PartnerReferralEntry"
+            },
+            "title": "Referrals",
+            "type": "array"
+          }
+        },
+        "title": "PartnerReferralsResponse",
+        "type": "object"
+      },
+      "PartnerRevenueResponse": {
+        "additionalProperties": true,
+        "description": "AC13: Partner revenue share for a given month.",
+        "properties": {
+          "month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Month"
+          },
+          "partner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Id"
+          },
+          "revenue_share_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Share Amount"
+          },
+          "total_revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Revenue"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "title": "PartnerRevenueResponse",
+        "type": "object"
+      },
+      "PartnerSummary": {
+        "additionalProperties": true,
+        "description": "One partner row in the admin list.",
+        "properties": {
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "monthly_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Share"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "referrals_active": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referrals Active"
+          },
+          "referrals_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referrals Total"
+          },
+          "revenue_share_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Share Pct"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "PartnerSummary",
+        "type": "object"
+      },
+      "PartnersListResponse": {
+        "additionalProperties": true,
+        "description": "AC10: Admin partners list wrapper.",
+        "properties": {
+          "partners": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PartnerSummary"
+            },
+            "title": "Partners",
+            "type": "array"
+          }
+        },
+        "title": "PartnersListResponse",
         "type": "object"
       },
       "PdfEditalRequest": {
@@ -9260,6 +10408,36 @@
           "total"
         ],
         "title": "PublicFeatureFlagListResponse",
+        "type": "object"
+      },
+      "PublicStatusResponse": {
+        "additionalProperties": true,
+        "description": "STORY-316 AC3: Public per-source status snapshot.",
+        "properties": {
+          "overall": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "title": "PublicStatusResponse",
         "type": "object"
       },
       "RankingResponse": {
@@ -10597,6 +11775,104 @@
         "title": "SanctionsSummarySchema",
         "type": "object"
       },
+      "SearchActionResponse": {
+        "additionalProperties": true,
+        "description": "Generic ack for `regenerate-excel`, `retry`, `cancel`.",
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "search_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "SearchActionResponse",
+        "type": "object"
+      },
+      "SearchResultsResponse": {
+        "additionalProperties": true,
+        "description": "`GET /buscar-results/{id}` and `/search/{id}/results` \u2014 full envelope.",
+        "properties": {
+          "licitacoes": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Licitacoes"
+          },
+          "resumo": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resumo"
+          },
+          "search_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Id"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "SearchResultsResponse",
+        "type": "object"
+      },
       "SearchStatusResponse": {
         "description": "GTM-STAB-009 AC3: Enriched status response for /v1/search/{id}/status.\n\nPopulated from in-memory progress tracker + state machine (lightweight, <50ms).\nNo database queries \u2014 reads only from in-memory state.\n\nSTORY-364 AC1: Includes excel_url and excel_status for polling fallback.",
         "properties": {
@@ -10698,6 +11974,74 @@
           "status"
         ],
         "title": "SearchStatusResponse",
+        "type": "object"
+      },
+      "SearchTimelineResponse": {
+        "additionalProperties": true,
+        "description": "`GET /search/{id}/timeline` \u2014 list of progress events.",
+        "properties": {
+          "events": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "search_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Id"
+          }
+        },
+        "title": "SearchTimelineResponse",
+        "type": "object"
+      },
+      "SearchZeroMatchResponse": {
+        "additionalProperties": true,
+        "description": "`GET /search/{id}/zero-match` \u2014 zero-match LLM decisions.",
+        "properties": {
+          "search_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Id"
+          },
+          "zero_matches": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zero Matches"
+          }
+        },
+        "title": "SearchZeroMatchResponse",
         "type": "object"
       },
       "SearchesOverTimeResponse": {
@@ -11465,6 +12809,47 @@
         "title": "SignupResponse",
         "type": "object"
       },
+      "SitemapCacheRefreshResponse": {
+        "additionalProperties": true,
+        "description": "POST /admin/sitemap-cache/refresh response.",
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "total_combos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Combos"
+          }
+        },
+        "title": "SitemapCacheRefreshResponse",
+        "type": "object"
+      },
       "SitemapCnpjsResponse": {
         "properties": {
           "cnpjs": {
@@ -11647,6 +13032,272 @@
         "title": "SitemapOrgaosResponse",
         "type": "object"
       },
+      "SloAlertsResponse": {
+        "additionalProperties": true,
+        "description": "STORY-299: Current alert evaluation snapshot.",
+        "properties": {
+          "alerts": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alerts"
+          },
+          "firing_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firing Count"
+          }
+        },
+        "title": "SloAlertsResponse",
+        "type": "object"
+      },
+      "SloDashboardResponse": {
+        "additionalProperties": true,
+        "description": "STORY-299 AC7-AC9: SLO compliance + alerts + definitions.",
+        "properties": {
+          "alerts": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alerts"
+          },
+          "compliance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compliance"
+          },
+          "firing_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firing Count"
+          },
+          "recording_rules": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recording Rules"
+          },
+          "sentry_alerts": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentry Alerts"
+          },
+          "slo_definitions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slo Definitions"
+          },
+          "slos": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slos"
+          }
+        },
+        "title": "SloDashboardResponse",
+        "type": "object"
+      },
+      "SourceHealthEntry": {
+        "additionalProperties": true,
+        "description": "Per-source health state.",
+        "properties": {
+          "available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "SourceHealthEntry",
+        "type": "object"
+      },
+      "SourceInfo": {
+        "description": "Individual data source health info.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "response_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Ms"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "enabled",
+          "priority"
+        ],
+        "title": "SourceInfo",
+        "type": "object"
+      },
+      "SourcesHealthMapResponse": {
+        "additionalProperties": true,
+        "description": "UX-428 AC5: { sources: { code: SourceHealthEntry } }.",
+        "properties": {
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceHealthEntry"
+            },
+            "default": {},
+            "title": "Sources",
+            "type": "object"
+          }
+        },
+        "title": "SourcesHealthMapResponse",
+        "type": "object"
+      },
+      "SourcesHealthResponse": {
+        "description": "Response for GET /sources/health endpoint.",
+        "properties": {
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "multi_source_enabled": {
+            "title": "Multi Source Enabled",
+            "type": "boolean"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceInfo"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "total_available": {
+            "title": "Total Available",
+            "type": "integer"
+          },
+          "total_enabled": {
+            "title": "Total Enabled",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sources",
+          "multi_source_enabled",
+          "total_enabled",
+          "total_available",
+          "checked_at"
+        ],
+        "title": "SourcesHealthResponse",
+        "type": "object"
+      },
       "StatusLicitacao": {
         "description": "Status da licita\u00e7\u00e3o para filtro de busca.\n\nDefine o est\u00e1gio atual do processo licitat\u00f3rio:\n- RECEBENDO_PROPOSTA: Licita\u00e7\u00f5es abertas para envio de propostas (padr\u00e3o)\n- EM_JULGAMENTO: Propostas encerradas, em an\u00e1lise pelo \u00f3rg\u00e3o\n- ENCERRADA: Processo finalizado (com ou sem vencedor)\n- TODOS: Sem filtro de status (retorna todas)",
         "enum": [
@@ -11670,6 +13321,99 @@
           "status"
         ],
         "title": "StatusResponse",
+        "type": "object"
+      },
+      "SubscriptionStatusResponse": {
+        "additionalProperties": true,
+        "description": "GET /subscription/status \u2014 current plan + period info.",
+        "properties": {
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "cancel_at_period_end": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel At Period End"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "trial_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial End"
+          }
+        },
+        "title": "SubscriptionStatusResponse",
+        "type": "object"
+      },
+      "SuccessMessageResponse": {
+        "description": "Success response with message.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "SuccessMessageResponse",
         "type": "object"
       },
       "SuccessResponse": {
@@ -11885,6 +13629,47 @@
           "current_constant"
         ],
         "title": "SurveyAggregateResponse",
+        "type": "object"
+      },
+      "SystemHealthResponse": {
+        "additionalProperties": true,
+        "description": "GTM-STAB-008 AC3: Component-level health (overall + components).\n\nPermissive \u2014 `health.get_system_health()` can grow new components\nover time (Redis metrics, queue, sources) and existing callers\njust see additional keys.",
+        "properties": {
+          "overall": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "title": "SystemHealthResponse",
         "type": "object"
       },
       "TimeSeriesDataPoint": {
@@ -12159,6 +13944,146 @@
           "count_this_week"
         ],
         "title": "TrendingSector",
+        "type": "object"
+      },
+      "TrialExitSurveyEntry": {
+        "additionalProperties": true,
+        "description": "One trial exit survey response row.",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "title": "TrialExitSurveyEntry",
+        "type": "object"
+      },
+      "TrialExitSurveysReasonCount": {
+        "additionalProperties": true,
+        "description": "One {reason, count} aggregation row.",
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "TrialExitSurveysReasonCount",
+        "type": "object"
+      },
+      "TrialExitSurveysResponse": {
+        "additionalProperties": true,
+        "description": "GET /admin/trial-exit-surveys: aggregated reason counts.",
+        "properties": {
+          "by_reason": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TrialExitSurveysReasonCount"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Reason"
+          },
+          "surveys": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TrialExitSurveyEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surveys"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "title": "TrialExitSurveysResponse",
         "type": "object"
       },
       "TrialStatusResponse": {
@@ -12531,6 +14456,52 @@
         "title": "UpdateUserRequest",
         "type": "object"
       },
+      "UptimeHistoryEntry": {
+        "additionalProperties": true,
+        "description": "One day of uptime data.",
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "uptime_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uptime Pct"
+          }
+        },
+        "title": "UptimeHistoryEntry",
+        "type": "object"
+      },
+      "UptimeHistoryResponse": {
+        "additionalProperties": true,
+        "description": "STORY-316 AC12: Daily uptime history wrapper.",
+        "properties": {
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/UptimeHistoryEntry"
+            },
+            "title": "History",
+            "type": "array"
+          }
+        },
+        "title": "UptimeHistoryResponse",
+        "type": "object"
+      },
       "UserFeaturesResponse": {
         "description": "Response containing user's enabled features.",
         "properties": {
@@ -12736,6 +14707,69 @@
           "subscription_status"
         ],
         "title": "UserProfileResponse",
+        "type": "object"
+      },
+      "ValidateSignupEmailResponse": {
+        "additionalProperties": true,
+        "description": "POST /validate-signup-email response.",
+        "properties": {
+          "available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available"
+          },
+          "corporate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corporate"
+          },
+          "disposable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disposable"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "valid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid"
+          }
+        },
+        "title": "ValidateSignupEmailResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -13003,6 +15037,34 @@
           "message"
         ],
         "title": "WelcomeEmailResponse",
+        "type": "object"
+      },
+      "_LivenessResponse": {
+        "additionalProperties": true,
+        "description": "`/health/live` snapshot \u2014 pure liveness probe.",
+        "properties": {
+          "live": {
+            "default": true,
+            "title": "Live",
+            "type": "boolean"
+          },
+          "process_uptime_seconds": {
+            "default": 0.0,
+            "title": "Process Uptime Seconds",
+            "type": "number"
+          },
+          "ready": {
+            "default": false,
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "uptime_seconds": {
+            "default": 0.0,
+            "title": "Uptime Seconds",
+            "type": "number"
+          }
+        },
+        "title": "_LivenessResponse",
         "type": "object"
       },
       "routes__blog_stats__SampleContract": {
@@ -13450,7 +15512,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealthResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -13470,7 +15534,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/_LivenessResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -13512,7 +15578,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SourcesHealthResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -14433,7 +16501,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PartnersListResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -14476,7 +16546,9 @@
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerCreateResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -14522,7 +16594,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerReferralsResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -14590,7 +16664,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerRevenueResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -15063,7 +17139,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SitemapCacheRefreshResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -15089,9 +17167,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Slo Dashboard V1 Admin Slo Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SloDashboardResponse"
                 }
               }
             },
@@ -15118,9 +17194,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Slo Alerts V1 Admin Slo Alerts Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SloAlertsResponse"
                 }
               }
             },
@@ -15263,7 +17337,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TrialExitSurveysResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -15857,7 +17933,9 @@
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -15903,7 +17981,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -15957,7 +18037,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -17170,7 +19252,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CheckEmailResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -17230,7 +19314,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CheckPhoneResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -17441,7 +19527,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateSignupEmailResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -17529,7 +19617,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/BillingPortalResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -18239,7 +20329,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResultsResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -18980,7 +21072,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentsListResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -19393,7 +21487,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealthResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -19413,7 +21509,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CacheHealthResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -19433,7 +21531,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SourcesHealthMapResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -19453,7 +21553,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundTasksHealthResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20035,7 +22137,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DiscardRateResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20326,9 +22430,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Clear New Bids Count V1 Notifications New Bids Count Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ClearNewBidsCountResponse"
                 }
               }
             },
@@ -20541,7 +22643,9 @@
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20576,7 +22680,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationMembershipResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20612,7 +22718,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20658,7 +22766,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationAcceptResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20704,7 +22814,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationDashboardResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20760,7 +22872,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationInviteResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20816,7 +22930,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationLogoUpdatedResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20871,7 +22987,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationMemberRemovedResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -20948,7 +23066,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerDashboardResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -21065,7 +23185,9 @@
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineItemResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -21138,7 +23260,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessageResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -21192,7 +23316,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineItemResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -21619,7 +23745,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchActionResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -21760,7 +23888,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchActionResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -21856,7 +23986,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchTimelineResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -21903,7 +24035,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchZeroMatchResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -22497,7 +24631,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStatusResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -22517,7 +24653,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentsResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -22537,7 +24675,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/UptimeHistoryResponse"
+                }
               }
             },
             "description": "Successful Response"
@@ -22557,7 +24697,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionStatusResponse"
+                }
               }
             },
             "description": "Successful Response"
