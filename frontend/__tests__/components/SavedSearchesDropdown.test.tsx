@@ -798,4 +798,378 @@ describe('SavedSearchesDropdown Component', () => {
       expect(screen.getByText(/\(3\/10\)/i)).toBeInTheDocument();
     });
   });
+
+  // -----------------------------------------------------------------------
+  // Issue #228 — additional comprehensive coverage
+  // -----------------------------------------------------------------------
+
+  describe('Filter case-insensitivity and edge cases (#228)', () => {
+    it('shows all searches when filter input is empty (whitespace only)', () => {
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const filterInput = screen.getByPlaceholderText('Filtrar análises...');
+      // whitespace-only filter should be treated as empty
+      fireEvent.change(filterInput, { target: { value: '   ' } });
+
+      expect(screen.getByText('Uniformes SC/PR/RS')).toBeInTheDocument();
+      expect(screen.getByText('Calçados Sudeste')).toBeInTheDocument();
+    });
+
+    it('filters case-insensitively (UPPERCASE input matches lowercase data)', () => {
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const filterInput = screen.getByPlaceholderText('Filtrar análises...');
+      fireEvent.change(filterInput, { target: { value: 'UNIFORMES' } });
+
+      expect(screen.getByText('Uniformes SC/PR/RS')).toBeInTheDocument();
+      expect(screen.queryByText('Calçados Sudeste')).not.toBeInTheDocument();
+    });
+
+    it('filters case-insensitively (mixed case)', () => {
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const filterInput = screen.getByPlaceholderText('Filtrar análises...');
+      fireEvent.change(filterInput, { target: { value: 'cAlÇaDoS' } });
+
+      expect(screen.getByText('Calçados Sudeste')).toBeInTheDocument();
+      expect(screen.queryByText('Uniformes SC/PR/RS')).not.toBeInTheDocument();
+    });
+
+    it('Escape on the filter input clears the filter (via dropdown close handler)', async () => {
+      // Component has a window-level Escape handler (capture phase) that closes
+      // the dropdown AND clears filterTerm. The input also has its own onKeyDown
+      // that clears filterTerm + blurs. Either way, after Escape the filter
+      // term must be cleared. We verify by re-opening the dropdown and
+      // observing an empty input.
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const filterInput = screen.getByPlaceholderText('Filtrar análises...') as HTMLInputElement;
+      fireEvent.change(filterInput, { target: { value: 'Calçados' } });
+      expect(filterInput.value).toBe('Calçados');
+
+      // Escape: dropdown closes + filter term clears
+      fireEvent.keyDown(filterInput, { key: 'Escape' });
+
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Filtrar análises...')).not.toBeInTheDocument();
+      });
+
+      // Re-open: filter input should be back to empty (term was cleared)
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+      const reopened = screen.getByPlaceholderText('Filtrar análises...') as HTMLInputElement;
+      expect(reopened.value).toBe('');
+    });
+  });
+
+  describe('Sort by lastUsedAt — most recent at top (#228)', () => {
+    it('renders searches in the order returned by the hook (lastUsedAt desc)', () => {
+      // Hook is the source of truth for sort. The component must NOT reorder.
+      // We supply two entries with the most-recent first; assert DOM order matches.
+      const recent: SavedSearch = {
+        id: 'recent',
+        name: 'Mais Recente',
+        searchParams: {
+          ufs: ['SC'],
+          dataInicial: '2026-01-01',
+          dataFinal: '2026-01-07',
+          searchMode: 'setor',
+          setorId: 'vestuario',
+        },
+        createdAt: '2026-01-05T10:00:00Z',
+        lastUsedAt: '2026-02-10T10:00:00Z',
+      };
+      const older: SavedSearch = {
+        id: 'older',
+        name: 'Mais Antigo',
+        searchParams: {
+          ufs: ['SP'],
+          dataInicial: '2026-01-01',
+          dataFinal: '2026-01-07',
+          searchMode: 'setor',
+          setorId: 'vestuario',
+        },
+        createdAt: '2026-01-01T10:00:00Z',
+        lastUsedAt: '2026-01-15T10:00:00Z',
+      };
+
+      mockedUseSavedSearches.mockReturnValue({
+        searches: [recent, older], // hook sorts; component should preserve order
+        loading: false,
+        isMaxCapacity: false,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const recentEl = screen.getByText('Mais Recente');
+      const olderEl = screen.getByText('Mais Antigo');
+
+      // DOCUMENT_POSITION_FOLLOWING (4) means olderEl follows recentEl
+      const positionMask = recentEl.compareDocumentPosition(olderEl);
+      expect(positionMask & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
+  describe('Max capacity (10 searches) — "Gerenciar" button (#228)', () => {
+    function buildSearches(n: number): SavedSearch[] {
+      return Array.from({ length: n }, (_, i) => ({
+        id: `s-${i}`,
+        name: `Análise ${i + 1}`,
+        searchParams: {
+          ufs: ['SC'],
+          dataInicial: '2026-01-01',
+          dataFinal: '2026-01-07',
+          searchMode: 'setor' as const,
+          setorId: 'vestuario',
+        },
+        createdAt: new Date(2026, 0, i + 1).toISOString(),
+        lastUsedAt: new Date(2026, 0, i + 1).toISOString(),
+      }));
+    }
+
+    it('does not render "Gerenciar" button below max capacity (9 searches)', () => {
+      mockedUseSavedSearches.mockReturnValue({
+        searches: buildSearches(9),
+        loading: false,
+        isMaxCapacity: false,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      expect(screen.queryByRole('button', { name: /Gerenciar análises salvas/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/\(9\/10\)/i)).toBeInTheDocument();
+    });
+
+    it('renders "Gerenciar" button at exactly max capacity (10 searches)', () => {
+      mockedUseSavedSearches.mockReturnValue({
+        searches: buildSearches(10),
+        loading: false,
+        isMaxCapacity: true,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      expect(screen.getByRole('button', { name: /Gerenciar análises salvas/i })).toBeInTheDocument();
+      expect(screen.getByText(/\(10\/10\)/i)).toBeInTheDocument();
+    });
+
+    it('renders all 10 search items at max capacity (no overflow truncation)', () => {
+      mockedUseSavedSearches.mockReturnValue({
+        searches: buildSearches(10),
+        loading: false,
+        isMaxCapacity: true,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      // Component advertises one delete button per search → exactly 10
+      const deleteButtons = screen.getAllByRole('button', { name: /Excluir análise/i });
+      expect(deleteButtons).toHaveLength(10);
+    });
+
+    it('"Gerenciar" calls clearAll when user confirms', () => {
+      mockedUseSavedSearches.mockReturnValue({
+        searches: buildSearches(10),
+        loading: false,
+        isMaxCapacity: true,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const gerenciar = screen.getByRole('button', { name: /Gerenciar análises salvas/i });
+      fireEvent.click(gerenciar);
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        expect.stringContaining('10 análises salvas')
+      );
+      expect(mockClearAll).toHaveBeenCalledTimes(1);
+      confirmSpy.mockRestore();
+    });
+
+    it('"Gerenciar" does NOT call clearAll when user cancels', () => {
+      mockedUseSavedSearches.mockReturnValue({
+        searches: buildSearches(10),
+        loading: false,
+        isMaxCapacity: true,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      fireEvent.click(screen.getByRole('button', { name: /Gerenciar análises salvas/i }));
+
+      expect(mockClearAll).not.toHaveBeenCalled();
+      confirmSpy.mockRestore();
+    });
+  });
+
+  describe('Hook contract — localStorage sync surface (#228)', () => {
+    // The component delegates ALL persistence to the useSavedSearches hook.
+    // localStorage I/O is the hook's responsibility (covered by hook unit tests).
+    // From the component's perspective, "sync" means: on user action, the
+    // hook's mutating method is invoked exactly once with the right argument.
+    // These tests pin that contract.
+
+    it('invokes deleteSearch with the correct id (single call) on confirmed delete', () => {
+      mockDeleteSearch.mockReturnValue(true);
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const deleteButtons = screen.getAllByRole('button', { name: /Excluir análise/i });
+      fireEvent.click(deleteButtons[0]); // arm
+      fireEvent.click(screen.getByRole('button', { name: /Confirmar exclusão/i })); // confirm
+
+      expect(mockDeleteSearch).toHaveBeenCalledTimes(1);
+      expect(mockDeleteSearch).toHaveBeenCalledWith('search-1');
+    });
+
+    it('does NOT invoke deleteSearch on the first (arming) click', () => {
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const deleteButtons = screen.getAllByRole('button', { name: /Excluir análise/i });
+      fireEvent.click(deleteButtons[0]);
+
+      expect(mockDeleteSearch).not.toHaveBeenCalled();
+    });
+
+    it('arming delete on one item does not arm delete on a sibling item', () => {
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const deleteButtons = screen.getAllByRole('button', { name: /Excluir análise/i });
+      fireEvent.click(deleteButtons[0]);
+
+      // Only one button should be in "Confirmar exclusão" state
+      const confirmButtons = screen.queryAllByRole('button', { name: /Confirmar exclusão/i });
+      expect(confirmButtons).toHaveLength(1);
+
+      // The second item must still show the standard delete label
+      expect(deleteButtons[1]).toHaveAttribute('aria-label', 'Excluir análise');
+    });
+
+    it('clicking a different item\'s delete button switches the armed item (does not delete either)', () => {
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      fireEvent.click(screen.getByRole('button', { name: /Análises salvas/i }));
+
+      const deleteButtons = screen.getAllByRole('button', { name: /Excluir análise/i });
+      fireEvent.click(deleteButtons[0]); // arm item 0
+      // Re-query — DOM has updated, item 0 now has the "Confirmar" label
+      const remainingDelete = screen.getAllByRole('button', { name: /Excluir análise/i });
+      // Only item 1 should still have the plain "Excluir análise" label
+      expect(remainingDelete).toHaveLength(1);
+      fireEvent.click(remainingDelete[0]); // arm item 1
+
+      // No deletion happened — only one item armed, the other reverted
+      expect(mockDeleteSearch).not.toHaveBeenCalled();
+      expect(screen.getAllByRole('button', { name: /Confirmar exclusão/i })).toHaveLength(1);
+    });
+
+    it('does not invoke loadSearch on mount (read is the hook\'s job, not the component\'s)', () => {
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+      expect(mockLoadSearch).not.toHaveBeenCalled();
+      expect(mockOnLoadSearch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Trigger badge — count formatting edge cases (#228)', () => {
+    it('hides the count badge when there are zero searches', () => {
+      mockedUseSavedSearches.mockReturnValue({
+        searches: [],
+        loading: false,
+        isMaxCapacity: false,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+
+      // The count badge has aria-label="N análise(s) salva(s)" with a leading
+      // digit. Trigger button has aria-label="Análises salvas" (no digit).
+      // When count is 0, no element with a digit-prefixed aria-label exists.
+      expect(screen.queryByLabelText(/^\d+\s+análise/i)).not.toBeInTheDocument();
+    });
+
+    it('uses singular Portuguese form for exactly 1 saved search', () => {
+      const single: SavedSearch = {
+        id: 'only',
+        name: 'Única análise',
+        searchParams: {
+          ufs: ['SC'],
+          dataInicial: '2026-01-01',
+          dataFinal: '2026-01-07',
+          searchMode: 'setor',
+          setorId: 'vestuario',
+        },
+        createdAt: '2026-01-05T10:00:00Z',
+        lastUsedAt: '2026-02-10T10:00:00Z',
+      };
+      mockedUseSavedSearches.mockReturnValue({
+        searches: [single],
+        loading: false,
+        isMaxCapacity: false,
+        saveNewSearch: mockSaveNewSearch,
+        deleteSearch: mockDeleteSearch,
+        updateSearch: mockUpdateSearch,
+        loadSearch: mockLoadSearch,
+        clearAll: mockClearAll,
+        refresh: mockRefresh,
+      });
+
+      render(<SavedSearchesDropdown onLoadSearch={mockOnLoadSearch} />);
+
+      // Badge label should NOT include the plural "s"
+      expect(screen.getByLabelText('1 análise salva')).toBeInTheDocument();
+    });
+  });
 });
