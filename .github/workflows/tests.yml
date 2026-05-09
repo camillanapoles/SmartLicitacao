@@ -80,7 +80,7 @@ jobs:
 
       # DEBT-123 AC9: Codecov upload — intentionally non-blocking (external service, not security)
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         if: true
         with:
           file: ./backend/coverage.xml
@@ -205,7 +205,7 @@ jobs:
 
       # DEBT-123 AC9: Codecov upload — intentionally non-blocking (external service, not security)
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           file: ./frontend/coverage/coverage-final.json
           flags: frontend
