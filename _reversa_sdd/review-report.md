@@ -350,3 +350,40 @@ Ready para handoff:
 | **Composite** | 🟢 **84%** | ≈ estável (+0; reliability +4 vs coverage +1; outras marginais) |
 
 **Nota:** composite mantido estável porque CRIT-084 e POOL-LEAK-001 ainda abertos compensam as melhorias de reliability.
+
+---
+
+## 10. Refresh — 2026-05-09 (TEST-ERR-RECOVERY-2026-001)
+
+### 10.1 Stories Shipped
+
+| Story | Descrição | PR |
+|-------|-----------|----|
+| TEST-ERR-RECOVERY-2026-001 | Error-recovery test coverage (substitui #236 stale): pipeline timeout, pool exhaustion, Redis fallback, Stripe retry idempotency, OpenAI fallback, SSE reconnect, API backoff | feat/test-err-recovery-2026-001 |
+
+### 10.2 Coverage Delta
+
+- **Backend:** +5 test files (3 recovery + 2 integration) com 16 testes verdes
+- **Frontend:** +2 test files com 8 testes verdes
+- **Doc:** `docs/testing/recovery-coverage.md` registra paths cobertos vs deferred
+- **Total:** 24 testes em 7 arquivos
+
+### 10.3 Gaps Resolvidos
+
+| Gap | Resolução | Evidência |
+|-----|-----------|-----------|
+| #236 (stale TD-TEST-025) | Fechado com escopo decomposto: 3 paths críticos cobertos via incidents 2026-04 (CRIT-084, POOL-LEAK-001, OpenAI 503) | TEST-ERR-RECOVERY-2026-001 |
+| Recovery paths sem regressão automatizada | 7 paths agora fail-fast em CI (pipeline timeout, pool sheds, Redis ConnectionError, Stripe retry, OpenAI 503, SSE reconnect, API backoff) | `backend/tests/recovery/`, `frontend/__tests__/recovery/` |
+
+### 10.4 Score 2026-05-09
+
+| Dimensão | Score | Delta |
+|----------|-------|-------|
+| Documentation coverage | 🟢 87% | ≈ estável |
+| Operational reliability | 🟡 82% | ≈ estável (CRIT-084 / POOL-LEAK-001 ainda abertos) |
+| Architectural consistency | 🟢 89% | ≈ estável |
+| Test/CI gates | 🟢 **88%** | **+4** (recovery suite — 7 paths críticos cobertos pós-incidents 2026-04) |
+| RBAC/Security | 🟡 77% | ≈ estável |
+| **Composite** | 🟢 **84.6%** | **+0.6** (test/CI puxa, demais ≈) |
+
+**Nota:** test/CI score reflete cobertura efetiva contra a classe de incidents real (não comprehensive). Próximo bump dependerá de RES-BE-017 (POOL-LEAK-001 root-cause fix) ou CRIT-084 final closure.
