@@ -18,6 +18,12 @@ from log_sanitizer import get_sanitized_logger
 from progress import get_tracker, remove_tracker
 from rate_limiter import require_rate_limit
 from schemas import SearchStatusResponse
+from schemas.parity import (
+    SearchActionResponse,
+    SearchResultsResponse,
+    SearchTimelineResponse,
+    SearchZeroMatchResponse,
+)
 from search_state_manager import (
     get_search_status,
     get_state_machine,
@@ -224,7 +230,7 @@ async def search_status_endpoint(
 # CRIT-003 AC7: Search timeline endpoint
 # ---------------------------------------------------------------------------
 
-@router.get("/search/{search_id}/timeline")
+@router.get("/search/{search_id}/timeline", response_model=SearchTimelineResponse)
 async def search_timeline_endpoint(
     search_id: str,
     user: dict = Depends(require_auth),
@@ -239,7 +245,7 @@ async def search_timeline_endpoint(
 # A-04 AC5: Background fetch results endpoint
 # ---------------------------------------------------------------------------
 
-@router.get("/buscar-results/{search_id}")
+@router.get("/buscar-results/{search_id}", response_model=SearchResultsResponse)
 async def get_search_results(
     search_id: str,
     user: dict = Depends(require_auth),
@@ -264,7 +270,7 @@ async def get_search_results(
 # GTM-STAB-009 AC4: Canonical results endpoint for async search
 # ---------------------------------------------------------------------------
 
-@router.get("/search/{search_id}/results")
+@router.get("/search/{search_id}/results", response_model=None)
 async def get_search_results_v1(
     search_id: str,
     user: dict = Depends(require_auth),
@@ -315,7 +321,7 @@ async def get_search_results_v1(
 # CRIT-059 AC4: Fetch zero-match classification results
 # ---------------------------------------------------------------------------
 
-@router.get("/search/{search_id}/zero-match")
+@router.get("/search/{search_id}/zero-match", response_model=SearchZeroMatchResponse)
 async def get_zero_match_results_endpoint(
     search_id: str,
     user: dict = Depends(require_auth),
@@ -343,7 +349,7 @@ async def get_zero_match_results_endpoint(
 # STORY-364 AC7-AC8: Regenerate Excel from stored results
 # ---------------------------------------------------------------------------
 
-@router.post("/search/{search_id}/regenerate-excel")
+@router.post("/search/{search_id}/regenerate-excel", response_model=None)
 async def regenerate_excel_endpoint(
     search_id: str,
     user: dict = Depends(require_auth),
@@ -427,7 +433,7 @@ async def regenerate_excel_endpoint(
 # CRIT-006 AC4-5: Retry search with only missing/failed UFs
 # ---------------------------------------------------------------------------
 
-@router.post("/search/{search_id}/retry")
+@router.post("/search/{search_id}/retry", response_model=SearchActionResponse)
 async def retry_search(
     search_id: str,
     user: dict = Depends(require_auth),
@@ -468,7 +474,7 @@ async def retry_search(
 # CRIT-006 AC16-17: Cancel an in-progress search
 # ---------------------------------------------------------------------------
 
-@router.post("/search/{search_id}/cancel")
+@router.post("/search/{search_id}/cancel", response_model=SearchActionResponse)
 async def cancel_search(
     search_id: str,
     user: dict = Depends(require_auth),

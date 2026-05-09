@@ -11,8 +11,18 @@ import time
 
 from fastapi import APIRouter, Response
 
-from schemas.health import ReadinessResponse
+from schemas.health import ReadinessResponse, SourcesHealthResponse
+from schemas.parity import SystemHealthResponse, _PermissiveBase
 import startup.state as _state
+
+
+class _LivenessResponse(_PermissiveBase):
+    """`/health/live` snapshot — pure liveness probe."""
+
+    live: bool = True
+    ready: bool = False
+    uptime_seconds: float = 0.0
+    process_uptime_seconds: float = 0.0
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +42,7 @@ def _inc_health_failure(check: str) -> None:
         pass
 
 
-@router.get("/health/live")
+@router.get("/health/live", response_model=_LivenessResponse)
 async def health_live():
     """HARDEN-016 AC1: Pure liveness probe — ALWAYS returns 200."""
     is_ready = _state.startup_time is not None
@@ -126,7 +136,7 @@ async def health_ready(response: Response):
     return {"ready": is_ready, "checks": checks, "uptime_seconds": uptime, "wedge_risk": wedge_risk}
 
 
-@router.get("/health")
+@router.get("/health", response_model=SystemHealthResponse)
 async def health():
     """Comprehensive health check with dependency status, circuit breakers, bulkheads."""
     from datetime import datetime, timezone
@@ -255,7 +265,7 @@ async def health():
     }
 
 
-@router.get("/sources/health")
+@router.get("/sources/health", response_model=SourcesHealthResponse)
 async def sources_health():
     """Health check for all configured procurement data sources."""
     from datetime import datetime, timezone

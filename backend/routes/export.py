@@ -62,7 +62,7 @@ class PdfEditalRequest(BaseModel):
 # Endpoint
 # ---------------------------------------------------------------------------
 
-@router.post("/pdf")
+@router.post("/pdf", response_model=None)
 async def export_edital_pdf(
     request: PdfEditalRequest,
     user: dict = Depends(require_auth),

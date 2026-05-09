@@ -82,6 +82,11 @@ class PublicStatsResponse(BaseModel):
 @router.get(
     "/stats/public",
     summary="Estatísticas públicas agregadas do PNCP (sem auth)",
+    # response_model=None because the same endpoint serves three response
+    # bodies depending on the `format` query param: JSON (PublicStatsResponse),
+    # HTML (embed widget) and SVG (badge). Pinning a Pydantic schema would
+    # silently coerce the HTML/SVG branches into JSON.
+    response_model=None,
 )
 async def stats_public(
     format: str = Query(default="json", description="json | embed | badge"),

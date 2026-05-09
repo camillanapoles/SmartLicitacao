@@ -5723,6 +5723,16 @@ export interface components {
             user_id?: string | null;
         };
         /**
+         * BackgroundTasksHealthResponse
+         * @description DEBT-014 SYS-006: TaskRegistry health snapshot (shape varies).
+         */
+        BackgroundTasksHealthResponse: {
+            /** Status */
+            status?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * BillingPlansResponse
          * @description Response for GET /plans (billing.py).
          */
@@ -5731,6 +5741,18 @@ export interface components {
             plans: {
                 [key: string]: unknown;
             }[];
+        };
+        /**
+         * BillingPortalResponse
+         * @description POST /billing-portal — Stripe customer portal session url.
+         */
+        BillingPortalResponse: {
+            /** Portal Url */
+            portal_url?: string | null;
+            /** Url */
+            url?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** BillingSyncListResponse */
         BillingSyncListResponse: {
@@ -6306,6 +6328,56 @@ export interface components {
             /** Variant */
             variant: string;
         };
+        /**
+         * CacheDegradationInfo
+         * @description B-03/AC9 cache degradation aggregates.
+         */
+        CacheDegradationInfo: {
+            /** Avg Fail Streak */
+            avg_fail_streak?: number | null;
+            /** Degraded Keys Count */
+            degraded_keys_count?: number | null;
+            /** Error */
+            error?: string | null;
+            /** Keys With Failures */
+            keys_with_failures?: number | null;
+            /** Priority Distribution */
+            priority_distribution?: {
+                [key: string]: number;
+            } | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CacheHealthResponse
+         * @description UX-303 AC7: Cache health envelope across all levels.
+         */
+        CacheHealthResponse: {
+            degradation?: components["schemas"]["CacheDegradationInfo"] | null;
+            local?: components["schemas"]["CacheLevelHealth"] | null;
+            /** Overall */
+            overall?: string | null;
+            redis?: components["schemas"]["CacheLevelHealth"] | null;
+            supabase?: components["schemas"]["CacheLevelHealth"] | null;
+            /** Timestamp */
+            timestamp?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CacheLevelHealth
+         * @description Per-level cache health (supabase / redis / local).
+         */
+        CacheLevelHealth: {
+            /** Last Error */
+            last_error?: string | null;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /** Status */
+            status?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** CalculadoraDadosResponse */
         CalculadoraDadosResponse: {
             /** Avg Value */
@@ -6411,6 +6483,30 @@ export interface components {
             cancelled: boolean;
         };
         /**
+         * CheckEmailResponse
+         * @description STORY-258 AC15: Pre-signup email validation response.
+         */
+        CheckEmailResponse: {
+            /** Available */
+            available: boolean;
+            /** Corporate */
+            corporate: boolean;
+            /** Disposable */
+            disposable: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CheckPhoneResponse
+         * @description STORY-258 AC11-AC12: Pre-signup phone uniqueness response.
+         */
+        CheckPhoneResponse: {
+            /** Available */
+            available: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * CheckoutResponse
          * @description Response for POST /checkout.
          */
@@ -6479,6 +6575,11 @@ export interface components {
             total_editais: number;
             /** Uf */
             uf: string;
+        };
+        /** ClearNewBidsCountResponse */
+        ClearNewBidsCountResponse: {
+            /** Ok */
+            ok: boolean;
         };
         /** ComparadorBid */
         ComparadorBid: {
@@ -7271,6 +7372,22 @@ export interface components {
             /** Value */
             value: number;
         };
+        /**
+         * DiscardRateResponse
+         * @description GET /metrics/discard-rate snapshot.
+         */
+        DiscardRateResponse: {
+            /** Discard Rate */
+            discard_rate?: number | null;
+            /** Discarded */
+            discarded?: number | null;
+            /** Period Days */
+            period_days?: number | null;
+            /** Total Searches */
+            total_searches?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** EditaisAmostra */
         EditaisAmostra: {
             /** Data Encerramento */
@@ -7332,6 +7449,18 @@ export interface components {
          * @enum {string}
          */
         ExperienciaLicitacoes: "PRIMEIRA_VEZ" | "INICIANTE" | "INTERMEDIARIO" | "EXPERIENTE";
+        /**
+         * ExperimentsListResponse
+         * @description GET /experiments — list of experiment definitions.
+         */
+        ExperimentsListResponse: {
+            /** Experiments */
+            experiments?: {
+                [key: string]: unknown;
+            }[] | null;
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * ExportTimeSavedSurveyRequest
          * @description Body for POST /v1/survey/export-time-saved.
@@ -8281,6 +8410,35 @@ export interface components {
             /** Range Label */
             range_label: string;
         };
+        /**
+         * IncidentEntry
+         * @description One incident record from the public status timeline.
+         */
+        IncidentEntry: {
+            /** Id */
+            id?: string | null;
+            /** Occurred At */
+            occurred_at?: string | null;
+            /** Severity */
+            severity?: string | null;
+            /** Summary */
+            summary?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * IncidentsResponse
+         * @description STORY-316 AC13: Recent incidents wrapper.
+         */
+        IncidentsResponse: {
+            /**
+             * Incidents
+             * @default []
+             */
+            incidents: components["schemas"]["IncidentEntry"][];
+        } & {
+            [key: string]: unknown;
+        };
         /** IndiceResult */
         IndiceResult: {
             /** Calculado Em */
@@ -8859,6 +9017,111 @@ export interface components {
             /** Last Search At */
             last_search_at?: string | null;
         };
+        /**
+         * OrganizationAcceptResponse
+         * @description POST /organizations/{org_id}/accept response.
+         */
+        OrganizationAcceptResponse: {
+            /** Organization Id */
+            organization_id?: string | null;
+            /** Role */
+            role?: string | null;
+            /** Success */
+            success?: boolean | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * OrganizationDashboardResponse
+         * @description Aggregated dashboard for an org (extends over time).
+         */
+        OrganizationDashboardResponse: {
+            /** Members Count */
+            members_count?: number | null;
+            /** Organization Id */
+            organization_id?: string | null;
+            /** Pipeline Count */
+            pipeline_count?: number | null;
+            /** Searches 30D */
+            searches_30d?: number | null;
+            /** Seats Used */
+            seats_used?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * OrganizationInviteResponse
+         * @description POST /organizations/{org_id}/invite response.
+         */
+        OrganizationInviteResponse: {
+            /** Expires At */
+            expires_at?: string | null;
+            /** Invite Id */
+            invite_id?: string | null;
+            /** Invite Token */
+            invite_token?: string | null;
+            /** Invite Url */
+            invite_url?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * OrganizationLogoUpdatedResponse
+         * @description PUT /organizations/{org_id}/logo response.
+         */
+        OrganizationLogoUpdatedResponse: {
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Success */
+            success?: boolean | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * OrganizationMemberRemovedResponse
+         * @description DELETE /organizations/{org_id}/members/{user_id} response.
+         */
+        OrganizationMemberRemovedResponse: {
+            /** Removed User Id */
+            removed_user_id?: string | null;
+            /** Success */
+            success?: boolean | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * OrganizationMembershipResponse
+         * @description `/organizations/me` returns membership + org info.
+         */
+        OrganizationMembershipResponse: {
+            organization?: components["schemas"]["OrganizationResponse"] | null;
+            /** Organization Id */
+            organization_id?: string | null;
+            /** Role */
+            role?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * OrganizationResponse
+         * @description One organization row + denormalized fields the API may add.
+         */
+        OrganizationResponse: {
+            /** Created At */
+            created_at?: string | null;
+            /** Id */
+            id?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Owner Id */
+            owner_id?: string | null;
+            /** Plan Id */
+            plan_id?: string | null;
+            /** Seats Used */
+            seats_used?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** OrgaoContratosStatsResponse */
         OrgaoContratosStatsResponse: {
             /** Avg Value */
@@ -8963,6 +9226,134 @@ export interface components {
             total_nacional: number;
             /** Total Value */
             total_value: number;
+        };
+        /**
+         * PartnerCreateResponse
+         * @description AC11: Newly-created partner row.
+         */
+        PartnerCreateResponse: {
+            /** Id */
+            id?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Slug */
+            slug?: string | null;
+            /** Status */
+            status?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PartnerDashboardResponse
+         * @description AC14: Partner self-service dashboard payload.
+         */
+        PartnerDashboardResponse: {
+            /** Name */
+            name?: string | null;
+            /** Partner Id */
+            partner_id?: string | null;
+            /** Referrals */
+            referrals?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Revenue */
+            revenue?: {
+                [key: string]: unknown;
+            } | null;
+            /** Status */
+            status?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PartnerReferralEntry
+         * @description One partner referral record.
+         */
+        PartnerReferralEntry: {
+            /** Churned At */
+            churned_at?: string | null;
+            /** Converted At */
+            converted_at?: string | null;
+            /** Id */
+            id?: string | null;
+            /** Monthly Revenue */
+            monthly_revenue?: number | null;
+            /** Revenue Share Amount */
+            revenue_share_amount?: number | null;
+            /** User Id */
+            user_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PartnerReferralsResponse
+         * @description AC12: Admin partner referrals wrapper.
+         */
+        PartnerReferralsResponse: {
+            /**
+             * Referrals
+             * @default []
+             */
+            referrals: components["schemas"]["PartnerReferralEntry"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PartnerRevenueResponse
+         * @description AC13: Partner revenue share for a given month.
+         */
+        PartnerRevenueResponse: {
+            /** Month */
+            month?: number | null;
+            /** Partner Id */
+            partner_id?: string | null;
+            /** Revenue Share Amount */
+            revenue_share_amount?: number | null;
+            /** Total Revenue */
+            total_revenue?: number | null;
+            /** Year */
+            year?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PartnerSummary
+         * @description One partner row in the admin list.
+         */
+        PartnerSummary: {
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Id */
+            id?: string | null;
+            /** Monthly Share */
+            monthly_share?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Referrals Active */
+            referrals_active?: number | null;
+            /** Referrals Total */
+            referrals_total?: number | null;
+            /** Revenue Share Pct */
+            revenue_share_pct?: number | null;
+            /** Slug */
+            slug?: string | null;
+            /** Status */
+            status?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * PartnersListResponse
+         * @description AC10: Admin partners list wrapper.
+         */
+        PartnersListResponse: {
+            /**
+             * Partners
+             * @default []
+             */
+            partners: components["schemas"]["PartnerSummary"][];
+        } & {
+            [key: string]: unknown;
         };
         /** PdfEditalRequest */
         PdfEditalRequest: {
@@ -9370,6 +9761,18 @@ export interface components {
             flags: components["schemas"]["PublicFeatureFlagItem"][];
             /** Total */
             total: number;
+        };
+        /**
+         * PublicStatusResponse
+         * @description STORY-316 AC3: Public per-source status snapshot.
+         */
+        PublicStatusResponse: {
+            /** Overall */
+            overall?: string | null;
+            /** Timestamp */
+            timestamp?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** RankingResponse */
         RankingResponse: {
@@ -10049,6 +10452,40 @@ export interface components {
             sanction_types?: string[];
         };
         /**
+         * SearchActionResponse
+         * @description Generic ack for `regenerate-excel`, `retry`, `cancel`.
+         */
+        SearchActionResponse: {
+            /** Message */
+            message?: string | null;
+            /** Search Id */
+            search_id?: string | null;
+            /** Status */
+            status?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SearchResultsResponse
+         * @description `GET /buscar-results/{id}` and `/search/{id}/results` — full envelope.
+         */
+        SearchResultsResponse: {
+            /** Licitacoes */
+            licitacoes?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Resumo */
+            resumo?: {
+                [key: string]: unknown;
+            } | null;
+            /** Search Id */
+            search_id?: string | null;
+            /** Total */
+            total?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * SearchStatusResponse
          * @description GTM-STAB-009 AC3: Enriched status response for /v1/search/{id}/status.
          *
@@ -10116,6 +10553,34 @@ export interface components {
              * @description UFs still being fetched
              */
             ufs_pending?: string[];
+        };
+        /**
+         * SearchTimelineResponse
+         * @description `GET /search/{id}/timeline` — list of progress events.
+         */
+        SearchTimelineResponse: {
+            /** Events */
+            events?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Search Id */
+            search_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SearchZeroMatchResponse
+         * @description `GET /search/{id}/zero-match` — zero-match LLM decisions.
+         */
+        SearchZeroMatchResponse: {
+            /** Search Id */
+            search_id?: string | null;
+            /** Zero Matches */
+            zero_matches?: {
+                [key: string]: unknown;
+            }[] | null;
+        } & {
+            [key: string]: unknown;
         };
         /** SearchesOverTimeResponse */
         SearchesOverTimeResponse: {
@@ -10453,6 +10918,20 @@ export interface components {
              */
             user_id: string;
         };
+        /**
+         * SitemapCacheRefreshResponse
+         * @description POST /admin/sitemap-cache/refresh response.
+         */
+        SitemapCacheRefreshResponse: {
+            /** Status */
+            status?: string | null;
+            /** Threshold */
+            threshold?: number | null;
+            /** Total Combos */
+            total_combos?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** SitemapCnpjsResponse */
         SitemapCnpjsResponse: {
             /** Cnpjs */
@@ -10517,6 +10996,111 @@ export interface components {
             updated_at: string;
         };
         /**
+         * SloAlertsResponse
+         * @description STORY-299: Current alert evaluation snapshot.
+         */
+        SloAlertsResponse: {
+            /** Alerts */
+            alerts?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Firing Count */
+            firing_count?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SloDashboardResponse
+         * @description STORY-299 AC7-AC9: SLO compliance + alerts + definitions.
+         */
+        SloDashboardResponse: {
+            /** Alerts */
+            alerts?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Compliance */
+            compliance?: string | null;
+            /** Firing Count */
+            firing_count?: number | null;
+            /** Recording Rules */
+            recording_rules?: unknown | null;
+            /** Sentry Alerts */
+            sentry_alerts?: unknown | null;
+            /** Slo Definitions */
+            slo_definitions?: {
+                [key: string]: unknown;
+            } | null;
+            /** Slos */
+            slos?: {
+                [key: string]: unknown;
+            } | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourceHealthEntry
+         * @description Per-source health state.
+         */
+        SourceHealthEntry: {
+            /** Available */
+            available?: boolean | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Status */
+            status?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourceInfo
+         * @description Individual data source health info.
+         */
+        SourceInfo: {
+            /** Code */
+            code: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Name */
+            name: string;
+            /** Priority */
+            priority: number;
+            /** Response Ms */
+            response_ms?: number | null;
+            /** Status */
+            status?: string | null;
+        };
+        /**
+         * SourcesHealthMapResponse
+         * @description UX-428 AC5: { sources: { code: SourceHealthEntry } }.
+         */
+        SourcesHealthMapResponse: {
+            /**
+             * Sources
+             * @default {}
+             */
+            sources: {
+                [key: string]: components["schemas"]["SourceHealthEntry"];
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourcesHealthResponse
+         * @description Response for GET /sources/health endpoint.
+         */
+        SourcesHealthResponse: {
+            /** Checked At */
+            checked_at: string;
+            /** Multi Source Enabled */
+            multi_source_enabled: boolean;
+            /** Sources */
+            sources: components["schemas"]["SourceInfo"][];
+            /** Total Available */
+            total_available: number;
+            /** Total Enabled */
+            total_enabled: number;
+        };
+        /**
          * StatusLicitacao
          * @description Status da licitação para filtro de busca.
          *
@@ -10535,6 +11119,36 @@ export interface components {
         StatusResponse: {
             /** Status */
             status: string;
+        };
+        /**
+         * SubscriptionStatusResponse
+         * @description GET /subscription/status — current plan + period info.
+         */
+        SubscriptionStatusResponse: {
+            /** Activated At */
+            activated_at?: string | null;
+            /** Cancel At Period End */
+            cancel_at_period_end?: boolean | null;
+            /** Current Period End */
+            current_period_end?: string | null;
+            /** Plan Id */
+            plan_id?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Trial End */
+            trial_end?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SuccessMessageResponse
+         * @description Success response with message.
+         */
+        SuccessMessageResponse: {
+            /** Message */
+            message: string;
+            /** Success */
+            success: boolean;
         };
         /**
          * SuccessResponse
@@ -10605,6 +11219,24 @@ export interface components {
             range_days: number;
             /** Sample Size */
             sample_size: number;
+        };
+        /**
+         * SystemHealthResponse
+         * @description GTM-STAB-008 AC3: Component-level health (overall + components).
+         *
+         *     Permissive — `health.get_system_health()` can grow new components
+         *     over time (Redis metrics, queue, sources) and existing callers
+         *     just see additional keys.
+         */
+        SystemHealthResponse: {
+            /** Overall */
+            overall?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Timestamp */
+            timestamp?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** TimeSeriesDataPoint */
         TimeSeriesDataPoint: {
@@ -10706,6 +11338,50 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /**
+         * TrialExitSurveyEntry
+         * @description One trial exit survey response row.
+         */
+        TrialExitSurveyEntry: {
+            /** Created At */
+            created_at?: string | null;
+            /** Feedback */
+            feedback?: string | null;
+            /** Id */
+            id?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** User Id */
+            user_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * TrialExitSurveysReasonCount
+         * @description One {reason, count} aggregation row.
+         */
+        TrialExitSurveysReasonCount: {
+            /** Count */
+            count?: number | null;
+            /** Reason */
+            reason?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * TrialExitSurveysResponse
+         * @description GET /admin/trial-exit-surveys: aggregated reason counts.
+         */
+        TrialExitSurveysResponse: {
+            /** By Reason */
+            by_reason?: components["schemas"]["TrialExitSurveysReasonCount"][] | null;
+            /** Surveys */
+            surveys?: components["schemas"]["TrialExitSurveyEntry"][] | null;
+            /** Total */
+            total?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /** TrialStatusResponse */
         TrialStatusResponse: {
@@ -10870,6 +11546,31 @@ export interface components {
             plan_id?: string | null;
         };
         /**
+         * UptimeHistoryEntry
+         * @description One day of uptime data.
+         */
+        UptimeHistoryEntry: {
+            /** Date */
+            date?: string | null;
+            /** Uptime Pct */
+            uptime_pct?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * UptimeHistoryResponse
+         * @description STORY-316 AC12: Daily uptime history wrapper.
+         */
+        UptimeHistoryResponse: {
+            /**
+             * History
+             * @default []
+             */
+            history: components["schemas"]["UptimeHistoryEntry"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * UserFeaturesResponse
          * @description Response containing user's enabled features.
          */
@@ -10986,6 +11687,24 @@ export interface components {
             /** User Id */
             user_id: string;
         };
+        /**
+         * ValidateSignupEmailResponse
+         * @description POST /validate-signup-email response.
+         */
+        ValidateSignupEmailResponse: {
+            /** Available */
+            available?: boolean | null;
+            /** Corporate */
+            corporate?: boolean | null;
+            /** Disposable */
+            disposable?: boolean | null;
+            /** Reason */
+            reason?: string | null;
+            /** Valid */
+            valid?: boolean | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -11089,6 +11808,34 @@ export interface components {
             message: string;
             /** Sent */
             sent: boolean;
+        };
+        /**
+         * _LivenessResponse
+         * @description `/health/live` snapshot — pure liveness probe.
+         */
+        _LivenessResponse: {
+            /**
+             * Live
+             * @default true
+             */
+            live: boolean;
+            /**
+             * Process Uptime Seconds
+             * @default 0
+             */
+            process_uptime_seconds: number;
+            /**
+             * Ready
+             * @default false
+             */
+            ready: boolean;
+            /**
+             * Uptime Seconds
+             * @default 0
+             */
+            uptime_seconds: number;
+        } & {
+            [key: string]: unknown;
         };
         /** SampleContract */
         routes__blog_stats__SampleContract: {
@@ -11286,7 +12033,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SystemHealthResponse"];
                 };
             };
         };
@@ -11306,7 +12053,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_LivenessResponse"];
                 };
             };
         };
@@ -11346,7 +12093,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SourcesHealthResponse"];
                 };
             };
         };
@@ -11921,7 +12668,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PartnersListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11954,7 +12701,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PartnerCreateResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11985,7 +12732,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PartnerReferralsResponse"];
                 };
             };
             /** @description Validation Error */
@@ -12021,7 +12768,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PartnerRevenueResponse"];
                 };
             };
             /** @description Validation Error */
@@ -12331,7 +13078,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SitemapCacheRefreshResponse"];
                 };
             };
         };
@@ -12351,9 +13098,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SloDashboardResponse"];
                 };
             };
         };
@@ -12373,9 +13118,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SloAlertsResponse"];
                 };
             };
         };
@@ -12486,7 +13229,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["TrialExitSurveysResponse"];
                 };
             };
         };
@@ -12859,7 +13602,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["AlertResponse"];
                 };
             };
             /** @description Validation Error */
@@ -12890,7 +13633,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SuccessMessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -12925,7 +13668,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["AlertResponse"];
                 };
             };
             /** @description Validation Error */
@@ -13689,7 +14432,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CheckEmailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -13721,7 +14464,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CheckPhoneResponse"];
                 };
             };
             /** @description Validation Error */
@@ -13885,7 +14628,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ValidateSignupEmailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -13949,7 +14692,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["BillingPortalResponse"];
                 };
             };
         };
@@ -14441,7 +15184,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SearchResultsResponse"];
                 };
             };
             /** @description Validation Error */
@@ -14939,7 +15682,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ExperimentsListResponse"];
                 };
             };
         };
@@ -15234,7 +15977,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SystemHealthResponse"];
                 };
             };
         };
@@ -15254,7 +15997,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CacheHealthResponse"];
                 };
             };
         };
@@ -15274,7 +16017,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SourcesHealthMapResponse"];
                 };
             };
         };
@@ -15294,7 +16037,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["BackgroundTasksHealthResponse"];
                 };
             };
         };
@@ -15676,7 +16419,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DiscardRateResponse"];
                 };
             };
             /** @description Validation Error */
@@ -15920,9 +16663,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ClearNewBidsCountResponse"];
                 };
             };
         };
@@ -16043,7 +16784,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16072,7 +16813,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationMembershipResponse"];
                 };
             };
         };
@@ -16094,7 +16835,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16125,7 +16866,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationAcceptResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16156,7 +16897,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationDashboardResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16191,7 +16932,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationInviteResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16226,7 +16967,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationLogoUpdatedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16258,7 +16999,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OrganizationMemberRemovedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16318,7 +17059,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PartnerDashboardResponse"];
                 };
             };
         };
@@ -16378,7 +17119,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PipelineItemResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16429,7 +17170,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SuccessMessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16464,7 +17205,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PipelineItemResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16780,7 +17521,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SearchActionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16873,7 +17614,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SearchActionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16935,7 +17676,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SearchTimelineResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16966,7 +17707,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SearchZeroMatchResponse"];
                 };
             };
             /** @description Validation Error */
@@ -17409,7 +18150,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PublicStatusResponse"];
                 };
             };
         };
@@ -17429,7 +18170,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["IncidentsResponse"];
                 };
             };
         };
@@ -17449,7 +18190,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["UptimeHistoryResponse"];
                 };
             };
         };
@@ -17469,7 +18210,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SubscriptionStatusResponse"];
                 };
             };
         };

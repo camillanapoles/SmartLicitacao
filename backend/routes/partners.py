@@ -15,6 +15,13 @@ from auth import require_auth
 from authorization import check_user_roles
 from config import PARTNERS_ENABLED
 from log_sanitizer import mask_user_id
+from schemas.parity import (
+    PartnerCreateResponse,
+    PartnerDashboardResponse,
+    PartnerReferralsResponse,
+    PartnerRevenueResponse,
+    PartnersListResponse,
+)
 from services.partner_service import (
     calculate_partner_revenue,
     create_partner,
@@ -51,7 +58,7 @@ async def _require_admin(user: dict) -> None:
 
 # ── AC14: Partner self-service dashboard (MUST be before /{partner_id}) ───────
 
-@router.get("/partner/dashboard")
+@router.get("/partner/dashboard", response_model=PartnerDashboardResponse)
 async def partner_dashboard(user: dict = Depends(require_auth)):
     """AC14: Dashboard for the logged-in partner.
 
@@ -74,7 +81,7 @@ async def partner_dashboard(user: dict = Depends(require_auth)):
 
 # ── AC10: List partners (admin only) ─────────────────────────────────────────
 
-@router.get("/admin/partners")
+@router.get("/admin/partners", response_model=PartnersListResponse)
 async def list_partners_endpoint(
     status: Optional[str] = Query(None, description="Filter by status: active, inactive, pending"),
     user: dict = Depends(require_auth),
@@ -105,7 +112,7 @@ async def list_partners_endpoint(
 
 # ── AC11: Create partner (admin only) ────────────────────────────────────────
 
-@router.post("/admin/partners", status_code=201)
+@router.post("/admin/partners", status_code=201, response_model=PartnerCreateResponse)
 async def create_partner_endpoint(
     body: CreatePartnerRequest,
     user: dict = Depends(require_auth),
@@ -137,7 +144,7 @@ async def create_partner_endpoint(
 
 # ── AC12: Partner referrals (admin only) ─────────────────────────────────────
 
-@router.get("/admin/partners/{partner_id}/referrals")
+@router.get("/admin/partners/{partner_id}/referrals", response_model=PartnerReferralsResponse)
 async def get_partner_referrals_endpoint(
     partner_id: str,
     user: dict = Depends(require_auth),
@@ -152,7 +159,7 @@ async def get_partner_referrals_endpoint(
 
 # ── AC13: Partner revenue (admin only) ───────────────────────────────────────
 
-@router.get("/admin/partners/{partner_id}/revenue")
+@router.get("/admin/partners/{partner_id}/revenue", response_model=PartnerRevenueResponse)
 async def get_partner_revenue_endpoint(
     partner_id: str,
     year: int = Query(default=None, description="Year (default: current)"),

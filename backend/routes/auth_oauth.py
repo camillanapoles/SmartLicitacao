@@ -84,7 +84,7 @@ class RevokeResponse(BaseModel):
 # OAuth Flow Endpoints
 # ============================================================================
 
-@router.get("/google")
+@router.get("/google", response_model=None)
 async def google_oauth_initiate(
     redirect: str = Query(default="/buscar", description="Page to return to after auth"),
     user: dict = Depends(require_auth)
@@ -137,7 +137,7 @@ async def google_oauth_initiate(
         )
 
 
-@router.get("/google/callback")
+@router.get("/google/callback", response_model=None)
 async def google_oauth_callback(
     code: Optional[str] = Query(default=None, description="Authorization code from Google"),
     state: str = Query(..., description="CSRF state token"),
@@ -229,7 +229,7 @@ async def google_oauth_callback(
         )
 
 
-@router.delete("/google")
+@router.delete("/google", response_model=RevokeResponse)
 async def google_oauth_revoke(
     user: dict = Depends(require_auth)
 ) -> RevokeResponse:

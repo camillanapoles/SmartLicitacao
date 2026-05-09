@@ -48,7 +48,7 @@ _SSE_POLL_INTERVAL = 1.0   # seconds between non-blocking polls
 _SSE_POLLS_PER_HEARTBEAT = 15  # heartbeat every ~15s (15 polls * 1s)
 
 
-@router.get("/buscar-progress/{search_id}")
+@router.get("/buscar-progress/{search_id}", response_model=None)
 async def buscar_progress_stream(
     search_id: str,
     request: Request,

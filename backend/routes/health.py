@@ -14,12 +14,22 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
+from schemas.parity import (
+    BackgroundTasksHealthResponse,
+    CacheHealthResponse,
+    IncidentsResponse,
+    PublicStatusResponse,
+    SourcesHealthMapResponse,
+    SystemHealthResponse,
+    UptimeHistoryResponse,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health")
+@router.get("/health", response_model=SystemHealthResponse)
 async def system_health():
     """GTM-STAB-008 AC3: Comprehensive system health endpoint (AC4: internal, detailed).
 
@@ -30,7 +40,7 @@ async def system_health():
     return await get_system_health()
 
 
-@router.get("/status")
+@router.get("/status", response_model=PublicStatusResponse)
 async def public_status():
     """STORY-316 AC3: Public status endpoint (no auth required).
 
@@ -41,7 +51,7 @@ async def public_status():
     return await get_public_status()
 
 
-@router.get("/status/incidents")
+@router.get("/status/incidents", response_model=IncidentsResponse)
 async def recent_incidents():
     """STORY-316 AC13: Recent incidents for status page."""
     from health import get_recent_incidents
@@ -49,7 +59,7 @@ async def recent_incidents():
     return {"incidents": incidents}
 
 
-@router.get("/status/uptime-history")
+@router.get("/status/uptime-history", response_model=UptimeHistoryResponse)
 async def uptime_history():
     """STORY-316 AC12: Daily uptime data for status page chart."""
     from health import get_uptime_history
@@ -57,14 +67,14 @@ async def uptime_history():
     return {"history": history}
 
 
-@router.get("/health/tasks")
+@router.get("/health/tasks", response_model=BackgroundTasksHealthResponse)
 async def background_tasks_health():
     """DEBT-014 SYS-006: Background task health via TaskRegistry."""
     from task_registry import task_registry
     return task_registry.get_health()
 
 
-@router.get("/health/sources")
+@router.get("/health/sources", response_model=SourcesHealthMapResponse)
 async def sources_health():
     """UX-428 AC5: Health status for all configured procurement sources.
 
@@ -94,7 +104,7 @@ async def sources_health():
     return {"sources": result}
 
 
-@router.get("/health/cache")
+@router.get("/health/cache", response_model=CacheHealthResponse)
 async def cache_health():
     """AC7: Health check for all cache levels.
 

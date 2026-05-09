@@ -12,6 +12,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 
 from rate_limiter import require_rate_limit, SIGNUP_RATE_LIMIT_PER_10MIN
+from schemas.parity import CheckEmailResponse, CheckPhoneResponse
 from utils.disposable_emails import is_disposable_email, is_corporate_email
 from utils.phone_normalizer import normalize_phone
 
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/auth", tags=["auth-check"])
 # GET /auth/check-email
 # ---------------------------------------------------------------------------
 
-@router.get("/check-email")
+@router.get("/check-email", response_model=CheckEmailResponse)
 async def check_email(
     request: Request,
     email: str = Query(..., min_length=5, max_length=320),
@@ -83,7 +84,7 @@ async def _check_fingerprint_abuse(phone: str, company: str | None, request: Req
         logger.debug(f"Fingerprint check failed (non-blocking): {e}")
 
 
-@router.get("/check-phone")
+@router.get("/check-phone", response_model=CheckPhoneResponse)
 async def check_phone(
     request: Request,
     phone: str = Query(..., min_length=8, max_length=20),

@@ -24,6 +24,7 @@ from schemas import (
     UserProfileResponse, SuccessResponse, DeleteAccountResponse,
     PerfilContexto, PerfilContextoResponse, ProfileCompletenessResponse, validate_password,
 )
+from schemas.parity import TrialExitSurveysResponse
 from log_sanitizer import mask_user_id, log_user_action
 from pydantic import BaseModel
 
@@ -693,7 +694,7 @@ async def delete_account(user: dict = Depends(require_mfa_high_impact), db=Depen
     return {"success": True, "message": "Conta excluída com sucesso."}
 
 
-@router.get("/me/export")
+@router.get("/me/export", response_model=None)
 async def export_user_data(user: dict = Depends(require_auth), db=Depends(get_db)):
     """Export all user data as JSON file (LGPD Art. 18 V — data portability).
 
@@ -852,7 +853,7 @@ async def submit_exit_survey(
         raise HTTPException(status_code=503, detail="Erro ao salvar survey. Tente novamente.")
 
 
-@router.get("/admin/trial-exit-surveys")
+@router.get("/admin/trial-exit-surveys", response_model=TrialExitSurveysResponse)
 async def get_exit_surveys_admin(
     user: dict = Depends(require_auth),
     db=Depends(get_db),
