@@ -2,6 +2,8 @@
 
 > Gerado pelo **Reversa Data Master** em 2026-04-27
 > Fonte: `supabase/migrations/` (183 arquivos), `backend/migrations/` (12 legacy), `data-dictionary.md`
+>
+> **Refresh 2026-05-09 (DOC-COVERAGE-001):** seções §11 (Tabelas novas/estendidas 2026-05-04→09), §12 (Views — pós SEC-VIEW-001), §13 (RPCs novas Intel + DATA-CAP-001), e §14 (ERD delta) appended at bottom. Cita PRs #955 + #957 (UNMERGED em refresh time, documentadas como post-merge canonical state — wave B sequencing) + PR #916 (`plans` capabilities) + PRs #628, #826, #710, #791, #863. Migration source files lidos diretamente (db pull bloqueado por `feedback_supabase_down_sql_schema_conflict`).
 
 ## 1. Stack
 
@@ -246,3 +248,291 @@ partners ─── 1:N ─── partner_referrals
 referrals
 leads, report_leads, founding_leads
 ```
+
+---
+
+## 11. Tabelas Novas / Estendidas (refresh 2026-05-04 → 2026-05-09)
+
+> Esta seção é additive. Documenta deltas desde §2 (baseline 2026-04-27).
+> DDLs lidos direto de `supabase/migrations/*.sql` (memory `feedback_supabase_down_sql_schema_conflict` — `db pull` bloqueia por causa do paired `.down.sql` antipattern).
+
+### 11.1 `plans` (estendida — TD-GTM-003 / PR #916 — `20260509011633_plans_capabilities_table.sql`)
+
+Migra hardcoded `PLAN_CAPABILITIES` dict (`backend/quota/quota_core.py`) para a tabela `public.plans` adicionando colunas estruturadas + audit log. Source of truth runtime para `_load_plan_capabilities_from_db()` cache TTL=30s.
+
+**Colunas adicionadas:**
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `display_name` | `text` | UI-facing label |
+| `monthly_quota` | `int` | mirrors `max_searches`, mantida para auditoria spec #192 |
+| `capabilities` | `jsonb` | structured plan limits (ver schema abaixo) — source of truth runtime |
+| `version` | `int NOT NULL DEFAULT 1` | monotonically incremented em capability change; clientes detectam mudança sem polling |
+| `updated_at` | `timestamptz NOT NULL DEFAULT now()` | last write |
+| `updated_by` | `uuid REFERENCES auth.users(id) ON DELETE SET NULL` | audit trail |
+
+**Schema `capabilities` jsonb:**
+```json
+{
+  "max_history_days": 1825,
+  "allow_excel": true,
+  "allow_pipeline": true,
+  "max_requests_per_month": 1000,
+  "max_requests_per_min": 60,
+  "max_summary_tokens": 10000,
+  "priority": "normal"
+}
+```
+
+**Plans seeded/backfilled (UPSERT):** `free`, `free_trial`, `pack_5`, `pack_10`, `pack_20`, `monthly`, `annual`, `master`, `smartlic_pro`, `consultor_agil` (legacy), `maquina` (legacy), `sala_guerra` (legacy), `founding_member`, `consultoria`. Cada `id` recebe um JSONB completo via `CASE id` no UPDATE — migration é hermetic (não depende de Python source-of-truth at apply-time).
+
+**Invariante (self-test no migration via DO block):** `SELECT count(*) FROM public.plans WHERE is_active = true AND capabilities IS NULL = 0` — falha de apply se algum plano ativo ficar com NULL.
+
+**RLS:**
+- SELECT: público (anon hits `/v1/plans` na landing) — policy `plans_select_all` preservada
+- WRITE: `plans_service_write` policy → `service_role` only
+- audit log: `plans_audit` table service_role only
+
+### 11.2 `plans_audit` (NOVA — same migration)
+
+Immutable INSERT/UPDATE/DELETE log de qualquer mudança em `public.plans`.
+
+| Coluna | Tipo |
+|--------|------|
+| `id` | `bigserial PRIMARY KEY` |
+| `plan_id` | `text` |
+| `operation` | `text NOT NULL CHECK (op IN ('INSERT','UPDATE','DELETE'))` |
+| `old_value` | `jsonb` |
+| `new_value` | `jsonb` |
+| `changed_by` | `uuid` |
+| `changed_at` | `timestamptz NOT NULL DEFAULT now()` |
+
+**Index:** `idx_plans_audit_plan_id_changed_at (plan_id, changed_at DESC)`
+
+**Trigger:** `plans_audit_trigger` AFTER INSERT OR UPDATE OR DELETE ON `public.plans` FOR EACH ROW → `plans_audit_trigger_fn()` (LANGUAGE plpgsql, SECURITY INVOKER por design — writers de `plans` constrained a `service_role` por RLS, não precisa SECDEF).
+
+**RLS:** `plans_audit_service_all` policy — service_role only (read + write).
+
+### 11.3 `intel_report_purchases` (NOVA — INTEL-REPORT-001 / PR #628 — `20260505113800_intel_reports_schema.sql`)
+
+One-time PDF report purchases. Lifecycle `pending → generating → ready | failed | refunded`. Signed URL expira após 30 dias.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `id` | `uuid PK DEFAULT gen_random_uuid()` | |
+| `user_id` | `uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE` | owner |
+| `product_type` | `text NOT NULL` | e.g. `cnpj_raio_x`, `sector_uf` (v0.2 PR #826) |
+| `entity_key` | `text NOT NULL` | CNPJ digits-only para `cnpj_raio_x`; setor+uf para `sector_uf` |
+| `stripe_payment_intent_id` | `text UNIQUE` | idempotency key contra Stripe webhook double-fulfillment |
+| `status` | `text NOT NULL DEFAULT 'pending' CHECK IN ('pending','generating','ready','failed','refunded')` | |
+| `pdf_url` | `text` | signed URL Supabase Storage (bucket `intel-reports`) |
+| `created_at` | `timestamptz NOT NULL DEFAULT NOW()` | |
+| `expires_at` | `timestamptz NOT NULL DEFAULT (NOW() + INTERVAL '30 days')` | signed URL expiry |
+
+**Indexes:**
+- `idx_irp_user_id (user_id, created_at DESC)` — Meus Relatórios listing
+- `idx_irp_stripe_pi (stripe_payment_intent_id)` — webhook lookup
+- `idx_irp_status (status, created_at DESC)` — worker que polla `generating`
+
+**RLS:**
+- `irp_owner_select` (FOR SELECT TO authenticated USING `auth.uid() = user_id`) — user só vê seus próprios
+- `irp_service_select` / `irp_service_insert` / `irp_service_update` — service_role full access (webhook + worker)
+- DELETE não exposto (relatórios = histórico financeiro; `refunded` é status)
+
+**Storage bucket (`20260507110000_create_intel_reports_bucket.sql`):** bucket `intel-reports` privado; signed URL geradas pela rota `GET /v1/intel-reports/{id}/download`.
+
+### 11.4 `cnae_setores` (NOVA — DATA-CNAE-002 / PR #710 — `20260505113807_cnae_setores_table.sql`)
+
+Saga `#679 → #702 (revert) → #722 → #710` — re-implementação minimal pós wedge daemon-thread Redis pubsub (cold start hang). Override DB para o mapping hardcoded em `backend/utils/cnae_mapping.py:CNAE_TO_SETOR`.
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `codigo_cnae` | `text PRIMARY KEY` | 4-digit IBGE prefix (e.g. "4781") |
+| `setor` | `text NOT NULL` | SmartLic sector id (deve match em `backend/sectors_data.yaml` ou `geral` fallback) |
+| `descricao` | `text` | opcional |
+| `created_at` | `timestamptz NOT NULL DEFAULT now()` | |
+
+**RLS:**
+- `cnae_setores_read_authenticated` (FOR SELECT TO authenticated USING true) — read público para autenticados
+- service_role bypass por default (sem policy explícita necessária — Supabase pattern)
+
+**Pattern de uso:** `startup/lifespan._warmup_cnae_mapping` faz `SELECT * FROM cnae_setores` com try/except guard — se vazio/missing/unreachable, baseline hardcoded responde (Gap-8 status quo). Não há audit log, não há Redis invalidation channel — schema deliberadamente minimal pra evitar repeat do wedge.
+
+### 11.5 `founding_leads` (estendida — múltiplas migrations)
+
+Lifecycle: STORY-791 (welcome email) + STORY-863 (auto-invite) + FOUND-CRIT-003 (magic-link).
+
+**Colunas adicionadas (cumulativo):**
+
+| Coluna | Tipo | Migration | Story | Uso |
+|--------|------|-----------|-------|-----|
+| `welcome_sent_at` | `timestamptz NULL` | `20260507120000_founding_leads_tracking_fields.sql` | STORY-791 | idempotency gate welcome email |
+| `checkout_source` | `text NULL` | mesma | STORY-791 | UTM source / src param checkout URL |
+| `offer_version` | `text NULL` | mesma | STORY-791 | Stripe metadata cohort segmentation (e.g. `v2_lifetime`) |
+| `magic_link_sent_at` | `timestamptz NULL` | `20260508100000_founding_leads_invite_field.sql` | FOUND-CRIT-003/006 | idempotency gate Supabase `invite_user_by_email` |
+| `invite_sent_at` | `timestamptz NULL` | `20260508100000_founding_leads_invite_fields.sql` (plural — same prefix collision) | STORY-863 | sibling idempotency gate |
+| `invite_token_hash` | `text NULL` | mesma | STORY-863 | SHA-256 hash do invite token (audit) |
+
+**Conflito documentado (same-prefix migration collision):**
+Os arquivos `20260508100000_founding_leads_invite_field.sql` (singular, FOUND-CRIT-003) e `20260508100000_founding_leads_invite_fields.sql` (plural, STORY-863) compartilham o mesmo prefix de timestamp e ambos criam o índice `idx_founding_leads_invite_pending` com filtros parciais ligeiramente diferentes (`magic_link_sent_at IS NULL` vs `invite_sent_at IS NULL`). A última migration aplicada wins na index recreation. Estado final em prod: ambas colunas existem; índice é o da última migration na ordem de execução do CLI Supabase. Recomendação: futuro story `MIGRATION-DEDUP-COLLISION-001` para colocar em ordem.
+
+**Indexes:**
+- `idx_founding_leads_welcome_pending (email) WHERE checkout_status = 'completed' AND welcome_sent_at IS NULL`
+- `idx_founding_leads_invite_pending (email) WHERE checkout_status = 'completed' AND <last-applied>_sent_at IS NULL`
+
+### 11.6 `founding_policy_audit_log` (NOVA — `20260507120000_founding_policy_audit_log.sql`)
+
+Audit trail de mudanças no canonical lifetime policy (founding cap/deadline/price overrides).
+
+### 11.7 Migrations adicionais 2026-05-04 → 2026-05-09 (não-tabela / RPC-only / role)
+
+| Migration | Tipo | Notas |
+|-----------|------|-------|
+| `20260504140600_fix_signup_trigger_search_path.sql` | trigger fix | SECDEF search_path trap fix |
+| `20260504160000_secdef_search_path_audit.sql` | audit | enumera SECDEF functions sem `SET search_path` |
+| `20260507100000_profiles_founder_fields.sql` | profiles ALTER | add founder fields |
+| `20260507100100_founding_policy_lifetime_pivot.sql` | policy | lifetime pivot v2 (BIZ-FOUND-002 v2) |
+| `20260507130000_extend_lead_capture.sql` | leads ALTER | extend lead capture |
+| `20260508222200_psc_disk_io_covering_indexes.sql` | indexes | covering indexes para `pncp_supplier_contracts` (psc_*) |
+| `20260505113900_cnpj_supplier_intel_rpc.sql` | RPC | INTEL v0.1 (ver §13.1) |
+| `20260508120000_sector_uf_intel_rpc.sql` | RPC | INTEL v0.2 (ver §13.2) |
+
+---
+
+## 12. Views (refresh 2026-05-09 — pós SEC-VIEW-001)
+
+> Forward reference: PR #955 (UNMERGED em data deste refresh) — migration `supabase/migrations/20260509171616_sec_view_001_invoker_downgrade.sql` flippa as 3 views abaixo de SECDEF default → `security_invoker = true`. Documentado aqui como post-merge canonical state (wave B sequencing per PO mandate).
+
+Supabase advisor lint flagrou 3 views em schema `public` rodando em SECURITY DEFINER (Postgres default), o que bypass RLS do querying user. PR #955 downgrade as 3 para INVOKER mode via `ALTER VIEW SET (security_invoker = true)`.
+
+| View | Underlying tables | Consumer | Mode pós PR #955 |
+|------|-------------------|----------|------------------|
+| `public.ingestion_orphan_checkpoints` | `public.ingestion_checkpoints` + `public.ingestion_runs` | admin RPC `check_ingestion_orphans()` | INVOKER |
+| `public.pncp_raw_bids_bloat_stats` | `pg_class`, `pg_namespace`, `pg_stat_user_tables` (system catalogs) | manual diagnostic | INVOKER |
+| `public.cron_job_health` | `cron.job`, `cron.job_run_details` | SECDEF RPC `get_cron_health()` (out of scope deste downgrade) | INVOKER |
+
+**Por que safe em prod:** todos os caminhos reais de leitura passam por `service_role` (Railway backend / ARQ workers / SECDEF RPCs). `service_role` bypass RLS em qualquer modo, então a flip não muda o comportamento funcional do backend. `authenticated` e `anon` não tinham caminho de produção para essas views; pós-INVOKER recebem `permission denied` determinístico (least-privilege).
+
+**Migration source paths (originais — pre-existentes):**
+- `ingestion_orphan_checkpoints` — `supabase/migrations/20260331300000_debt207_checkpoint_orphan_monitoring.sql`
+- `pncp_raw_bids_bloat_stats` — `supabase/migrations/20260331000000_debt203_bloat_monitoring.sql`
+- `cron_job_health` — `supabase/migrations/20260414120000_cron_job_health.sql`
+
+**Idempotência do downgrade:** `ALTER VIEW SET (security_invoker = true)` é idempotente. Down migration usa `RESET (security_invoker)` para voltar ao Postgres default (SECDEF mode).
+
+---
+
+## 13. RPCs Novas (refresh 2026-05-09)
+
+### 13.1 `cnpj_supplier_intel(p_cnpj text, p_window_months int default 36)` RETURNS jsonb (PR #628)
+
+Pipeline INTEL-REPORT-001 (R$197 → ajustado v0.1 R$67) — DataLake → RPC → LLM → PDF → Stripe → email.
+
+- **Source:** `supabase/migrations/20260505113900_cnpj_supplier_intel_rpc.sql`
+- **Security:** `SECURITY DEFINER` + `SET search_path = public, pg_temp` (mandatory por `feedback_secdef_search_path_trap`)
+- **GRANT:** `service_role` only — payload sensível liberado pós-pagamento confirmado pelo backend
+- **Aggregation source:** `pncp_supplier_contracts` (~2M rows; index `idx_psc_ni_fornecedor`)
+- **Statement timeout local:** `SET LOCAL statement_timeout = '15s'` (defesa em profundidade vs `service_role` global timeout)
+
+### 13.2 `count_cnpj_contracts(p_cnpj text)` RETURNS int (mesma migration)
+
+Pre-check rápido para gate de checkout (bloquear compra se < 5 contratos disponíveis para evitar refund por falta de dados). Lightweight COUNT com `idx_psc_ni_fornecedor`.
+
+### 13.3 `sector_uf_intel(p_sector text, p_keywords text[], p_uf text, p_window_months int default 24)` RETURNS jsonb (PR #826)
+
+Pipeline INTEL-REPORT-002 v0.2 (R$147) — DataLake → RPC → PDF → Stripe → email.
+
+- **Source:** `supabase/migrations/20260508120000_sector_uf_intel_rpc.sql`
+- **Security:** `SECURITY DEFINER` + `SET search_path = public, pg_temp`
+- **GRANT:** `service_role` only
+- **Aggregation:** `pncp_supplier_contracts` filtrada por `objeto_contrato ILIKE %keyword%` sobre array `p_keywords` (mesma abordagem `count_contracts_by_setor_uf` SEO-471 — `pncp_supplier_contracts` não tem coluna `setor`)
+- **Output JSONB shape:** `{total_count, total_value, avg_ticket, median_ticket, p90_ticket, top_fornecedores[], distribuicao_modalidade, serie_temporal, top_orgaos[], data_primeiro, data_ultimo}`
+
+### 13.4 `get_orgao_top_contracts_json(p_orgao_cnpj text, p_limit int)` RETURNS json scalar (DATA-CAP-001 / PR #957 — UNMERGED forward-reference)
+
+Pattern A do DATA-CAP-001 — RPC `RETURNS json scalar` que bypass o `max_rows=1000` cap do PostgREST. Substitui `.limit(2000)` Python-aggregation em `backend/routes/orgao_publico.py:_fetch_contracts_data`.
+
+- **Source:** `supabase/migrations/20260509172143_data_cap_001_orgao_top_contracts_rpc.sql` (post-merge)
+- **Security:** `SECURITY DEFINER` + `STABLE` + `SET search_path = public`
+- **GRANT:** `anon, authenticated, service_role` (rota é programmatic SEO público — `/orgaos/[cnpj]`)
+- **Output JSON shape:** `{top_fornecedores[{nome, cnpj, total_contratos, valor_total}], total_contratos_24m, valor_total_contratos_24m}` — server-side aggregation (não subject ao row-cap)
+- **Pattern complementar:** `paginate_full` helper em `backend/utils/postgrest_paginate.py` para queries que precisam raw rows (lista) — emite métrica `smartlic_postgrest_truncation_suspected_total{route, entity_type}` quando vê full batches
+
+### 13.5 RPCs pré-existentes ainda canônicas (consolidação)
+
+Adições à §3:
+
+| RPC | Source migration | Notas |
+|-----|------------------|-------|
+| `count_contracts_by_setor_uf(setor, keywords, uf)` | SEO-471 | base do pattern keyword-array filter |
+| `get_cron_health()` | `20260414120000_cron_job_health.sql` | SECDEF, internamente lê view `cron_job_health` (INVOKER pós PR #955 — função own owner privilege preserva acesso) |
+| `check_and_increment_quota_atomic(user_id, year, month, limit)` | já em §3 | race-safe quota |
+| `paginate_full` (helper Python, não SQL) | `backend/utils/postgrest_paginate.py` (PR #957) | iterates `.range(offset, offset+batch-1).execute()` até short batch |
+
+---
+
+## 14. ERD Delta (Mermaid — refresh 2026-05-09)
+
+> Diagrama complementar a §10. Foca apenas nas tabelas novas/estendidas refreshes 2026-05.
+
+```mermaid
+erDiagram
+    auth_users ||--o{ profiles : "1:1"
+    auth_users ||--o{ intel_report_purchases : "1:N (CASCADE)"
+    profiles ||--o{ founding_leads : "email match (não FK)"
+    plans ||--o{ user_subscriptions : "id FK"
+    plans ||--o{ plans_audit : "trigger AFTER INSERT/UPDATE/DELETE"
+    intel_report_purchases ||--|| stripe_payment_intent : "UNIQUE (idempotency)"
+    cnae_setores ||--o{ profiles : "warmup at startup (não FK)"
+
+    plans {
+        text id PK
+        text display_name "NEW (TD-GTM-003)"
+        int monthly_quota "NEW"
+        jsonb capabilities "NEW — source of truth runtime"
+        int version "NEW (DEFAULT 1)"
+        timestamptz updated_at "NEW"
+        uuid updated_by FK "auth.users"
+    }
+    plans_audit {
+        bigserial id PK
+        text plan_id
+        text operation "INSERT|UPDATE|DELETE"
+        jsonb old_value
+        jsonb new_value
+        uuid changed_by
+        timestamptz changed_at
+    }
+    intel_report_purchases {
+        uuid id PK
+        uuid user_id FK
+        text product_type "cnpj_raio_x | sector_uf"
+        text entity_key
+        text stripe_payment_intent_id UK "idempotency"
+        text status "pending|generating|ready|failed|refunded"
+        text pdf_url "signed URL 30d"
+        timestamptz created_at
+        timestamptz expires_at
+    }
+    cnae_setores {
+        text codigo_cnae PK
+        text setor
+        text descricao
+        timestamptz created_at
+    }
+    founding_leads {
+        timestamptz welcome_sent_at "NEW STORY-791"
+        text checkout_source "NEW STORY-791"
+        text offer_version "NEW STORY-791"
+        timestamptz magic_link_sent_at "NEW FOUND-CRIT-003"
+        timestamptz invite_sent_at "NEW STORY-863"
+        text invite_token_hash "NEW STORY-863"
+    }
+```
+
+**Notas ERD:**
+- `auth.users → intel_report_purchases` é ON DELETE CASCADE (cleanup user delete)
+- `plans.id → user_subscriptions.plan_id` (FK pré-existente, ver §2)
+- `cnae_setores ⇏ profiles` é runtime warmup, não FK
+- `founding_leads` é tabela standalone com email-based join lazy (não FK para evitar overhead — pattern consciente)
+
