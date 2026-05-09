@@ -50,6 +50,10 @@ def client(admin_user):
 
 
 def _make_chain(rows: list[dict]) -> MagicMock:
+    """DATA-CAP-001: paginate_full uses .range(start, end).execute(); the
+    helper now accepts that path too. side_effect cycles full→empty so the
+    paginate_full loop exits cleanly on the second iteration.
+    """
     chain = MagicMock()
     chain.select.return_value = chain
     chain.gte.return_value = chain
@@ -60,7 +64,12 @@ def _make_chain(rows: list[dict]) -> MagicMock:
     chain.insert.return_value = chain
     result = MagicMock()
     result.data = rows
+    empty = MagicMock(data=[])
+    # Default .execute() (legacy paths) returns the canned result.
     chain.execute.return_value = result
+    # paginate_full path: .range().execute() — first page full, then empty.
+    chain.range.return_value = chain  # keeps fluent API
+    chain.execute.side_effect = [result, empty, empty]
     return chain
 
 

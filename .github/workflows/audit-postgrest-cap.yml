@@ -1,0 +1,88 @@
+name: "Audit .limit(N>=1000).execute() without paginate_full (DATA-CAP-001)"
+
+# Guards against regressions of DATA-CAP-001. PostgREST silently caps SELECT
+# responses at max_rows=1000 per call, so any `.limit(N).execute()` with
+# N >= 1000 in `backend/routes/` is silently truncated and aggregations
+# downstream operate on the wrong row set. The fix is paginate_full() from
+# backend/utils/postgrest_paginate.py.
+
+on:
+  pull_request:
+    paths:
+      - 'backend/routes/**'
+      - 'backend/utils/postgrest_paginate.py'
+      - 'backend/scripts/audit_postgrest_max_rows.py'
+      - '.github/workflows/audit-postgrest-cap.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/routes/**'
+      - 'backend/utils/postgrest_paginate.py'
+      - 'backend/scripts/audit_postgrest_max_rows.py'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: audit-postgrest-cap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit routes for unprotected .limit(>=1000).execute()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run audit
+        id: audit
+        run: |
+          set +e
+          python backend/scripts/audit_postgrest_max_rows.py --json \
+            > /tmp/postgrest-cap-violations.jsonl
+          STATUS=$?
+          set -e
+
+          # Human-readable summary in the job log.
+          python backend/scripts/audit_postgrest_max_rows.py \
+            > /tmp/postgrest-cap-violations.txt 2>&1 || true
+          cat /tmp/postgrest-cap-violations.txt
+
+          COUNT=$(wc -l < /tmp/postgrest-cap-violations.jsonl | tr -d ' ')
+          if [ -z "$COUNT" ]; then COUNT=0; fi
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "has_violations=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_violations=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Emit GitHub annotations
+        if: steps.audit.outputs.has_violations == 'true'
+        run: |
+          # One ::error:: per violation so reviewers see them inline on the PR.
+          while IFS= read -r line; do
+            file=$(echo "$line" | python -c "import json,sys; d=json.loads(sys.stdin.read()); print(d['file'])")
+            ln=$(echo "$line" | python -c "import json,sys; d=json.loads(sys.stdin.read()); print(d['line'])")
+            col=$(echo "$line" | python -c "import json,sys; d=json.loads(sys.stdin.read()); print(d['col'])")
+            detail=$(echo "$line" | python -c "import json,sys; d=json.loads(sys.stdin.read()); print(d['detail'])")
+            echo "::error file=${file},line=${ln},col=${col}::DATA-CAP-001: ${detail}"
+          done < /tmp/postgrest-cap-violations.jsonl
+
+      - name: Fail on violations
+        if: steps.audit.outputs.has_violations == 'true'
+        run: |
+          echo "DATA-CAP-001 audit found ${{ steps.audit.outputs.count }} violation(s)."
+          echo "Replace .limit(N).execute() with paginate_full(query, route=..., max_total=N)"
+          echo "from backend/utils/postgrest_paginate.py."
+          exit 1
