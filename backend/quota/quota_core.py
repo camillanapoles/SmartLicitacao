@@ -17,9 +17,12 @@ from log_sanitizer import mask_user_id
 logger = logging.getLogger(__name__)
 
 # STORY-203 SYS-M04: Plan capabilities cache
+# TD-GTM-003 (#192): TTL reduced from 300s → 30s so admin updates to the plans
+# table propagate within a 30-second window. Trades 10x more Supabase reads
+# (one per 30s per process) for shorter staleness on plan/quota changes.
 _plan_capabilities_cache: Optional[dict[str, "PlanCapabilities"]] = None
 _plan_capabilities_cache_time: float = 0
-PLAN_CAPABILITIES_CACHE_TTL = 300  # 5 minutes in seconds
+PLAN_CAPABILITIES_CACHE_TTL = 30  # 30 seconds (TD-GTM-003 #192)
 
 # STORY-291 AC3: In-memory plan status cache (fallback when Supabase CB open)
 # Key: user_id, Value: (plan_id, cached_at)
@@ -242,15 +245,55 @@ _UNKNOWN_PLAN_DEFAULTS = PlanCapabilities(
     priority=PlanPriority.NORMAL.value,
 )
 
+# TD-GTM-003 (#192): Hardcoded dict above is now treated as a *fallback* — the
+# Supabase `plans.capabilities` jsonb column is the new source of truth. The
+# alias keeps every existing import (`from quota import PLAN_CAPABILITIES`) and
+# every test using the dict directly working without modification.
+_FALLBACK_PLAN_CAPABILITIES: dict[str, PlanCapabilities] = PLAN_CAPABILITIES
+
+
+def _coerce_capabilities_row(plan_id: str, raw: Optional[dict], max_searches: Optional[int]) -> Optional[PlanCapabilities]:
+    """Coerce a Supabase row's `capabilities` jsonb into a PlanCapabilities.
+
+    Returns None when the jsonb is missing required keys — caller falls back
+    to hardcoded defaults for that plan_id.
+    """
+    if not isinstance(raw, dict):
+        return None
+    required_keys = (
+        "max_history_days", "allow_excel", "allow_pipeline",
+        "max_requests_per_month", "max_requests_per_min",
+        "max_summary_tokens", "priority",
+    )
+    if not all(k in raw for k in required_keys):
+        return None
+    try:
+        return PlanCapabilities(
+            max_history_days=int(raw["max_history_days"]),
+            allow_excel=bool(raw["allow_excel"]),
+            allow_pipeline=bool(raw["allow_pipeline"]),
+            # max_searches column wins when set (legacy override path)
+            max_requests_per_month=int(max_searches) if max_searches else int(raw["max_requests_per_month"]),
+            max_requests_per_min=int(raw["max_requests_per_min"]),
+            max_summary_tokens=int(raw["max_summary_tokens"]),
+            priority=str(raw["priority"]),
+        )
+    except (TypeError, ValueError) as exc:
+        logger.warning(f"Plan '{plan_id}' has malformed capabilities jsonb: {exc}")
+        return None
+
 
 def _load_plan_capabilities_from_db() -> dict[str, PlanCapabilities]:
     """Load plan capabilities from database.
 
-    STORY-203 SYS-M04: Loads plan definitions from `plans` table and converts
-    to PlanCapabilities format. Falls back to hardcoded PLAN_CAPABILITIES on error.
+    TD-GTM-003 (#192): Reads the `capabilities` jsonb column added to
+    public.plans as the new source of truth. Falls back per-plan to the
+    hardcoded dict when jsonb is missing/malformed; falls back to the FULL
+    hardcoded dict on connection/query failure.
 
-    STORY-226 AC9: Uses data-driven lookup via PLAN_CAPABILITIES dict instead of
-    if/elif chain. The DB's max_searches overrides max_requests_per_month when present.
+    STORY-203 SYS-M04 (legacy): Original loader read only `max_searches` and
+    composed everything else from PLAN_CAPABILITIES. That path is preserved
+    as a per-row fallback so partial migrations stay safe.
 
     Returns:
         dict[str, PlanCapabilities]: Plan capabilities indexed by plan_id
@@ -261,57 +304,78 @@ def _load_plan_capabilities_from_db() -> dict[str, PlanCapabilities]:
 
         result = (
             sb.table("plans")
-            .select("id, max_searches, price_brl, duration_days, description")
+            .select("id, max_searches, capabilities")
             .eq("is_active", True)
             .execute()
         )
 
         if not result.data:
-            logger.warning("No plans found in database, using hardcoded fallback")
-            return PLAN_CAPABILITIES
+            logger.warning(
+                "No active plans found in database, falling back to hardcoded "
+                "_FALLBACK_PLAN_CAPABILITIES"
+            )
+            return _FALLBACK_PLAN_CAPABILITIES
 
         db_capabilities: dict[str, PlanCapabilities] = {}
 
         for plan in result.data:
             plan_id = plan["id"]
-            max_searches = plan.get("max_searches", 0)
+            max_searches = plan.get("max_searches")
+            raw_caps = plan.get("capabilities")
 
-            base_caps = PLAN_CAPABILITIES.get(plan_id)
+            # Try jsonb first (TD-GTM-003 source of truth)
+            caps = _coerce_capabilities_row(plan_id, raw_caps, max_searches)
 
-            if base_caps is not None:
-                caps = PlanCapabilities(
-                    max_history_days=base_caps["max_history_days"],
-                    allow_excel=base_caps["allow_excel"],
-                    allow_pipeline=base_caps["allow_pipeline"],
-                    max_requests_per_month=max_searches or base_caps["max_requests_per_month"],
-                    max_requests_per_min=base_caps["max_requests_per_min"],
-                    max_summary_tokens=base_caps["max_summary_tokens"],
-                    priority=base_caps["priority"],
-                )
-            else:
-                logger.warning(f"Unknown plan_id '{plan_id}' in database, using conservative defaults")
-                caps = PlanCapabilities(
-                    max_history_days=_UNKNOWN_PLAN_DEFAULTS["max_history_days"],
-                    allow_excel=_UNKNOWN_PLAN_DEFAULTS["allow_excel"],
-                    allow_pipeline=_UNKNOWN_PLAN_DEFAULTS["allow_pipeline"],
-                    max_requests_per_month=max_searches or _UNKNOWN_PLAN_DEFAULTS["max_requests_per_month"],
-                    max_requests_per_min=_UNKNOWN_PLAN_DEFAULTS["max_requests_per_min"],
-                    max_summary_tokens=_UNKNOWN_PLAN_DEFAULTS["max_summary_tokens"],
-                    priority=_UNKNOWN_PLAN_DEFAULTS["priority"],
-                )
+            # Fallback chain: hardcoded for known plan_id, else conservative defaults
+            if caps is None:
+                base_caps = _FALLBACK_PLAN_CAPABILITIES.get(plan_id)
+                if base_caps is not None:
+                    caps = PlanCapabilities(
+                        max_history_days=base_caps["max_history_days"],
+                        allow_excel=base_caps["allow_excel"],
+                        allow_pipeline=base_caps["allow_pipeline"],
+                        max_requests_per_month=int(max_searches) if max_searches else base_caps["max_requests_per_month"],
+                        max_requests_per_min=base_caps["max_requests_per_min"],
+                        max_summary_tokens=base_caps["max_summary_tokens"],
+                        priority=base_caps["priority"],
+                    )
+                else:
+                    logger.warning(
+                        f"Unknown plan_id '{plan_id}' in database with no jsonb caps, "
+                        f"using conservative defaults"
+                    )
+                    caps = PlanCapabilities(
+                        max_history_days=_UNKNOWN_PLAN_DEFAULTS["max_history_days"],
+                        allow_excel=_UNKNOWN_PLAN_DEFAULTS["allow_excel"],
+                        allow_pipeline=_UNKNOWN_PLAN_DEFAULTS["allow_pipeline"],
+                        max_requests_per_month=int(max_searches) if max_searches else _UNKNOWN_PLAN_DEFAULTS["max_requests_per_month"],
+                        max_requests_per_min=_UNKNOWN_PLAN_DEFAULTS["max_requests_per_min"],
+                        max_summary_tokens=_UNKNOWN_PLAN_DEFAULTS["max_summary_tokens"],
+                        priority=_UNKNOWN_PLAN_DEFAULTS["priority"],
+                    )
 
             db_capabilities[plan_id] = caps
 
+        # Belt-and-suspenders: ensure every hardcoded plan_id is reachable. If the
+        # DB is missing a row for, say, `master`, callers doing
+        # PLAN_CAPABILITIES["master"] (legacy import) would still find it via
+        # _FALLBACK_PLAN_CAPABILITIES, but the runtime dict returned here should
+        # be a superset, not a strict subset.
+        for plan_id, base_caps in _FALLBACK_PLAN_CAPABILITIES.items():
+            db_capabilities.setdefault(plan_id, base_caps)
+
         logger.info(
             f"Loaded {len(db_capabilities)} plan capabilities from database: "
-            f"{list(db_capabilities.keys())}"
+            f"{sorted(db_capabilities.keys())}"
         )
         return db_capabilities
 
     except Exception as e:
-        logger.error(f"Failed to load plan capabilities from database: {e}")
-        logger.info("Falling back to hardcoded PLAN_CAPABILITIES")
-        return PLAN_CAPABILITIES
+        logger.warning(
+            f"Failed to load plan capabilities from database: {e}. "
+            f"Falling back to hardcoded _FALLBACK_PLAN_CAPABILITIES."
+        )
+        return _FALLBACK_PLAN_CAPABILITIES
 
 
 def get_plan_capabilities() -> dict[str, PlanCapabilities]:
