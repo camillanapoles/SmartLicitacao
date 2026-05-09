@@ -43,6 +43,9 @@ function HomePageContent() {
 
   // CONV-INST-005: fire first_analysis_done tag only once per session
   const firstAnalysisDoneRef = useRef(false);
+  // CONV-INST-005 AC3: fire trial_activated and first_search only once per mount
+  const trialActivatedRef = useRef(false);
+  const firstSearchRef = useRef(false);
 
   // STORY-369 AC4: Exit survey state — shown once when trial expires
   const [showExitSurvey, setShowExitSurvey] = useState(false);
@@ -105,6 +108,23 @@ function HomePageContent() {
     firstAnalysisDoneRef.current = true;
     setClarityTag("first_analysis_done", "true");
     tagOnboardingStep('first_search');
+  }, [orch.search.result, orch.search.loading]);
+
+  // CONV-INST-005 AC3: tag trial_activated when a free_trial user lands on /buscar
+  useEffect(() => {
+    if (trialActivatedRef.current) return;
+    if (!orch.planInfo?.plan_id) return;
+    if (orch.planInfo.plan_id !== "free_trial") return;
+    trialActivatedRef.current = true;
+    tagOnboardingStep("trial_activated");
+  }, [orch.planInfo?.plan_id]);
+
+  // CONV-INST-005 AC2: tag first_search once when the first search results arrive
+  useEffect(() => {
+    if (firstSearchRef.current) return;
+    if (!orch.search.result || orch.search.loading) return;
+    firstSearchRef.current = true;
+    tagOnboardingStep("first_search");
   }, [orch.search.result, orch.search.loading]);
 
   if (orch.authLoading) {
