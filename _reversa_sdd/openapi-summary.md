@@ -397,6 +397,11 @@ Ver `backend/schemas/` (88 BaseModels). Source de codegen frontend: `frontend/ap
 - `500` Internal Server Error
 - `503` Service Unavailable (timeout, CB open)
 
+## Cache layers (transparent — não exposto via API)
+
+- **Search results cache** (per-request): L1 InMemoryCache (4h) + L2 Supabase `search_results_cache` (24h). Afeta `POST /v1/buscar`. Detalhes em spec `01-search-pipeline.spec.md` FR-4.
+- **LLM summary cache** (PR #160, 2026-05-08): Redis SETEX TTL=7d em `llm:summary:{sha256}`. Wrapper `get_or_generate_resumo_cached` (`backend/llm.py:841`) substitui `gerar_resumo()` em `pipeline/stages/generate.py:273` (síncrono no pipeline `/v1/buscar`) e `jobs/queue/jobs.py:428` (`llm_summary_job` ARQ background, dispara após `POST /v1/buscar` em modo async). Cache hit reduz latência da etapa LLM da ordem de segundos para <50ms p95 e elimina custo OpenAI da chamada repetida. Falha de Redis é graceful — chama OpenAI direto. Detalhes em spec `14-llm-response-cache.spec.md`. Métricas: `smartlic_llm_summary_cache_{hits,misses}_total`.
+
 ## CI Gate
 
 `.github/workflows/api-types-check.yml` extrai schema da FastAPI app e compara com `frontend/app/api-types.generated.ts`. Drift bloqueia PR.

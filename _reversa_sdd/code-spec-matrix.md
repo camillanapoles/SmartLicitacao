@@ -133,6 +133,7 @@
 | 15 | routes (registration) | ⏭ implícita | flowchart `routes.md` |
 | 16 | design-system | ⏭ deferred | code-analysis módulo 16 cobre |
 | 17 | tests-migrations | ⏭ deferred | code-analysis módulo 18 cobre |
+| 14b | llm-response-cache | ✅ written | LLM-CACHE-SPEC-001 — `_reversa_sdd/specs/14-llm-response-cache.spec.md` (PR #160 shipped 2026-05-08) |
 
 ## Bidirectional traceability
 
