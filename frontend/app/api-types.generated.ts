@@ -5220,6 +5220,44 @@ export interface components {
             user_id: string;
         };
         /**
+         * AdminCacheTraceState
+         * @description ``cache`` field of the search-trace response.
+         */
+        AdminCacheTraceState: {
+            /** Error */
+            error?: string | null;
+            /** Is Revalidating */
+            is_revalidating?: boolean | null;
+            /** Redis */
+            redis?: string | null;
+        };
+        /**
+         * AdminCircuitBreakerResetResponse
+         * @description Response for POST /v1/admin/cb/reset (STORY-416 AC5).
+         */
+        AdminCircuitBreakerResetResponse: {
+            /** Previous States */
+            previous_states: {
+                [key: string]: unknown;
+            };
+            /** Reset By */
+            reset_by?: string | null;
+            /** Status */
+            status: string;
+        };
+        /**
+         * AdminClearCheckpointsResponse
+         * @description Response for POST /v1/admin/clear-contracts-checkpoints.
+         */
+        AdminClearCheckpointsResponse: {
+            /** Checkpoints Deleted */
+            checkpoints_deleted?: number | null;
+            /** Detail */
+            detail?: string | null;
+            /** Status */
+            status: string;
+        };
+        /**
          * AdminCreateUserResponse
          * @description Response for POST /admin/users.
          */
@@ -5232,6 +5270,26 @@ export interface components {
             user_id: string;
         };
         /**
+         * AdminCronStatusResponse
+         * @description Response for GET /v1/admin/cron-status (STORY-1.1).
+         *
+         *     On transient backend failure (Supabase CB open, RPC error) the route
+         *     returns ``status="error"`` with ``jobs=[]`` so dashboards degrade
+         *     gracefully instead of 500-ing.
+         */
+        AdminCronStatusResponse: {
+            /** Count */
+            count: number;
+            /** Detail */
+            detail?: string | null;
+            /** Jobs */
+            jobs: components["schemas"]["CronJobHealthRow"][];
+            /** Queried At */
+            queried_at: string;
+            /** Status */
+            status: string;
+        };
+        /**
          * AdminDeleteUserResponse
          * @description Response for DELETE /admin/users/{user_id}.
          */
@@ -5242,6 +5300,96 @@ export interface components {
             user_id: string;
         };
         /**
+         * AdminJobTraceState
+         * @description ``jobs`` field of the search-trace response.
+         *
+         *     Values are short status strings (``"completed"`` / ``"not_found"``)
+         *     so the model accepts them as ``Optional[str]``. ``error`` is present
+         *     when the lookup itself raised.
+         */
+        AdminJobTraceState: {
+            /** Error */
+            error?: string | null;
+            /** Excel Generation */
+            excel_generation?: string | null;
+            /** Llm Summary */
+            llm_summary?: string | null;
+        };
+        /**
+         * AdminJobTriggerResponse
+         * @description Response for POST /v1/admin/trigger-{contracts,bids}-backfill.
+         *
+         *     Routes return ``status`` in {"enqueued", "skipped", "error"} plus an
+         *     optional ``job_id`` (when ARQ accepts the job) and ``timeout_s``.
+         *     ``detail`` carries the operator-facing reason string when non-OK.
+         */
+        AdminJobTriggerResponse: {
+            /** Detail */
+            detail?: string | null;
+            /** Job Id */
+            job_id?: string | null;
+            /** Status */
+            status: string;
+            /** Timeout S */
+            timeout_s?: number | null;
+        };
+        /**
+         * AdminLlmCostResponse
+         * @description Response for GET /v1/admin/llm-cost (STORY-2.11).
+         *
+         *     Mirrors ``llm_budget.get_cost_snapshot()``. ``month`` is the Redis
+         *     key shape (e.g. ``"llm_cost_month_2026_04"``); ``exceeded`` flips
+         *     to ``True`` when the hard-reject is active.
+         */
+        AdminLlmCostResponse: {
+            /**
+             * Budget Usd
+             * @default 0
+             */
+            budget_usd: number;
+            /**
+             * Exceeded
+             * @default false
+             */
+            exceeded: boolean;
+            /** Month */
+            month: string;
+            /**
+             * Month To Date Usd
+             * @default 0
+             */
+            month_to_date_usd: number;
+            /**
+             * Pct Used
+             * @default 0
+             */
+            pct_used: number;
+            /**
+             * Projected End Of Month Usd
+             * @default 0
+             */
+            projected_end_of_month_usd: number;
+        };
+        /**
+         * AdminProgressTraceState
+         * @description ``progress`` field of the search-trace response when a tracker
+         *     is still in memory. ``mode`` is ``"redis"`` or ``"in-memory"``.
+         */
+        AdminProgressTraceState: {
+            /** Created At */
+            created_at?: number | null;
+            /** Error */
+            error?: string | null;
+            /** Is Complete */
+            is_complete?: boolean | null;
+            /** Mode */
+            mode?: string | null;
+            /** Uf Count */
+            uf_count?: number | null;
+            /** Ufs Completed */
+            ufs_completed?: number | null;
+        };
+        /**
          * AdminResetPasswordResponse
          * @description Response for POST /admin/users/{user_id}/reset-password.
          */
@@ -5250,6 +5398,51 @@ export interface components {
             success: boolean;
             /** User Id */
             user_id: string;
+        };
+        /**
+         * AdminSchemaContractStatusResponse
+         * @description Response for GET /v1/admin/schema-contract-status (STORY-414 AC4).
+         */
+        AdminSchemaContractStatusResponse: {
+            /**
+             * Checked At
+             * @default 0
+             */
+            checked_at: number;
+            /**
+             * Missing
+             * @default []
+             */
+            missing: string[];
+            /** Passed */
+            passed?: boolean | null;
+            /**
+             * Stale
+             * @default true
+             */
+            stale: boolean;
+            /**
+             * Strict Mode
+             * @default false
+             */
+            strict_mode: boolean;
+        };
+        /**
+         * AdminSearchTraceResponse
+         * @description Response for GET /v1/admin/search-trace/{search_id}.
+         *
+         *     Each sub-section is independently nullable: a transient Redis or ARQ
+         *     failure sets the corresponding key to a small ``{"error": "..."}``
+         *     payload instead of failing the whole response.
+         */
+        AdminSearchTraceResponse: {
+            cache?: components["schemas"]["AdminCacheTraceState"] | null;
+            jobs?: components["schemas"]["AdminJobTraceState"] | null;
+            progress?: components["schemas"]["AdminProgressTraceState"] | null;
+            /** Queried At */
+            queried_at: string;
+            /** Search Id */
+            search_id: string;
         };
         /**
          * AdminUpdateCreditsResponse
@@ -6805,6 +6998,36 @@ export interface components {
              * @default free_trial
              */
             plan_id: string | null;
+        };
+        /**
+         * CronJobHealthRow
+         * @description One row of ``public.get_cron_health()`` (STORY-1.1).
+         */
+        CronJobHealthRow: {
+            /** Active */
+            active?: boolean | null;
+            /**
+             * Failures 24H
+             * @default 0
+             */
+            failures_24h: number;
+            /** Jobname */
+            jobname?: string | null;
+            /** Last Return Message */
+            last_return_message?: string | null;
+            /** Last Run At */
+            last_run_at?: string | null;
+            /** Last Status */
+            last_status?: string | null;
+            /** Latency Avg Ms */
+            latency_avg_ms?: number | null;
+            /**
+             * Runs 24H
+             * @default 0
+             */
+            runs_24h: number;
+            /** Schedule */
+            schedule?: string | null;
         };
         /** DadosAgregadosResponse */
         DadosAgregadosResponse: {
@@ -11345,9 +11568,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminCircuitBreakerResetResponse"];
                 };
             };
         };
@@ -11367,9 +11588,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminClearCheckpointsResponse"];
                 };
             };
         };
@@ -11424,9 +11643,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminCronStatusResponse"];
                 };
             };
         };
@@ -11661,9 +11878,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminLlmCostResponse"];
                 };
             };
         };
@@ -12003,9 +12218,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminSchemaContractStatusResponse"];
                 };
             };
         };
@@ -12027,9 +12240,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminSearchTraceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -12315,9 +12526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminJobTriggerResponse"];
                 };
             };
         };
@@ -12337,9 +12546,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminJobTriggerResponse"];
                 };
             };
         };

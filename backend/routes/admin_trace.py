@@ -4,23 +4,40 @@ GET /v1/admin/search-trace/{search_id} — aggregates search journey data
 from multiple sources (search sessions, cache, jobs).
 POST /v1/admin/trigger-contracts-backfill — enqueue contracts full crawl to Worker.
 POST /v1/admin/trigger-bids-backfill — enqueue historical bids backfill to Worker.
+
+PARITY-BE-FE-001 (Pass 1): every route now declares ``response_model=`` so
+the OpenAPI schema is fully typed and ``frontend/app/api-types.generated.ts``
+exposes proper TypeScript shapes for the admin panel instead of
+``{[k: string]: unknown}``.
 """
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from fastapi import APIRouter, Depends
 
 from admin import require_admin
+from schemas.admin import (
+    AdminCacheTraceState,
+    AdminCircuitBreakerResetResponse,
+    AdminClearCheckpointsResponse,
+    AdminJobTraceState,
+    AdminJobTriggerResponse,
+    AdminProgressTraceState,
+    AdminSchemaContractStatusResponse,
+    AdminSearchTraceResponse,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 
-@router.post("/trigger-contracts-backfill")
-async def trigger_contracts_backfill(user=Depends(require_admin)) -> dict:
+@router.post(
+    "/trigger-contracts-backfill",
+    response_model=AdminJobTriggerResponse,
+)
+async def trigger_contracts_backfill(user=Depends(require_admin)) -> AdminJobTriggerResponse:
     """Enqueue contracts_full_crawl_job to ARQ Worker.
 
     Runs on Railway Worker (better network for PNCP).
@@ -31,21 +48,34 @@ async def trigger_contracts_backfill(user=Depends(require_admin)) -> dict:
         from ingestion.contracts_crawler import CONTRACTS_FULL_CRAWL_TIMEOUT
         pool = await get_arq_pool()
         if not pool:
-            return {"status": "error", "detail": "ARQ pool unavailable — Worker offline?"}
+            return AdminJobTriggerResponse(
+                status="error",
+                detail="ARQ pool unavailable — Worker offline?",
+            )
 
         # Timeout set via @arq_func(timeout=CONTRACTS_FULL_CRAWL_TIMEOUT) on the function.
         # Do NOT pass _timeout/_job_timeout as kwargs — ARQ forwards unknown kwargs to the function.
         job = await pool.enqueue_job("contracts_full_crawl_job")
         if job:
-            return {"status": "enqueued", "job_id": job.job_id, "timeout_s": CONTRACTS_FULL_CRAWL_TIMEOUT}
-        return {"status": "skipped", "detail": "Job already queued or duplicate"}
+            return AdminJobTriggerResponse(
+                status="enqueued",
+                job_id=job.job_id,
+                timeout_s=CONTRACTS_FULL_CRAWL_TIMEOUT,
+            )
+        return AdminJobTriggerResponse(
+            status="skipped",
+            detail="Job already queued or duplicate",
+        )
     except Exception as e:
         logger.error("trigger_contracts_backfill failed: %s", e)
-        return {"status": "error", "detail": str(e)}
+        return AdminJobTriggerResponse(status="error", detail=str(e))
 
 
-@router.post("/trigger-bids-backfill")
-async def trigger_bids_backfill(user=Depends(require_admin)) -> dict:
+@router.post(
+    "/trigger-bids-backfill",
+    response_model=AdminJobTriggerResponse,
+)
+async def trigger_bids_backfill(user=Depends(require_admin)) -> AdminJobTriggerResponse:
     """Enqueue ingestion_backfill_job to ARQ Worker.
 
     One-time historical crawl: fetches up to 365 days of PNCP bids
@@ -56,19 +86,34 @@ async def trigger_bids_backfill(user=Depends(require_admin)) -> dict:
         from job_queue import get_arq_pool
         pool = await get_arq_pool()
         if not pool:
-            return {"status": "error", "detail": "ARQ pool unavailable — Worker offline?"}
+            return AdminJobTriggerResponse(
+                status="error",
+                detail="ARQ pool unavailable — Worker offline?",
+            )
 
         job = await pool.enqueue_job("ingestion_backfill_job")
         if job:
-            return {"status": "enqueued", "job_id": job.job_id, "timeout_s": 36000}
-        return {"status": "skipped", "detail": "Job already queued or duplicate"}
+            return AdminJobTriggerResponse(
+                status="enqueued",
+                job_id=job.job_id,
+                timeout_s=36000,
+            )
+        return AdminJobTriggerResponse(
+            status="skipped",
+            detail="Job already queued or duplicate",
+        )
     except Exception as e:
         logger.error("trigger_bids_backfill failed: %s", e)
-        return {"status": "error", "detail": str(e)}
+        return AdminJobTriggerResponse(status="error", detail=str(e))
 
 
-@router.post("/clear-contracts-checkpoints")
-async def clear_contracts_checkpoints(user=Depends(require_admin)) -> dict:
+@router.post(
+    "/clear-contracts-checkpoints",
+    response_model=AdminClearCheckpointsResponse,
+)
+async def clear_contracts_checkpoints(
+    user=Depends(require_admin),
+) -> AdminClearCheckpointsResponse:
     """Clear all Redis checkpoints for contracts crawler.
 
     Use before re-triggering a full crawl when stale checkpoints
@@ -77,14 +122,23 @@ async def clear_contracts_checkpoints(user=Depends(require_admin)) -> dict:
     try:
         from ingestion.contracts_crawler import clear_all_checkpoints
         deleted = await clear_all_checkpoints()
-        return {"status": "ok", "checkpoints_deleted": deleted}
+        return AdminClearCheckpointsResponse(
+            status="ok",
+            checkpoints_deleted=deleted,
+        )
     except Exception as e:
         logger.error("clear_contracts_checkpoints failed: %s", e)
-        return {"status": "error", "detail": str(e)}
+        return AdminClearCheckpointsResponse(status="error", detail=str(e))
 
 
-@router.get("/search-trace/{search_id}")
-async def get_search_trace(search_id: str, user=Depends(require_admin)) -> dict[str, Any]:
+@router.get(
+    "/search-trace/{search_id}",
+    response_model=AdminSearchTraceResponse,
+)
+async def get_search_trace(
+    search_id: str,
+    user=Depends(require_admin),
+) -> AdminSearchTraceResponse:
     """Reconstruct complete search journey from search_id.
 
     Aggregates:
@@ -92,40 +146,36 @@ async def get_search_trace(search_id: str, user=Depends(require_admin)) -> dict[
     - Cache entries matching this search
     - Job queue results (if ARQ available)
     """
-    trace: dict[str, Any] = {
-        "search_id": search_id,
-        "queried_at": datetime.now(timezone.utc).isoformat(),
-        "progress": None,
-        "cache": None,
-        "jobs": None,
-    }
+    progress: AdminProgressTraceState | None = None
+    cache: AdminCacheTraceState | None = None
+    jobs: AdminJobTraceState | None = None
 
     # 1. Check active progress tracker
     try:
         from progress import get_tracker
         tracker = await get_tracker(search_id)
         if tracker:
-            trace["progress"] = {
-                "uf_count": tracker.uf_count,
-                "ufs_completed": tracker._ufs_completed,
-                "is_complete": tracker._is_complete,
-                "created_at": tracker.created_at,
-                "mode": "redis" if tracker._use_redis else "in-memory",
-            }
+            progress = AdminProgressTraceState(
+                uf_count=tracker.uf_count,
+                ufs_completed=tracker._ufs_completed,
+                is_complete=tracker._is_complete,
+                created_at=tracker.created_at,
+                mode="redis" if tracker._use_redis else "in-memory",
+            )
     except Exception as e:
-        trace["progress"] = {"error": str(e)}
+        progress = AdminProgressTraceState(error=str(e))
 
     # 2. Check job results in Redis
     try:
         from job_queue import get_job_result
         resumo = await get_job_result(search_id, "resumo_json")
         excel = await get_job_result(search_id, "excel_result")
-        trace["jobs"] = {
-            "llm_summary": "completed" if resumo else "not_found",
-            "excel_generation": "completed" if excel else "not_found",
-        }
+        jobs = AdminJobTraceState(
+            llm_summary="completed" if resumo else "not_found",
+            excel_generation="completed" if excel else "not_found",
+        )
     except Exception as e:
-        trace["jobs"] = {"error": str(e)}
+        jobs = AdminJobTraceState(error=str(e))
 
     # 3. Check cache for this search
     try:
@@ -135,15 +185,21 @@ async def get_search_trace(search_id: str, user=Depends(require_admin)) -> dict[
             # Look for revalidation key
             reval_key = f"revalidating:{search_id[:16]}"
             is_revalidating = await redis.exists(reval_key)
-            trace["cache"] = {
-                "is_revalidating": bool(is_revalidating),
-            }
+            cache = AdminCacheTraceState(
+                is_revalidating=bool(is_revalidating),
+            )
         else:
-            trace["cache"] = {"redis": "unavailable"}
+            cache = AdminCacheTraceState(redis="unavailable")
     except Exception as e:
-        trace["cache"] = {"error": str(e)}
+        cache = AdminCacheTraceState(error=str(e))
 
-    return trace
+    return AdminSearchTraceResponse(
+        search_id=search_id,
+        queried_at=datetime.now(timezone.utc).isoformat(),
+        progress=progress,
+        cache=cache,
+        jobs=jobs,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +207,13 @@ async def get_search_trace(search_id: str, user=Depends(require_admin)) -> dict[
 # ---------------------------------------------------------------------------
 
 
-@router.post("/cb/reset")
-async def reset_circuit_breakers(user=Depends(require_admin)) -> dict[str, Any]:
+@router.post(
+    "/cb/reset",
+    response_model=AdminCircuitBreakerResetResponse,
+)
+async def reset_circuit_breakers(
+    user=Depends(require_admin),
+) -> AdminCircuitBreakerResetResponse:
     """STORY-416 AC5: Reset all segregated Supabase CBs to CLOSED.
 
     Intended for on-call use after an upstream incident has been mitigated
@@ -163,15 +224,20 @@ async def reset_circuit_breakers(user=Depends(require_admin)) -> dict[str, Any]:
     from supabase_client import reset_all_circuit_breakers
 
     previous = reset_all_circuit_breakers()
-    return {
-        "status": "ok",
-        "previous_states": previous,
-        "reset_by": user.get("id") if isinstance(user, dict) else str(user),
-    }
+    return AdminCircuitBreakerResetResponse(
+        status="ok",
+        previous_states=previous,
+        reset_by=user.get("id") if isinstance(user, dict) else str(user),
+    )
 
 
-@router.get("/schema-contract-status")
-async def get_schema_contract_status(user=Depends(require_admin)) -> dict[str, Any]:
+@router.get(
+    "/schema-contract-status",
+    response_model=AdminSchemaContractStatusResponse,
+)
+async def get_schema_contract_status(
+    user=Depends(require_admin),
+) -> AdminSchemaContractStatusResponse:
     """STORY-414 AC4: Expose the last schema-contract validation result.
 
     Returns the cached result from the startup check plus a ``stale``
@@ -185,10 +251,10 @@ async def get_schema_contract_status(user=Depends(require_admin)) -> dict[str, A
     status = get_last_status()
     # Never expose raw exception strings or DB internals — the cache is
     # already sanitised by enforce_schema_contract.
-    return {
-        "passed": status.get("passed"),
-        "missing": status.get("missing", []),
-        "strict_mode": status.get("strict_mode", False),
-        "checked_at": status.get("checked_at", 0.0),
-        "stale": status.get("stale", True),
-    }
+    return AdminSchemaContractStatusResponse(
+        passed=status.get("passed"),
+        missing=list(status.get("missing", []) or []),
+        strict_mode=bool(status.get("strict_mode", False)),
+        checked_at=float(status.get("checked_at", 0.0) or 0.0),
+        stale=bool(status.get("stale", True)),
+    )

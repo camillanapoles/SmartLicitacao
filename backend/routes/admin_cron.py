@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from admin import require_admin
+from schemas.admin import AdminCronStatusResponse, CronJobHealthRow
 from supabase_client import get_supabase, sb_execute_direct
 
 logger = logging.getLogger(__name__)
@@ -42,8 +43,8 @@ def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@router.get("/cron-status")
-async def get_cron_status(user=Depends(require_admin)) -> dict[str, Any]:
+@router.get("/cron-status", response_model=AdminCronStatusResponse)
+async def get_cron_status(user=Depends(require_admin)) -> AdminCronStatusResponse:
     """Return the pg_cron health snapshot.
 
     Calls ``public.get_cron_health()`` (SECURITY DEFINER) via the backend's
@@ -76,19 +77,23 @@ async def get_cron_status(user=Depends(require_admin)) -> dict[str, Any]:
         sb = get_supabase()
         result = await sb_execute_direct(sb.rpc("get_cron_health"))
         rows = getattr(result, "data", None) or []
-        jobs = [_normalize_row(r) for r in rows if isinstance(r, dict)]
-        return {
-            "status": "ok",
-            "queried_at": queried_at,
-            "count": len(jobs),
-            "jobs": jobs,
-        }
+        jobs = [
+            CronJobHealthRow(**_normalize_row(r))
+            for r in rows
+            if isinstance(r, dict)
+        ]
+        return AdminCronStatusResponse(
+            status="ok",
+            queried_at=queried_at,
+            count=len(jobs),
+            jobs=jobs,
+        )
     except Exception as exc:
         logger.warning("cron-status RPC failed: %s", exc)
-        return {
-            "status": "error",
-            "queried_at": queried_at,
-            "count": 0,
-            "jobs": [],
-            "detail": str(exc),
-        }
+        return AdminCronStatusResponse(
+            status="error",
+            queried_at=queried_at,
+            count=0,
+            jobs=[],
+            detail=str(exc),
+        )

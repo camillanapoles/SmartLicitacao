@@ -12,20 +12,20 @@ GET /v1/admin/llm-cost — admin-only JSON snapshot do gasto LLM do mês:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends
 
 from admin import require_admin
 from llm_budget import get_cost_snapshot
+from schemas.admin import AdminLlmCostResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 
-@router.get("/llm-cost")
-async def admin_llm_cost(user: dict = Depends(require_admin)) -> dict[str, Any]:
+@router.get("/llm-cost", response_model=AdminLlmCostResponse)
+async def admin_llm_cost(user: dict = Depends(require_admin)) -> AdminLlmCostResponse:
     """Return LLM cost snapshot para o mês corrente (admin-only).
 
     Response shape::
@@ -41,4 +41,5 @@ async def admin_llm_cost(user: dict = Depends(require_admin)) -> dict[str, Any]:
 
     Em caso de Redis indisponível, retorna zeros (graceful degradation).
     """
-    return await get_cost_snapshot()
+    snapshot = await get_cost_snapshot()
+    return AdminLlmCostResponse(**snapshot)

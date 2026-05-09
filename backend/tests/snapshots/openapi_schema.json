@@ -25,6 +25,113 @@
         "title": "AdminAssignPlanResponse",
         "type": "object"
       },
+      "AdminCacheTraceState": {
+        "description": "``cache`` field of the search-trace response.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "is_revalidating": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Revalidating"
+          },
+          "redis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis"
+          }
+        },
+        "title": "AdminCacheTraceState",
+        "type": "object"
+      },
+      "AdminCircuitBreakerResetResponse": {
+        "description": "Response for POST /v1/admin/cb/reset (STORY-416 AC5).",
+        "properties": {
+          "previous_states": {
+            "additionalProperties": true,
+            "title": "Previous States",
+            "type": "object"
+          },
+          "reset_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reset By"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "previous_states"
+        ],
+        "title": "AdminCircuitBreakerResetResponse",
+        "type": "object"
+      },
+      "AdminClearCheckpointsResponse": {
+        "description": "Response for POST /v1/admin/clear-contracts-checkpoints.",
+        "properties": {
+          "checkpoints_deleted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoints Deleted"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "AdminClearCheckpointsResponse",
+        "type": "object"
+      },
       "AdminCreateUserResponse": {
         "description": "Response for POST /admin/users.",
         "properties": {
@@ -55,6 +162,49 @@
         "title": "AdminCreateUserResponse",
         "type": "object"
       },
+      "AdminCronStatusResponse": {
+        "description": "Response for GET /v1/admin/cron-status (STORY-1.1).\n\nOn transient backend failure (Supabase CB open, RPC error) the route\nreturns ``status=\"error\"`` with ``jobs=[]`` so dashboards degrade\ngracefully instead of 500-ing.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/CronJobHealthRow"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "queried_at": {
+            "title": "Queried At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "queried_at",
+          "count",
+          "jobs"
+        ],
+        "title": "AdminCronStatusResponse",
+        "type": "object"
+      },
       "AdminDeleteUserResponse": {
         "description": "Response for DELETE /admin/users/{user_id}.",
         "properties": {
@@ -74,6 +224,205 @@
         "title": "AdminDeleteUserResponse",
         "type": "object"
       },
+      "AdminJobTraceState": {
+        "description": "``jobs`` field of the search-trace response.\n\nValues are short status strings (``\"completed\"`` / ``\"not_found\"``)\nso the model accepts them as ``Optional[str]``. ``error`` is present\nwhen the lookup itself raised.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "excel_generation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excel Generation"
+          },
+          "llm_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Summary"
+          }
+        },
+        "title": "AdminJobTraceState",
+        "type": "object"
+      },
+      "AdminJobTriggerResponse": {
+        "description": "Response for POST /v1/admin/trigger-{contracts,bids}-backfill.\n\nRoutes return ``status`` in {\"enqueued\", \"skipped\", \"error\"} plus an\noptional ``job_id`` (when ARQ accepts the job) and ``timeout_s``.\n``detail`` carries the operator-facing reason string when non-OK.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "timeout_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout S"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "AdminJobTriggerResponse",
+        "type": "object"
+      },
+      "AdminLlmCostResponse": {
+        "description": "Response for GET /v1/admin/llm-cost (STORY-2.11).\n\nMirrors ``llm_budget.get_cost_snapshot()``. ``month`` is the Redis\nkey shape (e.g. ``\"llm_cost_month_2026_04\"``); ``exceeded`` flips\nto ``True`` when the hard-reject is active.",
+        "properties": {
+          "budget_usd": {
+            "default": 0.0,
+            "title": "Budget Usd",
+            "type": "number"
+          },
+          "exceeded": {
+            "default": false,
+            "title": "Exceeded",
+            "type": "boolean"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "month_to_date_usd": {
+            "default": 0.0,
+            "title": "Month To Date Usd",
+            "type": "number"
+          },
+          "pct_used": {
+            "default": 0.0,
+            "title": "Pct Used",
+            "type": "number"
+          },
+          "projected_end_of_month_usd": {
+            "default": 0.0,
+            "title": "Projected End Of Month Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "month"
+        ],
+        "title": "AdminLlmCostResponse",
+        "type": "object"
+      },
+      "AdminProgressTraceState": {
+        "description": "``progress`` field of the search-trace response when a tracker\nis still in memory. ``mode`` is ``\"redis\"`` or ``\"in-memory\"``.",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "is_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Complete"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "uf_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf Count"
+          },
+          "ufs_completed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ufs Completed"
+          }
+        },
+        "title": "AdminProgressTraceState",
+        "type": "object"
+      },
       "AdminResetPasswordResponse": {
         "description": "Response for POST /admin/users/{user_id}/reset-password.",
         "properties": {
@@ -91,6 +440,96 @@
           "user_id"
         ],
         "title": "AdminResetPasswordResponse",
+        "type": "object"
+      },
+      "AdminSchemaContractStatusResponse": {
+        "description": "Response for GET /v1/admin/schema-contract-status (STORY-414 AC4).",
+        "properties": {
+          "checked_at": {
+            "default": 0.0,
+            "title": "Checked At",
+            "type": "number"
+          },
+          "missing": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "stale": {
+            "default": true,
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "strict_mode": {
+            "default": false,
+            "title": "Strict Mode",
+            "type": "boolean"
+          }
+        },
+        "title": "AdminSchemaContractStatusResponse",
+        "type": "object"
+      },
+      "AdminSearchTraceResponse": {
+        "description": "Response for GET /v1/admin/search-trace/{search_id}.\n\nEach sub-section is independently nullable: a transient Redis or ARQ\nfailure sets the corresponding key to a small ``{\"error\": \"...\"}``\npayload instead of failing the whole response.",
+        "properties": {
+          "cache": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdminCacheTraceState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "jobs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdminJobTraceState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdminProgressTraceState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queried_at": {
+            "title": "Queried At",
+            "type": "string"
+          },
+          "search_id": {
+            "title": "Search Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "search_id",
+          "queried_at"
+        ],
+        "title": "AdminSearchTraceResponse",
         "type": "object"
       },
       "AdminUpdateCreditsResponse": {
@@ -3396,6 +3835,100 @@
           "password"
         ],
         "title": "CreateUserRequest",
+        "type": "object"
+      },
+      "CronJobHealthRow": {
+        "description": "One row of ``public.get_cron_health()`` (STORY-1.1).",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "failures_24h": {
+            "default": 0,
+            "title": "Failures 24H",
+            "type": "integer"
+          },
+          "jobname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jobname"
+          },
+          "last_return_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Return Message"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "last_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Status"
+          },
+          "latency_avg_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Avg Ms"
+          },
+          "runs_24h": {
+            "default": 0,
+            "title": "Runs 24H",
+            "type": "integer"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule"
+          }
+        },
+        "title": "CronJobHealthRow",
         "type": "object"
       },
       "DadosAgregadosResponse": {
@@ -13322,9 +13855,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Reset Circuit Breakers V1 Admin Cb Reset Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminCircuitBreakerResetResponse"
                 }
               }
             },
@@ -13351,9 +13882,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Clear Contracts Checkpoints V1 Admin Clear Contracts Checkpoints Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminClearCheckpointsResponse"
                 }
               }
             },
@@ -13439,9 +13968,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Cron Status V1 Admin Cron Status Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminCronStatusResponse"
                 }
               }
             },
@@ -13833,9 +14360,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Admin Llm Cost V1 Admin Llm Cost Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminLlmCostResponse"
                 }
               }
             },
@@ -14362,9 +14887,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Schema Contract Status V1 Admin Schema Contract Status Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminSchemaContractStatusResponse"
                 }
               }
             },
@@ -14402,9 +14925,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Search Trace V1 Admin Search Trace  Search Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminSearchTraceResponse"
                 }
               }
             },
@@ -14793,9 +15314,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Trigger Bids Backfill V1 Admin Trigger Bids Backfill Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminJobTriggerResponse"
                 }
               }
             },
@@ -14822,9 +15341,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Trigger Contracts Backfill V1 Admin Trigger Contracts Backfill Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminJobTriggerResponse"
                 }
               }
             },
