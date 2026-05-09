@@ -185,8 +185,12 @@ async def _fetch_sector_contracts(
 
     def _sync_query() -> list[dict]:
         from supabase_client import get_supabase
+        from utils.postgrest_paginate import paginate_full
         sb = get_supabase()
-        resp = (
+        # DATA-CAP-001: paginate past PostgREST max_rows=1000. Previously
+        # .limit(5000) was silently capped at 1000 rows; the keyword filter
+        # below could miss matches in the 1001-5000 range.
+        query = (
             sb.table("pncp_supplier_contracts")
             .select(
                 "ni_fornecedor,nome_fornecedor,orgao_cnpj,orgao_nome,"
@@ -195,10 +199,13 @@ async def _fetch_sector_contracts(
             .eq("uf", uf_upper)
             .eq("is_active", True)
             .order("data_assinatura", desc=True)
-            .limit(5000)
-            .execute()
         )
-        return resp.data or []
+        return paginate_full(
+            query,
+            route="contratos_publicos.sector_contracts",
+            entity_type="contracts",
+            max_total=5000,
+        )
 
     try:
         rows = await _run_with_budget(
@@ -267,8 +274,12 @@ async def orgao_contratos_stats(cnpj: str):
 
     def _sync_query_orgao() -> list[dict]:
         from supabase_client import get_supabase
+        from utils.postgrest_paginate import paginate_full
         sb = get_supabase()
-        resp = (
+        # DATA-CAP-001: paginate past PostgREST max_rows=1000. Previously
+        # .limit(5000) was silently capped at 1000 — órgãos with > 1000
+        # contracts had their stats computed against the first 1000 only.
+        query = (
             sb.table("pncp_supplier_contracts")
             .select(
                 "ni_fornecedor,nome_fornecedor,orgao_cnpj,orgao_nome,"
@@ -277,10 +288,13 @@ async def orgao_contratos_stats(cnpj: str):
             .eq("orgao_cnpj", cnpj_clean)
             .eq("is_active", True)
             .order("data_assinatura", desc=True)
-            .limit(5000)
-            .execute()
         )
-        return resp.data or []
+        return paginate_full(
+            query,
+            route="contratos_publicos.orgao_contratos_stats",
+            entity_type="contracts",
+            max_total=5000,
+        )
 
     try:
         rows = await _run_with_budget(

@@ -322,16 +322,24 @@ def _query_historical_sync(data_inicial: str, data_final: str) -> list[dict]:
     search_datalake which filters is_active=true.
     """
     from supabase_client import get_supabase
+    from utils.postgrest_paginate import paginate_full
     sb = get_supabase()
-    resp = (
+    # DATA-CAP-001: paginate past PostgREST max_rows=1000. Previously
+    # .limit(5000) was silently capped at 1000 — historical month relatórios
+    # (>30 days old, where is_active=False after purge) under-counted the
+    # actual licitações for the period and skewed top_setores / by_uf.
+    query = (
         sb.table("pncp_raw_bids")
         .select("pncp_id, objeto_compra, valor_total_estimado, modalidade_id, uf, data_publicacao")
         .gte("data_publicacao", data_inicial)
         .lte("data_publicacao", data_final + "T23:59:59")
-        .limit(5000)
-        .execute()
     )
-    rows = resp.data or []
+    rows = paginate_full(
+        query,
+        route="observatorio.historical_relatorio",
+        entity_type="bids",
+        max_total=5000,
+    )
     # Normalize to keys expected by _generate_relatorio processing
     normalized: list[dict] = []
     for r in rows:

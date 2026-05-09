@@ -260,9 +260,14 @@ async def _build_orgao_stats(cnpj: str) -> tuple[dict, bool]:
     """
     def _sync_query() -> list[dict]:
         from supabase_client import get_supabase
+        from utils.postgrest_paginate import paginate_full
 
         sb = get_supabase()
-        resp = (
+        # DATA-CAP-001: paginate past PostgREST max_rows=1000. Previously
+        # .limit(5000) was silently capped at 1000; órgãos with > 1000 active
+        # bids had under-counted licitações_30d/90d/365d totals and skewed
+        # top_modalidades / top_setores aggregations.
+        query = (
             sb.table("pncp_raw_bids")
             .select(
                 "orgao_razao_social,"
@@ -276,10 +281,13 @@ async def _build_orgao_stats(cnpj: str) -> tuple[dict, bool]:
             )
             .eq("orgao_cnpj", cnpj)
             .eq("is_active", True)
-            .limit(5000)
-            .execute()
         )
-        return resp.data or []
+        return paginate_full(
+            query,
+            route="orgao_publico.orgao_stats",
+            entity_type="bids",
+            max_total=5000,
+        )
 
     try:
         rows = await _run_with_budget(

@@ -199,15 +199,25 @@ async def get_gsc_summary(
             logger.warning("gsc_summary: top_queries query failed — %s", exc)
 
         try:
-            p_resp = (
+            from utils.postgrest_paginate import paginate_full
+            # DATA-CAP-001: paginate past PostgREST max_rows=1000. Previously
+            # .limit(5000) was silently capped at 1000; gsc_metrics has
+            # one row per (page, query, date) so even 7-day windows can
+            # easily exceed 1000 rows for high-traffic SEO pages, breaking
+            # the page-level CTR aggregation below.
+            p_query = (
                 supabase.table("gsc_metrics")
                 .select("page,impressions,clicks,ctr,position")
                 .gte("date", cutoff)
-                .limit(5000)
-                .execute()
+            )
+            p_rows = paginate_full(
+                p_query,
+                route="seo_admin.gsc_summary_pages",
+                entity_type="gsc_metrics",
+                max_total=5000,
             )
             pg_agg: dict[str, dict] = {}
-            for row in (p_resp.data or []):
+            for row in p_rows:
                 p = (row.get("page") or "").strip()
                 if not p:
                     continue

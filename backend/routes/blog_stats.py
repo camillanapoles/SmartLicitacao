@@ -920,8 +920,17 @@ def _query_contratos_sync(
     municipio froze ``/health/live`` for every Railway proxy probe.
     """
     from supabase_client import get_supabase
+    from utils.postgrest_paginate import paginate_full
     sb = get_supabase()
 
+    # DATA-CAP-001: paginate past PostgREST max_rows=1000. Previously
+    # .limit(5000) was silently capped at 1000 — sector × UF aggregates
+    # (top_orgaos, top_fornecedores, monthly_trend, by_uf) computed against
+    # the first 1000 contracts only, badly under-counting popular sectors.
+    #
+    # NOTE: Pattern A (RPC RETURNS json scalar) was considered but does not
+    # fit cleanly here because the callsite has dynamic uf + municipio
+    # filters. Pattern B preserves the existing Python aggregator unchanged.
     query = (
         sb.table("pncp_supplier_contracts")
         .select(
@@ -937,13 +946,13 @@ def _query_contratos_sync(
         # substring match via ilike (handles variations like "São Paulo" vs "SAO PAULO").
         query = query.ilike("municipio", f"%{municipio_pattern}%")
 
-    resp = (
-        query
-        .order("data_assinatura", desc=True)
-        .limit(5000)
-        .execute()
+    query = query.order("data_assinatura", desc=True)
+    return paginate_full(
+        query,
+        route="blog_stats.contratos",
+        entity_type="contracts",
+        max_total=5000,
     )
-    return resp.data or []
 
 
 def _empty_contratos_stats() -> dict:

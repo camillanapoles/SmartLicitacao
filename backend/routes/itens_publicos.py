@@ -436,17 +436,25 @@ async def _fetch_price_data(nome_item: str) -> tuple[list[float], list[dict]]:
 
     def _sync_fetch() -> list[dict]:
         from supabase_client import get_supabase
+        from utils.postgrest_paginate import paginate_full
         sb = get_supabase()
-        resp = (
+        # DATA-CAP-001: paginate past PostgREST max_rows=1000. The previous
+        # .limit(1000) was at the cap exactly — common ilike terms (e.g.
+        # "uniforme", "papel") have > 1000 hits and the price aggregation
+        # below was silently truncated.
+        query = (
             sb.table("pncp_supplier_contracts")
             .select("valor_global,objeto_contrato,orgao_nome,data_assinatura,uf")
             .ilike("objeto_contrato", f"%{palavras[0]}%")
             .eq("is_active", True)
             .order("data_assinatura", desc=True)
-            .limit(1000)
-            .execute()
         )
-        return resp.data or []
+        return paginate_full(
+            query,
+            route="itens_publicos.fetch_price_data",
+            entity_type="contracts",
+            max_total=2000,
+        )
 
     try:
         rows = await _run_with_budget(
