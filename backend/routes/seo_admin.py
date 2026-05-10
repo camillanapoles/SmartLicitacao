@@ -301,3 +301,42 @@ async def get_gsc_summary(
         phase="route",
         source="seo_admin.get_gsc_summary",
     )
+
+
+# ---------------------------------------------------------------------------
+# On-demand ISR revalidation — #1037
+# ---------------------------------------------------------------------------
+
+
+class RevalidateSEORequest(BaseModel):
+    paths: list[str]
+
+
+class RevalidateSEOResponse(BaseModel):
+    status: str
+    paths: list[str]
+
+
+@router.post("/admin/revalidate-seo", response_model=RevalidateSEOResponse)
+async def admin_revalidate_seo(
+    body: RevalidateSEORequest,
+    user=Depends(require_auth),
+    _admin=Depends(require_admin),
+):
+    """Manually trigger ISR revalidation for the given frontend paths.
+
+    Calls the Next.js ``POST /api/revalidate`` endpoint (secret-gated).
+    Fire-and-forget — the HTTP call is made but result is not awaited for
+    user-facing errors.  Any failure is logged as a warning.
+
+    Requires admin role.  Raises HTTP 400 if ``paths`` is empty.
+    """
+    if not body.paths:
+        from fastapi import HTTPException as _HTTPException
+
+        raise _HTTPException(status_code=400, detail="paths must not be empty")
+
+    from utils.revalidate_client import revalidate_paths
+
+    await revalidate_paths(body.paths)
+    return RevalidateSEOResponse(status="ok", paths=body.paths)

@@ -25,6 +25,54 @@ from ingestion.contracts_crawler import CONTRACTS_FULL_CRAWL_TIMEOUT, CONTRACTS_
 logger = logging.getLogger(__name__)
 
 
+_MONTH_NAMES = {
+    1: "janeiro", 2: "fevereiro", 3: "marco", 4: "abril",
+    5: "maio", 6: "junho", 7: "julho", 8: "agosto",
+    9: "setembro", 10: "outubro", 11: "novembro", 12: "dezembro",
+}
+
+
+def _build_revalidation_paths(result: dict) -> list[str]:
+    """Derive frontend ISR paths to revalidate from an ingestion result dict.
+
+    Covers the programmatic SEO routes that embed ingestion data:
+    - /observatorio/raio-x-{mes}-{ano} (monthly observatory pages)
+    - /licitacoes/{setor}             (sector listing pages)
+    - /alertas-publicos/{setor}/{uf}  (per-sector/uf alert pages)
+
+    Returns a deduplicated list of URL paths suitable for `revalidatePath`.
+    """
+    import datetime
+
+    today = datetime.date.today()
+    mes_nome = _MONTH_NAMES.get(today.month, "")
+    paths: list[str] = []
+
+    # Monthly observatory page for the current month
+    if mes_nome:
+        paths.append(f"/observatorio/raio-x-{mes_nome}-{today.year}")
+
+    # Sector listing pages (always stale after a crawl — low-cost to revalidate all)
+    setor_ids: list[str] = []
+    try:
+        from sectors import SECTORS  # local import to avoid circular deps at module load
+
+        setor_ids = list(SECTORS.keys())
+        for setor_id in setor_ids:
+            paths.append(f"/licitacoes/{setor_id}")
+    except Exception:
+        pass
+
+    # Per-(setor, uf) alert pages for UFs that were crawled
+    ufs_processed: list[str] = result.get("ufs_processed", [])
+    if ufs_processed and setor_ids:
+        for setor_id in setor_ids:
+            for uf in ufs_processed:
+                paths.append(f"/alertas-publicos/{setor_id}/{uf.lower()}")
+
+    return list(dict.fromkeys(paths))  # deduplicate, preserve order
+
+
 async def _notify_failure(
     job_name: str, error: str, duration_s: float, extra: dict | None = None
 ) -> None:
@@ -89,6 +137,14 @@ async def ingestion_full_crawl_job(ctx: dict) -> dict:
         f"[Ingestion:FullCrawl] Completed in {duration_s}s — "
         f"records={result.get('records_upserted', 0)}"
     )
+
+    # Fire-and-forget ISR revalidation — never blocks/fails the job.
+    try:
+        from utils.revalidate_client import revalidate_paths
+        await revalidate_paths(_build_revalidation_paths(result))
+    except Exception as _rev_exc:
+        logger.debug("[Ingestion:FullCrawl] revalidate_paths error (non-fatal): %s", _rev_exc)
+
     return {**result, "duration_s": duration_s}
 
 
@@ -130,6 +186,14 @@ async def ingestion_incremental_job(ctx: dict) -> dict:
         f"[Ingestion:Incremental] Completed in {duration_s}s — "
         f"records={result.get('records_upserted', 0)}"
     )
+
+    # Fire-and-forget ISR revalidation — never blocks/fails the job.
+    try:
+        from utils.revalidate_client import revalidate_paths
+        await revalidate_paths(_build_revalidation_paths(result))
+    except Exception as _rev_exc:
+        logger.debug("[Ingestion:Incremental] revalidate_paths error (non-fatal): %s", _rev_exc)
+
     return {**result, "duration_s": duration_s}
 
 
