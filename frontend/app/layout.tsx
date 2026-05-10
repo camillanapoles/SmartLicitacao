@@ -152,6 +152,9 @@ export default function RootLayout({
         {/* SEO: Preconnect to critical origins for faster TTFB */}
         <link rel="preconnect" href="https://fqqyovlzdzimiwfofdjk.supabase.co" />
         <link rel="dns-prefetch" href="https://fqqyovlzdzimiwfofdjk.supabase.co" />
+        {/* Issue #994: Preconnect to backend API to shave LCP on first data fetch */}
+        <link rel="preconnect" href="https://api.smartlic.tech" />
+        <link rel="dns-prefetch" href="https://api.smartlic.tech" />
         {/* SEO-FIX: nonce removed — CSP allows this via SHA-256 hash (see middleware.ts) */}
         <script
           dangerouslySetInnerHTML={{

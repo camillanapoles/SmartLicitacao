@@ -25,6 +25,11 @@ const nextConfig = {
     return `build-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   },
   images: {
+    // Issue #994: Pin modern formats (AVIF first, WebP fallback) for next/image
+    // optimization on blog hero, author avatars, and any future imagery. Next.js
+    // 16 default already includes both, but pinning makes intent explicit and
+    // survives upstream default changes.
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
