@@ -104,7 +104,7 @@ export default async function LicitacoesCidadePage({
 }) {
   const { cidade } = await params;
   const city = getCityBySlug(cidade);
-  if (!city) notFound();
+  if (!city) notFound(); // adr-seo-001-allow: cidade not in static city catalog — true 404
 
   // AC1: fetch bids + contracts in parallel; AC8: graceful — contractsFallback stays null on failure
   const [stats, contractsFallback] = await Promise.all([

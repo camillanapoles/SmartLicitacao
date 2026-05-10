@@ -75,7 +75,7 @@ export default async function SectorProgrammaticPage({
 }) {
   const { setor } = await params;
   const sector = getSectorFromSlug(setor);
-  if (!sector) notFound();
+  if (!sector) notFound(); // adr-seo-001-allow: setor not in static sector catalog — true 404
 
   const stats = await fetchSectorBlogStats(setor);
   const editorial = getEditorialContent(sector.id);

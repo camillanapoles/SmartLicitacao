@@ -125,6 +125,8 @@ jobs:
 
           # Classify each hit: allowed if `adr-seo-001-allow:` is on the same
           # line OR on the immediately preceding line.
+          # Comment-only lines (trimmed starts with // /* or *) are skipped —
+          # they appear in JSDoc descriptions referencing notFound() in prose.
           : > /tmp/seo_notfound_violations.txt
           while IFS= read -r hit; do
             [ -z "$hit" ] && continue
@@ -132,6 +134,12 @@ jobs:
             rest="${hit#*:}"
             lineno="${rest%%:*}"
             content="${rest#*:}"
+
+            # Skip pure comment lines (JSDoc / inline comments that mention notFound() in prose).
+            trimmed="$(printf '%s' "$content" | sed 's/^[[:space:]]*//')"
+            case "$trimmed" in
+              "//"*|"/*"*|"*"*) continue ;;
+            esac
 
             # Same-line marker?
             if printf '%s' "$content" | grep -q "adr-seo-001-allow:"; then

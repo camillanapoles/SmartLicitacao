@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import OrgaoPerfilClient from './OrgaoPerfilClient';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import InlineTrialCTA from '../../components/InlineTrialCTA';
 import { LeadCapture } from '@/components/LeadCapture';
 import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
@@ -130,8 +130,16 @@ export default async function OrgaoPerfilPage({
   const { slug } = await params;
   const stats = await fetchOrgaoStats(slug);
 
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
   if (!stats) {
-    notFound();
+    return (
+      <EmptyStateSEO
+        title="Órgão público sem licitações registradas ainda"
+        description="Este órgão não possui licitações públicas registradas nas fontes oficiais no momento. Os dados são indexados diariamente — volte em breve."
+        ctaHref="/orgaos"
+        ctaLabel="Ver outros órgãos"
+      />
+    );
   }
 
   const orgSchema = {

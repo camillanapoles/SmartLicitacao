@@ -145,7 +145,7 @@ export default async function RelatorioPage({
   const { slug } = await params;
   // STORY-431 AC13: malformed slug → 404 (page itself, plus noindex metadata).
   const parsed = parseSlug(slug);
-  if (!parsed) notFound();
+  if (!parsed) notFound(); // adr-seo-001-allow: slug fails raio-x-{mes}-{ano} format — not a valid observatorio period
 
   const { mes, ano } = parsed;
   const mesDisplay = MONTH_NAMES_DISPLAY[mes] ?? String(mes);

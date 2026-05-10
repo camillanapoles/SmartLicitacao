@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import { buildCanonical, SITE_URL } from '@/lib/seo';
 import { getAuthorBySlug, DEFAULT_AUTHOR_SLUG } from '@/lib/authors';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
@@ -215,10 +216,21 @@ export default async function WeeklyDigestPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const data = await fetchWeeklyData(slug);
 
+  // adr-seo-001-allow: slug fails YYYY-Www format — not a valid weekly digest identifier
+  if (!/^\d{4}-w\d{1,2}$/i.test(slug)) notFound();
+
+  const data = await fetchWeeklyData(slug);
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
   if (!data) {
-    notFound();
+    return (
+      <EmptyStateSEO
+        title="Digest semanal ainda não disponível"
+        description="O digest desta semana ainda não foi publicado. Os dados são processados semanalmente — volte em breve ou explore outros digests."
+        ctaHref="/blog"
+        ctaLabel="Ver todos os artigos"
+      />
+    );
   }
 
   const canonicalUrl = buildCanonical(`/blog/weekly/${slug}`);

@@ -55,7 +55,7 @@ export default async function CaseDetailPage({
 }) {
   const { slug } = await params;
   const c = getCaseBySlug(slug);
-  if (!c) notFound();
+  if (!c) notFound(); // adr-seo-001-allow: slug not in static casos catalog — true 404
 
   const articleSchema = {
     '@context': 'https://schema.org',

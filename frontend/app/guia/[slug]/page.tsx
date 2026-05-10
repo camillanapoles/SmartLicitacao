@@ -66,10 +66,10 @@ export default async function PillarPage({
 }) {
   const { slug } = await params;
   const pillar = getPillarBySlug(slug);
-  if (!pillar) notFound();
+  if (!pillar) notFound(); // adr-seo-001-allow: slug not in static pillars catalog — true 404
 
   const entry = CONTENT[pillar.slug as PillarSlug];
-  if (!entry) notFound();
+  if (!entry) notFound(); // adr-seo-001-allow: no content component for this pillar slug — true 404
 
   const Content = entry.Component;
   return (

@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import { getUfPrep } from '@/lib/programmatic';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
@@ -121,10 +122,20 @@ export default async function MunicipioSlugPage({ params }: Props) {
   const { slug } = await params;
 
   // Validação básica de formato: apenas letras minúsculas, números e hífens
-  if (!/^[a-z0-9-]+$/.test(slug)) notFound();
+  if (!/^[a-z0-9-]+$/.test(slug)) notFound(); // adr-seo-001-allow: slug fails basic format check — not a valid municipio identifier
 
   const profile = await fetchProfile(slug);
-  if (!profile) notFound();
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
+  if (!profile) {
+    return (
+      <EmptyStateSEO
+        title="Município sem licitações registradas ainda"
+        description="Este município não possui licitações públicas registradas nas fontes oficiais no momento. Os dados são indexados diariamente — volte em breve."
+        ctaHref="/municipios"
+        ctaLabel="Ver outros municípios"
+      />
+    );
+  }
 
   const breadcrumbs = [
     { name: 'SmartLic', url: '/' },

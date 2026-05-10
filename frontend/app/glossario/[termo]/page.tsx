@@ -86,9 +86,7 @@ export default async function GlossaryTermPage({
   const { termo } = await params;
   const term = GLOSSARY_TERMS.find((t) => t.slug === termo);
 
-  if (!term) {
-    notFound();
-  }
+  if (!term) notFound(); // adr-seo-001-allow: termo not in static GLOSSARY_TERMS catalog — true 404
 
   const relatedTermObjects = (term.relatedTerms ?? [])
     .map((slug) => GLOSSARY_TERMS.find((t) => t.slug === slug))

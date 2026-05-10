@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import ContentPageLayout from '../../components/ContentPageLayout';
 import CnpjPerfilClient from './CnpjPerfilClient';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import InlineTrialCTA from '../../components/InlineTrialCTA';
 import IntelReportCTA from './IntelReportCTA';
 import { LeadCapture } from '@/components/LeadCapture';
@@ -131,8 +131,16 @@ export default async function CnpjPerfilPage({
   const { cnpj } = await params;
   const perfil = await fetchPerfil(cnpj);
 
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
   if (!perfil) {
-    notFound();
+    return (
+      <EmptyStateSEO
+        title="CNPJ sem contratos registrados ainda"
+        description="Este CNPJ não possui contratos públicos registrados nas fontes oficiais no momento. Os dados são indexados diariamente — volte em breve."
+        ctaHref="/cnpj"
+        ctaLabel="Consultar outro CNPJ"
+      />
+    );
   }
 
   const { empresa } = perfil;

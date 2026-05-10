@@ -107,7 +107,7 @@ export default async function LicitacoesCidadeSetorPage({
   const { cidade, setor } = await params;
   const city = getCityBySlug(cidade);
   const sector = getSectorBySlug(setor);
-  if (!city || !sector) notFound();
+  if (!city || !sector) notFound(); // adr-seo-001-allow: city or sector not in static catalog — true 404
 
   const stats = await fetchCidadeSectorStats(city.slug, sector.id);
   const ufName = UF_NAMES[city.uf] || city.uf;

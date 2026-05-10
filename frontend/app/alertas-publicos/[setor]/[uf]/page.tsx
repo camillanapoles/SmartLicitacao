@@ -81,10 +81,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AlertasPage({ params }: Props) {
   const { setor, uf } = await params;
   const sector = getSectorFromSlug(setor);
-  if (!sector) notFound();
+  if (!sector) notFound(); // adr-seo-001-allow: setor not in static sector catalog — true 404
 
   const ufUpper = uf.toUpperCase();
-  if (!ALL_UFS.includes(ufUpper)) notFound();
+  if (!ALL_UFS.includes(ufUpper)) notFound(); // adr-seo-001-allow: uf not in canonical UF list — true 404
 
   const ufName = UF_NAMES[ufUpper] || ufUpper;
   const data = await fetchAlertasPublicos(setor, ufUpper);

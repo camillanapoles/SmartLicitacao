@@ -48,7 +48,7 @@ export default async function AuthorPage({
 }) {
   const { slug } = await params;
   const author = getAuthorBySlug(slug);
-  if (!author) notFound();
+  if (!author) notFound(); // adr-seo-001-allow: slug not in static author catalog — true 404
 
   const articles = getArticlesByAuthor(slug);
 

@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
@@ -101,10 +102,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ComplianceCnpjPage({ params }: Props) {
   const { cnpj } = await params;
 
-  if (!/^\d{14}$/.test(cnpj)) notFound();
+  if (!/^\d{14}$/.test(cnpj)) notFound(); // adr-seo-001-allow: cnpj fails 14-digit format check — not a valid CNPJ
 
   const profile = await fetchProfile(cnpj);
-  if (!profile) notFound();
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
+  if (!profile) {
+    return (
+      <EmptyStateSEO
+        title="CNPJ sem registros de sanções ou contratos ainda"
+        description="Este CNPJ não possui registros nas bases de compliance (CEIS/CNEP) no momento. Os dados são atualizados regularmente — volte em breve."
+        ctaHref="/compliance"
+        ctaLabel="Ver due diligence B2G"
+      />
+    );
+  }
 
   const cnpjFmt = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
 

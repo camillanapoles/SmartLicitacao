@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import { buildCanonical } from '@/lib/seo';
 import { LeadCapture } from '@/components/LeadCapture';
 import TrackingLink from '@/components/TrackingLink';
@@ -117,8 +117,16 @@ export default async function OrgaoContratosPage({ params }: Props) {
   const { cnpj } = await params;
   const stats = await fetchOrgaoContratosStats(cnpj);
 
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
   if (!stats) {
-    notFound();
+    return (
+      <EmptyStateSEO
+        title="Órgão sem contratos registrados ainda"
+        description="Este órgão não possui contratos públicos registrados nas fontes oficiais no momento. Os dados são indexados diariamente — volte em breve."
+        ctaHref="/contratos"
+        ctaLabel="Ver contratos por setor"
+      />
+    );
   }
 
   const orgSchema = {

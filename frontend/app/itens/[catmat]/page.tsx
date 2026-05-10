@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 
 const BACKEND_URL = getBackendUrl();
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
@@ -106,10 +107,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ItemCatmatPage({ params }: Props) {
   const { catmat } = await params;
 
-  if (!/^\d{1,9}$/.test(catmat)) notFound();
+  if (!/^\d{1,9}$/.test(catmat)) notFound(); // adr-seo-001-allow: catmat fails digit-only format — not a valid CATMAT code
 
   const profile = await fetchProfile(catmat);
-  if (!profile) notFound();
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
+  if (!profile) {
+    return (
+      <EmptyStateSEO
+        title="Código CATMAT sem dados de benchmark ainda"
+        description="Este código CATMAT não possui dados de benchmark de preços nas fontes oficiais no momento. Os dados são indexados diariamente — volte em breve."
+        ctaHref="/itens"
+        ctaLabel="Ver benchmark de preços"
+      />
+    );
+  }
 
   const breadcrumbs = [
     { name: 'SmartLic', url: '/' },

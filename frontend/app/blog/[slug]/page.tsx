@@ -105,7 +105,7 @@ export default async function BlogArticlePage({
         redirect(`/blog/${normalized}`);
       }
     }
-    notFound();
+    notFound(); // adr-seo-001-allow: slug not in static blog article catalog — true 404
   }
 
   const relatedArticles = getRelatedArticles(slug);

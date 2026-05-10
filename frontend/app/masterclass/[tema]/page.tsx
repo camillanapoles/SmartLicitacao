@@ -64,7 +64,7 @@ export default async function MasterclassPage({
 }) {
   const { tema } = await params;
   const mc = getMasterclassByTema(tema);
-  if (!mc) notFound();
+  if (!mc) notFound(); // adr-seo-001-allow: tema not in static masterclass catalog — true 404
 
   const author = getAuthorBySlug(mc.instructor);
   const canonical = buildCanonical(`/masterclass/${tema}`);

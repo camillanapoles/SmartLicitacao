@@ -191,7 +191,7 @@ export default async function LicitacoesSectorUfPage({
 
   const ufUpper = uf.toUpperCase();
   const sector = getSectorFromSlug(setor);
-  if (!sector || !ALL_UFS.includes(ufUpper)) notFound();
+  if (!sector || !ALL_UFS.includes(ufUpper)) notFound(); // adr-seo-001-allow: sector or uf not in static catalog — true 404
 
   // AC1+AC2: busca paralela — sem aumento de latência de ISR
   const [stats, contractsFallback] = await Promise.all([

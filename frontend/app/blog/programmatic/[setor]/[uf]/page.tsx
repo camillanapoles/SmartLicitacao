@@ -82,7 +82,7 @@ export default async function SectorUfProgrammaticPage({
   const { setor, uf } = await params;
   const ufUpper = uf.toUpperCase();
   const sector = getSectorFromSlug(setor);
-  if (!sector || !ALL_UFS.includes(ufUpper)) notFound();
+  if (!sector || !ALL_UFS.includes(ufUpper)) notFound(); // adr-seo-001-allow: sector or uf not in static catalog — true 404
 
   const stats = await fetchSectorUfBlogStats(setor, ufUpper);
   const ufName = UF_NAMES[ufUpper] || ufUpper;

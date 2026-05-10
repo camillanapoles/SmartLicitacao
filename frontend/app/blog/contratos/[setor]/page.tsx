@@ -65,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ContratosSetorPillarPage({ params }: Props) {
   const { setor } = await params;
   const sector = getSectorFromSlug(setor);
-  if (!sector) notFound();
+  if (!sector) notFound(); // adr-seo-001-allow: setor not in static sector catalog — true 404
 
   const stats = await fetchContratosSetorStats(setor);
   const editorial = getContratosEditorialContent(sector.id);

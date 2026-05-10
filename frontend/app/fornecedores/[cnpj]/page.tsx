@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import FornecedorPseoCTA from './FornecedorPseoCTA';
@@ -124,10 +125,20 @@ export default async function FornecedorCnpjPage({ params }: Props) {
   const { cnpj } = await params;
 
   // Validacao basica de formato antes de chamar o backend
-  if (!/^\d{14}$/.test(cnpj)) notFound();
+  if (!/^\d{14}$/.test(cnpj)) notFound(); // adr-seo-001-allow: cnpj fails 14-digit format check — not a valid CNPJ
 
   const profile = await fetchProfile(cnpj);
-  if (!profile) notFound();
+  // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
+  if (!profile) {
+    return (
+      <EmptyStateSEO
+        title="Fornecedor sem contratos registrados ainda"
+        description="Este CNPJ não possui contratos públicos registrados nas fontes oficiais no momento. Os dados são indexados diariamente — volte em breve."
+        ctaHref="/fornecedores"
+        ctaLabel="Ver outros fornecedores"
+      />
+    );
+  }
 
   const breadcrumbs = [
     { name: 'SmartLic', url: '/' },
