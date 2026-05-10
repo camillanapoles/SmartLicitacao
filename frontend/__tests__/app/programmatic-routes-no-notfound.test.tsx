@@ -117,6 +117,17 @@ describe('ADR-SEO-001: No unmarked notFound() in programmatic SEO routes', () =>
       allViolations.push(...violations);
     }
 
+    if (allViolations.length > 0) {
+      const details = allViolations
+        .map((v) => `  ${v.file}:${v.line}: ${v.content.trim()}`)
+        .join('\n');
+      fail(
+        `Found ${allViolations.length} unmarked notFound() call(s) in protected SEO routes.\n` +
+          `Add "// adr-seo-001-allow: <reason>" on the same line or preceding line.\n\n` +
+          `Violations:\n${details}`
+      );
+    }
+
     expect(allViolations).toHaveLength(0);
   });
 
