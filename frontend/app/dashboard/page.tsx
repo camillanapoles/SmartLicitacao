@@ -14,6 +14,9 @@ import { TrialUpsellCTA } from "../../components/billing/TrialUpsellCTA";
 import { TrialValueTracker } from "../../components/billing/TrialValueTracker";
 import { TrialExtensionCard } from "../../components/billing/TrialExtensionCard";
 import { usePlan } from "../../hooks/usePlan";
+import { useTrialPhase } from "../../hooks/useTrialPhase";
+// Issue #1006 (COPY-CROSS-007): Day 3+ Founders cross-sell on dashboard
+import { FoundersCrossSellBanner } from "../components/FoundersCrossSellBanner";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { formatCurrencyBR } from "../../lib/format-currency";
 import { Download } from "lucide-react";
@@ -81,6 +84,7 @@ export default function DashboardPage() {
   const { trackEvent } = useAnalytics();
   const { status: backendStatus } = useBackendStatusContext();
   const { planInfo } = usePlan();
+  const trialPhase = useTrialPhase();
   const isMobile = useIsMobile();
 
   const [period, setPeriod] = useState<Period>("week");
@@ -282,6 +286,18 @@ export default function DashboardPage() {
 
         {/* Zero-Churn P2 §8.2: Trial extension actions checklist */}
         <TrialExtensionCard />
+
+        {/* Issue #1006 (COPY-CROSS-007): Day 3-11 Founders cross-sell.
+            Hidden if not in trial (day=0 from useTrialPhase non-trial fallback), if user is already
+            a Founder, if seats sold out, or if user dismissed for the session / clicked CTA in last 24h.
+            Day 12+ has the urgent TrialProgressBar — banner steps aside. */}
+        <FoundersCrossSellBanner
+          variant="dashboard"
+          dismissable
+          trialDay={trialPhase.day}
+          isFounder={Boolean((planInfo as { is_founder?: boolean } | null)?.is_founder)}
+          className="mb-6"
+        />
 
         {summary && (
           <p className="text-sm text-[var(--ink-muted)] mb-6">

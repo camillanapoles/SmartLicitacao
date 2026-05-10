@@ -22,6 +22,8 @@ import { PlanProCard } from "./components/PlanProCard";
 import { PlanConsultoriaCard } from "./components/PlanConsultoriaCard";
 import { PlanFAQ } from "./components/PlanFAQ";
 import { ProductSchema } from "./components/ProductSchema";
+// Issue #1006 (COPY-CROSS-007): live counter cross-sell replacing static banner
+import { FoundersCrossSellBanner } from "../components/FoundersCrossSellBanner";
 import { buttonVariants } from "../../components/ui/button";
 import { trackViewItem, trackBeginCheckout } from "../components/GoogleAnalytics";
 import { PRO_PRICING, CONSULTORIA_PRICING } from "@/lib/plan-pricing";
@@ -358,15 +360,17 @@ export default function PlanosPage() {
           </div>
         </div>
 
-        {/* Fundadores cross-sell banner — BIZ-FOUND-002 / feat/#789 */}
-        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
-            → Conheça o <strong>Plano Fundadores</strong> — R$997 vitalício, vagas limitadas
-          </p>
-          <Link href="/fundadores" className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline ml-4 whitespace-nowrap">
-            Saiba mais →
-          </Link>
-        </div>
+        {/* Issue #1006 (COPY-CROSS-007): live counter cross-sell — replaces previous static banner (BIZ-FOUND-002 / #789).
+            Non-dismissable when seats <= 10 (real scarcity). Hidden if user is already a Founder or for active subscribers. */}
+        {userStatus !== "subscriber" && (
+          <div className="mb-6">
+            <FoundersCrossSellBanner
+              variant="planos"
+              dismissable
+              isFounder={Boolean(planInfo?.is_founder)}
+            />
+          </div>
+        )}
 
         <PlanStatusBanners
           userStatus={userStatus}
