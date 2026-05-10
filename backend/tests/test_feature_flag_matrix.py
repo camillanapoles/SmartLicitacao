@@ -12,10 +12,9 @@ import os
 import pytest
 from unittest.mock import patch
 
+from config import features as _features_mod
 from config.features import (
     _FEATURE_FLAG_REGISTRY,
-    _feature_flag_cache,
-    _runtime_overrides,
     get_feature_flag,
     reload_feature_flags,
 )
@@ -37,12 +36,22 @@ from config.features import (
 # both registries (``_runtime_overrides`` and ``_feature_flag_cache``) on
 # entry+exit so pollution from prior tests cannot leak in, and our own
 # patches cannot leak out to subsequent tests in the batch.
+#
+# IMPORTANT (#971 AC1 follow-up): we deliberately access the dicts via the
+# module reference (``_features_mod._runtime_overrides`` /
+# ``_features_mod._feature_flag_cache``) instead of the name-imported aliases.
+# Sibling tests (test_crit057_filter_time_budget, test_debt103_llm_search_resilience,
+# test_harden001_openai_timeout) call ``importlib.reload(features)``, which
+# rebinds those module attributes to brand-new dict objects. The name-imported
+# aliases would still point at the old dicts, leaving the new ones — which
+# ``get_feature_flag`` actually consults — untouched. Going through the module
+# attribute always resolves to the current dict.
 @pytest.fixture(autouse=True)
 def _isolate_feature_flag_state():
     """Snapshot env + clear flag dicts before and after every test."""
     env_snapshot = dict(os.environ)
-    _runtime_overrides.clear()
-    _feature_flag_cache.clear()
+    _features_mod._runtime_overrides.clear()
+    _features_mod._feature_flag_cache.clear()
     try:
         yield
     finally:
@@ -52,8 +61,8 @@ def _isolate_feature_flag_state():
                 del os.environ[key]
         for key, value in env_snapshot.items():
             os.environ[key] = value
-        _runtime_overrides.clear()
-        _feature_flag_cache.clear()
+        _features_mod._runtime_overrides.clear()
+        _features_mod._feature_flag_cache.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +130,7 @@ class TestCriticalFlagsOnOff:
         """Flag returns True when env var is 'true'."""
         env_var = _FEATURE_FLAG_REGISTRY[flag_name][0]
         with patch.dict("os.environ", {env_var: "true"}):
-            _feature_flag_cache.clear()
+            _features_mod._feature_flag_cache.clear()
             result = get_feature_flag(flag_name)
             assert result is True, f"{flag_name} should be True with env=true"
 
@@ -130,7 +139,7 @@ class TestCriticalFlagsOnOff:
         """Flag returns False when env var is 'false'."""
         env_var = _FEATURE_FLAG_REGISTRY[flag_name][0]
         with patch.dict("os.environ", {env_var: "false"}):
-            _feature_flag_cache.clear()
+            _features_mod._feature_flag_cache.clear()
             result = get_feature_flag(flag_name)
             assert result is False, f"{flag_name} should be False with env=false"
 
@@ -142,7 +151,7 @@ class TestCriticalFlagsOnOff:
         expected = default_str == "true"
         # Autouse fixture restores os.environ on teardown, so popping is safe.
         os.environ.pop(env_var, None)
-        _feature_flag_cache.clear()
+        _features_mod._feature_flag_cache.clear()
         result = get_feature_flag(flag_name)
         assert result is expected, (
             f"{flag_name} default should be {expected}"
@@ -161,14 +170,14 @@ class TestCriticalCombinations:
             "DATALAKE_QUERY_ENABLED": "false",
             "LLM_ZERO_MATCH_ENABLED": "true",
         }):
-            _feature_flag_cache.clear()
+            _features_mod._feature_flag_cache.clear()
             assert get_feature_flag("DATALAKE_QUERY_ENABLED") is False
             assert get_feature_flag("LLM_ZERO_MATCH_ENABLED") is True
 
     def test_combo2_search_async_on(self):
         """SEARCH_ASYNC_ENABLED=true — background processing validated."""
         with patch.dict("os.environ", {"SEARCH_ASYNC_ENABLED": "true"}):
-            _feature_flag_cache.clear()
+            _features_mod._feature_flag_cache.clear()
             assert get_feature_flag("SEARCH_ASYNC_ENABLED") is True
 
     def test_combo3_trial_paywall_on_rate_limiting_on(self):
@@ -177,7 +186,7 @@ class TestCriticalCombinations:
             "TRIAL_PAYWALL_ENABLED": "true",
             "RATE_LIMITING_ENABLED": "true",
         }):
-            _feature_flag_cache.clear()
+            _features_mod._feature_flag_cache.clear()
             assert get_feature_flag("TRIAL_PAYWALL_ENABLED") is True
             assert get_feature_flag("RATE_LIMITING_ENABLED") is True
 
@@ -187,7 +196,7 @@ class TestCriticalCombinations:
             "COMPRASGOV_ENABLED": "false",
             "DATALAKE_ENABLED": "false",
         }):
-            _feature_flag_cache.clear()
+            _features_mod._feature_flag_cache.clear()
             assert get_feature_flag("COMPRASGOV_ENABLED") is False
             assert get_feature_flag("DATALAKE_ENABLED") is False
 
@@ -197,7 +206,7 @@ class TestCriticalCombinations:
             "LLM_ARBITER_ENABLED": "false",
             "LLM_ZERO_MATCH_ENABLED": "false",
         }):
-            _feature_flag_cache.clear()
+            _features_mod._feature_flag_cache.clear()
             assert get_feature_flag("LLM_ARBITER_ENABLED") is False
             assert get_feature_flag("LLM_ZERO_MATCH_ENABLED") is False
 
@@ -208,12 +217,12 @@ class TestCriticalCombinations:
 class TestReloadFlags:
     def test_reload_clears_cache(self):
         """reload_feature_flags() clears the TTL cache."""
-        _feature_flag_cache["TEST_FLAG"] = (True, 0)
+        _features_mod._feature_flag_cache["TEST_FLAG"] = (True, 0)
         result = reload_feature_flags()
         # The autouse ``_isolate_feature_flag_state`` fixture above clears the
         # cache before each test, so any leftover entry would be a real bug in
         # ``reload_feature_flags`` (not cross-test contamination).
-        assert "TEST_FLAG" not in _feature_flag_cache
+        assert "TEST_FLAG" not in _features_mod._feature_flag_cache
         assert isinstance(result, dict)
         assert len(result) >= 30
 
