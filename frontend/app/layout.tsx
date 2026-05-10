@@ -103,12 +103,15 @@ export const metadata: Metadata = {
     images: ["/api/og"],
     // No Twitter/X profile — omit creator/site handles
   },
-  // GTM-COPY-006 AC9: Canonical URL + hreflang (pt-BR only site)
+  // SEO-P0-004 (#990): Global canonical default uses relative '/' so that
+  // per-page generateMetadata() can override with route-specific canonicals.
+  // metadataBase resolves relative URLs to https://smartlic.tech automatically.
+  // SEO-P0-001 (#988): hreflang pt-BR signals single-language Brazilian Portuguese site.
   alternates: {
-    canonical: "https://smartlic.tech",
+    canonical: "/",
     languages: {
-      'pt-BR': 'https://smartlic.tech',
-      'x-default': 'https://smartlic.tech',
+      'pt-BR': '/',
+      'x-default': '/',
     },
   },
   robots: {
@@ -149,6 +152,14 @@ export default function RootLayout({
         {/* SEO: PWA manifest (completes sw.js + offline.html signal chain) */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0a1e3f" />
+        {/* SEO-P0-001 (#988): Geo-targeting + content-language signals for HCU classifier.
+            Suppresses off-intent SERP exposure in non-BR markets (US/CA/UK/MX 0% CTR traffic).
+            Pairs with GSC International Targeting → Country = Brazil (set via Search Console UI). */}
+        <meta name="content-language" content="pt-BR" />
+        <meta name="geo.region" content="BR" />
+        <meta name="geo.country" content="Brazil" />
+        <meta name="geo.placename" content="Brasil" />
+        <meta httpEquiv="Content-Language" content="pt-BR" />
         {/* SEO: Preconnect to critical origins for faster TTFB */}
         <link rel="preconnect" href="https://fqqyovlzdzimiwfofdjk.supabase.co" />
         <link rel="dns-prefetch" href="https://fqqyovlzdzimiwfofdjk.supabase.co" />
