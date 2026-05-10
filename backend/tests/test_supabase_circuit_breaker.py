@@ -177,6 +177,23 @@ class TestCircuitBreakerStateTransitions:
         assert cb._trial_successes == 0
         assert cb._opened_at is None
 
+    def test_reset_clears_consecutive_failures(self):
+        """Issue #1013: reset() must also clear the STORY-416 consecutive_failures streak.
+
+        STORY-416 introduced the segregated CB with a hybrid AND/OR trip that tracks
+        ``_consecutive_failures``, but the original ``reset()`` only cleaned the rolling
+        window / trial successes / opened_at. As a result, callers (including the
+        admin ``POST /admin/cb/reset`` endpoint and tests like BTS-012) silently kept
+        a non-zero streak after a "reset" — making subsequent failures trip the CB
+        sooner than expected. Guard against regression.
+        """
+        cb = self._make_cb(window_size=10, failure_rate_threshold=0.5)
+        cb._consecutive_failures = 5
+
+        cb.reset()
+
+        assert cb._consecutive_failures == 0
+
 
 class TestCircuitBreakerCallSync:
     """Test call_sync() wrapper behavior."""
