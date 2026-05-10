@@ -10,6 +10,7 @@ import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
 import { buildOrgSchema } from './_jsonld';
+import { isNoindexed } from '@/lib/seo/noindex';
 
 const BACKEND_URL = getBackendUrl();
 
@@ -112,7 +113,13 @@ export async function generateMetadata({
       title: `${empresa.razao_social} — Score B2G: ${score}`,
       description: `${total_contratos_24m} contratos | ${valorFormatado}`,
     },
-    robots: { index: total_contratos_24m > 0, follow: true },
+    // SEO-P0-003 (#989): also gate on uniqueness audit. Pages flagged as
+    // duplicate by `scripts/seo/uniqueness_audit.py` ship `index: false`
+    // even when they have data, to avoid HCU drag.
+    robots: {
+      index: total_contratos_24m > 0 && !isNoindexed('cnpj', `/cnpj/${cnpj}`),
+      follow: true,
+    },
   };
 }
 

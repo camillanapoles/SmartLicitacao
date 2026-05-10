@@ -10,6 +10,9 @@ import { getAllAuthorSlugs } from '@/lib/authors';
 import { getAllQuestionSlugs } from '@/lib/questions';
 import { getAllMasterclassTemas } from '@/lib/masterclasses';
 import { getBackendUrl } from '@/lib/backend-url';
+// SEO-P0-003 (#989): drop URLs flagged as duplicate by the uniqueness audit
+// from the sitemap entirely. Auto-generated allowlist in lib/seo/noindex-slugs.ts.
+import { filterNoindexedSitemap } from '@/lib/seo/noindex';
 
 // STORY-SEO-001 AC3: Observable fetch wrapper. Replaces the silent `catch { return []; }`
 // pattern that hid ECONNREFUSED / DNS / 5xx errors at build time — which is exactly how
@@ -710,11 +713,17 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
         priority: 0.6,
       }));
 
+      // SEO-P0-003 (#989): drop slugs flagged by the uniqueness audit.
+      const filteredLicitacoes = filterNoindexedSitemap(licitacoesUfRoutes, 'blog-licitacoes-setor-uf');
+      const filteredAlertas = filterNoindexedSitemap(alertasRoutes, 'alertas-publicos');
+      const filteredContratos = filterNoindexedSitemap(contratosUfRoutes, 'contratos-setor-uf');
+      const filteredFornecedores = filterNoindexedSitemap(fornecedoresUfRoutes, 'fornecedores-setor-uf');
+
       return [
-        ...licitacoesUfRoutes,
-        ...alertasRoutes,
-        ...contratosUfRoutes,
-        ...fornecedoresUfRoutes,
+        ...filteredLicitacoes,
+        ...filteredAlertas,
+        ...filteredContratos,
+        ...filteredFornecedores,
       ];
     }
 
@@ -935,13 +944,21 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
         priority: 0.5,
       }));
 
+      // SEO-P0-003 (#989): drop slugs flagged by the uniqueness audit.
+      const filteredMunicipios = filterNoindexedSitemap(municipiosRoutes, 'municipios');
+      const filteredItens = filterNoindexedSitemap(itensRoutes, 'itens');
+      const filteredCnpj = filterNoindexedSitemap(cnpjRoutes, 'cnpj');
+      const filteredOrgaos = filterNoindexedSitemap(orgaoRoutes, 'orgaos');
+      const filteredFornecedoresCnpj = filterNoindexedSitemap(fornecedoresCnpjRoutes, 'fornecedores-cnpj');
+      const filteredContratosOrgao = filterNoindexedSitemap(contratosOrgaoRoutes, 'contratos-orgao');
+
       return [
-        ...municipiosRoutes, // Highest priority within entities (geographic, SSG)
-        ...itensRoutes,
-        ...cnpjRoutes,
-        ...orgaoRoutes,
-        ...fornecedoresCnpjRoutes,
-        ...contratosOrgaoRoutes,
+        ...filteredMunicipios, // Highest priority within entities (geographic, SSG)
+        ...filteredItens,
+        ...filteredCnpj,
+        ...filteredOrgaos,
+        ...filteredFornecedoresCnpj,
+        ...filteredContratosOrgao,
       ];
     }
 
