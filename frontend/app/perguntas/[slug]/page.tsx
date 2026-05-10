@@ -17,6 +17,9 @@ import {
   buildArticleLd,
   buildBreadcrumbLd,
   buildFaqPageLd,
+  buildHowToLd,
+  isHowToEligible,
+  extractHowToSteps,
 } from './json-ld';
 
 export const revalidate = 86400;
@@ -97,6 +100,19 @@ export default async function PerguntaPage({
   const articleLd = buildArticleLd(question, slug, personAuthorLd, ARTICLE_PUBLISHED_AT, ARTICLE_UPDATED_AT);
   const breadcrumbLd = buildBreadcrumbLd(question, slug);
   const faqPageLd = buildFaqPageLd(relatedQuestions);
+
+  /*
+   * #991 — HowTo JSON-LD for procedural questions.
+   *
+   * Google deprecated FAQ rich results in May/2026 for non-gov/health sites.
+   * QAPage-only emission no longer surfaces in SERP — only AI Overviews.
+   * For "como-*" and "*passo-a-passo*" slugs we extract step structure from
+   * the existing answer markdown and emit a HowTo schema. Article +
+   * BreadcrumbList remain the always-present primary schemas; QAPage stays
+   * as secondary for AI Overviews ingestion.
+   */
+  const howToSteps = isHowToEligible(slug) ? extractHowToSteps(question.answer) : null;
+  const howToLd = howToSteps ? buildHowToLd(question, slug, howToSteps) : null;
 
   return (
     <>
@@ -231,6 +247,9 @@ export default async function PerguntaPage({
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(qaPageLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+        {howToLd && (
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howToLd) }} />
+        )}
         {faqPageLd && (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageLd) }} />
         )}
