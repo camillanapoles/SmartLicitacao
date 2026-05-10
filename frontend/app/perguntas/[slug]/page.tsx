@@ -5,12 +5,35 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { QUESTIONS, getQuestionBySlug, getAllQuestionSlugs, CATEGORY_META, getQuestionsByCategory } from '@/lib/questions';
 import { GLOSSARY_TERMS } from '@/lib/glossary-terms';
-import { buildCanonical, SITE_URL } from '@/lib/seo';
+import { buildCanonical } from '@/lib/seo';
 import { stripMarkdown } from '@/lib/text';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
+import AuthorByline from '@/components/seo/AuthorByline';
+import { getAuthorBySlug, DEFAULT_AUTHOR_SLUG } from '@/lib/authors';
+import {
+  buildPersonAuthorLd,
+  buildQaPageLd,
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqPageLd,
+} from './json-ld';
 
 export const revalidate = 86400;
+
+/**
+ * SEO-P2-011 (Issue #997): E-E-A-T author bylines on legal/Lei 14.133 pages.
+ *
+ * Perguntas pages are content-heavy on Lei 14.133/jurisprudence/TCU and
+ * therefore YMYL-adjacent. They previously rendered with `Organization`
+ * author only — weak Trustworthiness signal in SERP. We layer an `Article`
+ * JSON-LD with `author: Person` on top of the existing `QAPage` (kept for
+ * AI Overviews) and bind the `acceptedAnswer.author` to the same Person.
+ */
+const ARTICLE_PUBLISHED_AT = '2025-09-01';
+// Bumped on every meaningful answer revision; keep within last 12 months
+// for the "fresh content" SERP signal.
+const ARTICLE_UPDATED_AT = '2026-05-10';
 
 export function generateStaticParams() {
   return getAllQuestionSlugs().map((slug) => ({ slug }));
@@ -67,52 +90,13 @@ export default async function PerguntaPage({
   // Markdown markers must be stripped so `**bold**` never leaks into search.
   const plainAnswer = stripMarkdown(question.answer);
 
-  /* QAPage JSON-LD — primary schema for AI Overviews */
-  const qaPageLd = {
-    '@context': 'https://schema.org',
-    '@type': 'QAPage',
-    mainEntity: {
-      '@type': 'Question',
-      name: question.title,
-      text: question.title,
-      answerCount: 1,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: plainAnswer,
-        author: {
-          '@type': 'Organization',
-          name: 'SmartLic',
-          url: SITE_URL,
-        },
-      },
-    },
-  };
-
-  const breadcrumbLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Perguntas', item: buildCanonical('/perguntas') },
-      { '@type': 'ListItem', position: 3, name: question.title.slice(0, 60), item: buildCanonical(`/perguntas/${slug}`) },
-    ],
-  };
-
-  /* FAQPage JSON-LD — rich snippets para perguntas relacionadas da sidebar */
-  const faqPageLd = relatedQuestions.length > 0
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'FAQPage',
-        mainEntity: relatedQuestions.map((q) => ({
-          '@type': 'Question',
-          name: q.title,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: stripMarkdown(q.answer).slice(0, 500),
-          },
-        })),
-      }
-    : null;
+  // SEO-P2-011 (#997): E-E-A-T Person author for Article + QAPage schemas.
+  const author = getAuthorBySlug(DEFAULT_AUTHOR_SLUG);
+  const personAuthorLd = buildPersonAuthorLd(author);
+  const qaPageLd = buildQaPageLd(question, plainAnswer, personAuthorLd);
+  const articleLd = buildArticleLd(question, slug, personAuthorLd, ARTICLE_PUBLISHED_AT, ARTICLE_UPDATED_AT);
+  const breadcrumbLd = buildBreadcrumbLd(question, slug);
+  const faqPageLd = buildFaqPageLd(relatedQuestions);
 
   return (
     <>
@@ -146,6 +130,13 @@ export default async function PerguntaPage({
         <div className="mx-auto max-w-4xl px-4 py-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main content */}
           <article className="lg:col-span-2">
+            {/* SEO-P2-011 (#997): E-E-A-T author byline above answer body */}
+            <AuthorByline
+              authorSlug={DEFAULT_AUTHOR_SLUG}
+              publishedAt={ARTICLE_PUBLISHED_AT}
+              updatedAt={ARTICLE_UPDATED_AT}
+              className="mb-6"
+            />
             <div className="prose prose-lg max-w-none text-ink-secondary leading-relaxed">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {question.answer}
@@ -238,6 +229,7 @@ export default async function PerguntaPage({
 
         {/* JSON-LD */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(qaPageLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
         {faqPageLd && (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageLd) }} />
