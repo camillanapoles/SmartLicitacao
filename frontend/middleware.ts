@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /**
+ * SEO-SITEMAP-410-001: CNPJ format validation for entity pages.
+ * Returns 410 Gone for malformed CNPJs (CPFs, oversized, garbage slugs).
+ * Pattern is alfanumérico-ready for IN 2.229/2024 (Receita Federal 01/07/2026).
+ *
+ * AC1: /cnpj/<11-digit CPF> → 410 Gone
+ * AC2: /fornecedores/<15-digit> → 410 Gone
+ * AC3: /cnpj/<valid 14-char CNPJ> → pass-through
+ * AC4: /cnpj/<alfanumérico 14-char> → pass-through
+ * AC5: X-Reason: invalid-cnpj-format header on 410 responses
+ */
+const CNPJ_SEGMENT_PATTERN = /^[A-Z0-9]{12}\d{2}$/i;
+const CPF_SEGMENT_PATTERN = /^\d{11}$/;
+const ENTITY_CNPJ_REGEX =
+  /^\/(?:cnpj|fornecedores|orgaos|contratos\/orgao)\/([^/]+)/;
+
+function isValidCnpjFormat(s: string): boolean {
+  const clean = s.replace(/[.\-/]/g, "");
+  return CNPJ_SEGMENT_PATTERN.test(clean) && !CPF_SEGMENT_PATTERN.test(clean);
+}
+
+/**
  * Next.js Middleware for route protection + security headers.
  * Uses @supabase/ssr with getAll/setAll pattern for proper cookie handling.
  *
@@ -193,6 +214,20 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = pathname.slice(0, -1);
     return NextResponse.redirect(url, 301);
+  }
+
+  // SEO-SITEMAP-410-001: Return 410 Gone for entity URLs with malformed CNPJs.
+  // Covers CPFs (11 digits), oversized strings (15+ chars), and garbage slugs.
+  // Runs before auth/cache logic so invalid slugs never hit the origin.
+  const entityMatch = pathname.match(ENTITY_CNPJ_REGEX);
+  if (entityMatch) {
+    const slug = decodeURIComponent(entityMatch[1]);
+    if (!isValidCnpjFormat(slug)) {
+      return new NextResponse(null, {
+        status: 410,
+        headers: { "X-Reason": "invalid-cnpj-format" },
+      });
+    }
   }
 
   // STORY-SEO-027: orphan root URL. Keep /contratos/orgao/[cnpj] untouched.
