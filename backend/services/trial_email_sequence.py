@@ -27,6 +27,43 @@ _UNSUBSCRIBE_SECRET = os.getenv("WEBHOOK_SECRET", os.getenv("SECRET_KEY", "smart
 
 TIMEZONE_SCHEDULING_ENABLED = os.getenv("TIMEZONE_SCHEDULING_ENABLED", "true").lower() == "true"
 
+# EMAIL-TRIAL-006 (#1005): personal-tone send for trial sequence
+# Memory: Resend personal tone — tiago@smartlic.tech (verified domain) + reply-to gmail
+TRIAL_EMAIL_FROM = os.getenv(
+    "TRIAL_EMAIL_FROM", "Tiago do SmartLic <tiago@smartlic.tech>"
+)
+TRIAL_EMAIL_REPLY_TO = os.getenv("TRIAL_EMAIL_REPLY_TO", "tiago.sasaki@gmail.com")
+
+
+def _get_founders_seats_remaining() -> int | None:
+    """EMAIL-TRIAL-006 (#1005) cross-sell helper: live founders availability counter.
+
+    Wraps routes.founding._check_availability with a try/except so any DB issue
+    falls back to None — the email templates render generic "vagas limitadas" copy
+    in that case (no broken email, no over-promising on numbers).
+
+    Returns:
+        seats_remaining as int when feature flag enabled and RPC succeeds,
+        None on any failure (templates use fallback copy).
+    """
+    try:
+        from config.features import get_feature_flag
+
+        if not get_feature_flag("FOUNDERS_OFFER_ENABLED"):
+            return None
+
+        from supabase_client import get_supabase
+        from routes.founding import _check_availability
+
+        snapshot = _check_availability(get_supabase())
+        if not snapshot.get("available"):
+            return None
+        seats = int(snapshot.get("seats_remaining") or 0)
+        return seats if seats > 0 else None
+    except Exception as e:
+        logger.debug(f"EMAIL-TRIAL-006: founders availability fetch failed: {e}")
+        return None
+
 
 def _is_in_send_window(user_tz_str: str, window_start: int = 8, window_end: int = 11) -> bool:
     """Check if current UTC time falls within send window in user's local timezone.
@@ -318,7 +355,7 @@ async def process_trial_emails(batch_size: int = 50) -> dict:
                     .select(
                         "id, email, full_name, plan_type, marketing_emails_enabled, "
                         "trial_conversion_emails_enabled, timezone, "
-                        "stripe_default_pm_id, created_at"
+                        "stripe_default_pm_id, created_at, is_admin, is_master"
                     )
                     .eq("plan_type", "free_trial")
                     .gte("created_at", target_start)
@@ -351,6 +388,15 @@ async def process_trial_emails(batch_size: int = 50) -> dict:
                     plan_type = user.get("plan_type", "")
                     if plan_type != "free_trial":
                         converted_skipped += 1
+                        continue
+
+                    # EMAIL-TRIAL-006 (#1005): skip admin/master accounts.
+                    # Memory: admin users bypass paywall via is_admin=True;
+                    # they're internal accounts, not real trial users — so trial-
+                    # nurture sequence is noise to them and their stats are bogus
+                    # (admin accounts run staff testing searches, not real trials).
+                    if user.get("is_admin") or user.get("is_master"):
+                        skipped += 1
                         continue
 
                     # AC5 + P2 §1.2: Differentiate marketing vs conversion emails
@@ -458,6 +504,8 @@ async def process_trial_emails(batch_size: int = 50) -> dict:
                         )
 
                         # Fire-and-forget send
+                        # EMAIL-TRIAL-006 (#1005): personal tone — from tiago@smartlic.tech
+                        # + reply-to gmail (memory: reference_resend_personal_tone_send).
                         send_email_async(
                             to=email_addr,
                             subject=subject,
@@ -467,6 +515,8 @@ async def process_trial_emails(batch_size: int = 50) -> dict:
                                 {"name": "type", "value": email_type},
                                 {"name": "email_number", "value": str(email_number)},
                             ],
+                            from_email=TRIAL_EMAIL_FROM,
+                            reply_to=TRIAL_EMAIL_REPLY_TO,
                         )
 
                         # Record in log for idempotency.
@@ -652,36 +702,43 @@ def _render_email(
     tier = "high_value" if stats.get("total_value_estimated", 0) > 100_000 else \
            "active" if stats.get("searches_count", 0) > 0 else "dormant"
 
+    # EMAIL-TRIAL-006 (#1005): pull live founders availability for Day 7/10/13 cross-sell
+    # (Day 3/16 only soft-link, no counter needed)
+    seats_remaining = None
+    if email_type in ("paywall_alert", "value", "last_day"):
+        seats_remaining = _get_founders_seats_remaining()
+
     if email_type == "welcome":
         subject = "Bem-vindo ao SmartLic — seu trial de 14 dias comecou!"
         html = render_trial_welcome_email(user_name, unsubscribe_url=unsubscribe_url)
 
     elif email_type == "engagement":
-        if tier == "dormant":
-            subject = "Empresas do seu setor estão encontrando oportunidades — e você?"
-        elif value > 0:
-            subject = f"Voce ja analisou {_format_brl(value)} em oportunidades"
-        else:
-            subject = "Descubra as oportunidades que esperam por voce"
+        # EMAIL-TRIAL-006 (#1005) Day 3: founder-led, friend-text
+        subject = "Pergunta rápida: tá fazendo sentido?"
         html = render_trial_engagement_email(user_name, stats, unsubscribe_url=unsubscribe_url)
 
     elif email_type == "paywall_alert":
-        if value > 0:
-            subject = f"Metade do trial — {_format_brl(value)} em oportunidades até agora"
-        else:
-            subject = "Metade do trial — preview limitado a partir de hoje"
-        html = render_trial_paywall_alert_email(user_name, stats, unsubscribe_url=unsubscribe_url)
+        # EMAIL-TRIAL-006 (#1005) Day 7: pricing comparison + Founders cross-sell
+        subject = "Ouça antes de decidir: a conta do Pro vs vitalício"
+        html = render_trial_paywall_alert_email(
+            user_name, stats,
+            unsubscribe_url=unsubscribe_url,
+            seats_remaining=seats_remaining,
+        )
 
     elif email_type == "value":
-        if tier == "dormant":
-            subject = "Milhares de oportunidades publicadas esta semana — descubra as suas"
-        elif value > 0:
-            subject = f"Voce ja analisou {_format_brl(value)} — nao perca esse progresso"
-        elif opps > 0:
-            subject = f"{opps} oportunidades encontradas — nao perca"
+        # EMAIL-TRIAL-006 (#1005) Day 10: Chaperon open loop + Founders cross-sell
+        days_remaining = stats.get("days_remaining", 4) or 4
+        if seats_remaining is not None and seats_remaining > 0:
+            subject = f"Faltam {seats_remaining} vagas vitalícias (e {days_remaining} dias)"
         else:
-            subject = "Restam 4 dias no seu trial SmartLic"
-        html = render_trial_value_email(user_name, stats, unsubscribe_url=unsubscribe_url)
+            subject = f"Antes de decidir, tem uma terceira opção (faltam {days_remaining} dias)"
+        html = render_trial_value_email(
+            user_name, stats,
+            unsubscribe_url=unsubscribe_url,
+            seats_remaining=seats_remaining,
+            days_remaining=days_remaining,
+        )
 
     elif email_type == "last_day":
         # STORY-CONV-003c AC1: branch by rollout cohort.
@@ -738,20 +795,17 @@ def _render_email(
                 unsubscribe_url=unsubscribe_url,
             )
         else:
-            if value > 0:
-                subject = f"Amanhã você perde acesso a {_format_brl(value)} em oportunidades"
-            else:
-                subject = "Amanhã seu acesso expira — assine agora"
+            # EMAIL-TRIAL-006 (#1005) Day 13 legacy branch: "vira abóbora" + comparison
+            subject = "Amanhã seu trial vira abóbora 🎃 — sem pressão, mas..."
             html = render_trial_last_day_email(
-                user_name, stats, unsubscribe_url=unsubscribe_url
+                user_name, stats,
+                unsubscribe_url=unsubscribe_url,
+                seats_remaining=seats_remaining,
             )
 
     elif email_type == "expired":
-        count = pipeline if pipeline > 0 else opps
-        if count > 0:
-            subject = f"Suas {count} oportunidades estao esperando — volte com 20% off"
-        else:
-            subject = "Sentimos sua falta — volte com 20% off"
+        # EMAIL-TRIAL-006 (#1005) Day 16 lapsed: founder-led "errei algo?"
+        subject = "Errei algo? Resposta direta de 1 linha resolve"
         coupon_url = get_coupon_checkout_url()
         html = render_trial_expired_email(
             user_name, stats,

@@ -8,90 +8,41 @@ Compressed sequence (replaces STORY-310 8-email sequence):
 - Day 10: Valor acumulado — social proof R$X ("Não perca esse progresso")
 - Day 13: Último dia — escassez ("Assinar agora")
 - Day 16: Expirado — reengajamento com cupom 20% off ("Voltar com 20% off")
+
+EMAIL-TRIAL-006 (#1005): Day 3/7/10/13/16 reformulados em tom Belgray friend-text +
+cross-sell Plano Fundadores (R$997 vitalício one-time, deadline 2026-06-30) nos
+days 7/10/13. Day 0 (welcome) e Day 16 cupom 20% off preservam estrutura existente
+mas voz alinhada (founder-led, "Tiago" assina).
 """
 
 from templates.emails.base import email_base, SMARTLIC_GREEN, FRONTEND_URL
+from templates.emails._trial_helpers import (
+    FOUNDERS_PRICE_BRL,
+    FOUNDERS_PRICE_BRL_NUMERIC,
+    PRO_MONTHLY_BRL,
+    PRO_ANNUAL_TOTAL_BRL,
+    _founders_cross_sell_block,
+    _founders_pricing_table_html,
+    _founder_signature_html,
+    _format_brl,
+    _stats_block,
+    _unsubscribe_block,
+    _preheader,
+)
 
-
-def _format_brl(value: float) -> str:
-    """Format a float as Brazilian Real currency string."""
-    if value >= 1_000_000:
-        return f"R$ {value / 1_000_000:.1f}M"
-    if value >= 1_000:
-        return f"R$ {value / 1_000:.0f}k"
-    return f"R$ {value:,.0f}".replace(",", ".")
-
-
-def _stats_block(stats: dict, show_pipeline: bool = False) -> str:
-    """AC8: Render a stats summary block for email templates."""
-    searches = stats.get("searches_count", 0)
-    opps = stats.get("opportunities_found", 0)
-    value = stats.get("total_value_estimated", 0.0)
-    pipeline = stats.get("pipeline_items_count", 0)
-
-    rows = f"""
-    <tr>
-      <td style="padding: 8px 16px; color: #555; font-size: 15px; border-bottom: 1px solid #eee;">
-        Análises realizadas
-      </td>
-      <td style="padding: 8px 16px; color: #333; font-size: 15px; font-weight: 600; text-align: right; border-bottom: 1px solid #eee;">
-        {searches}
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 8px 16px; color: #555; font-size: 15px; border-bottom: 1px solid #eee;">
-        Oportunidades encontradas
-      </td>
-      <td style="padding: 8px 16px; color: #333; font-size: 15px; font-weight: 600; text-align: right; border-bottom: 1px solid #eee;">
-        {opps}
-      </td>
-    </tr>
-    <tr>
-      <td style="padding: 8px 16px; color: #555; font-size: 15px; border-bottom: 1px solid #eee;">
-        Valor total estimado
-      </td>
-      <td style="padding: 8px 16px; color: {SMARTLIC_GREEN}; font-size: 15px; font-weight: 600; text-align: right; border-bottom: 1px solid #eee;">
-        {_format_brl(value)}
-      </td>
-    </tr>"""
-
-    if show_pipeline:
-        rows += f"""
-    <tr>
-      <td style="padding: 8px 16px; color: #555; font-size: 15px;">
-        Itens no pipeline
-      </td>
-      <td style="padding: 8px 16px; color: #333; font-size: 15px; font-weight: 600; text-align: right;">
-        {pipeline}
-      </td>
-    </tr>"""
-
-    return f"""
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-           style="background-color: #f8f9fa; border-radius: 8px; margin: 16px 0 24px; overflow: hidden;">
-      {rows}
-    </table>"""
-
-
-def _unsubscribe_block(unsubscribe_url: str) -> str:
-    """Render unsubscribe link block (AC2: RFC 8058 one-click)."""
-    if not unsubscribe_url:
-        return ""
-    return f"""
-    <p style="color: #999; font-size: 12px; text-align: center; margin: 24px 0 0;">
-      <a href="{unsubscribe_url}" style="color: #999; text-decoration: underline;">
-        Não desejo receber emails sobre o trial
-      </a>
-    </p>"""
-
-
-def _preheader(text: str) -> str:
-    """AC2: Hidden preheader text for email clients (Gmail, Apple Mail)."""
-    return (
-        f'<div style="display:none;font-size:1px;color:#f4f4f4;'
-        f'line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">'
-        f'{text}</div>'
-    )
+__all__ = [
+    "FOUNDERS_PRICE_BRL",
+    "FOUNDERS_PRICE_BRL_NUMERIC",
+    "PRO_MONTHLY_BRL",
+    "PRO_ANNUAL_TOTAL_BRL",
+    "_founders_cross_sell_block",
+    "_founders_pricing_table_html",
+    "_founder_signature_html",
+    "_format_brl",
+    "_stats_block",
+    "_unsubscribe_block",
+    "_preheader",
+]
 
 
 # ============================================================================
@@ -169,63 +120,86 @@ def render_trial_welcome_email(user_name: str, unsubscribe_url: str = "") -> str
 # Email #2 — Day 3: Engajamento (AC7)
 # ============================================================================
 
-def render_trial_engagement_email(user_name: str, stats: dict, unsubscribe_url: str = "") -> str:
-    """STORY-321 AC7: Day 3 — Engagement email with real stats.
+def render_trial_engagement_email(
+    user_name: str,
+    stats: dict,
+    unsubscribe_url: str = "",
+    days_remaining: int = 11,
+) -> str:
+    """EMAIL-TRIAL-006 (#1005) Day 3: Pergunta direta founder-led, 3-5 frases.
+
+    Belgray friend-text — não vendendo nada, perguntando se tá fazendo sentido.
+    PS soft com link Founders (não é o foco do email).
 
     Args:
         user_name: User's display name.
         stats: Dict with keys from TrialUsageStats.
         unsubscribe_url: URL for one-click unsubscribe.
+        days_remaining: Dias restantes do trial (Day 3 → 11). STORY-321 contract.
     """
     has_usage = stats.get("searches_count", 0) > 0
     value = stats.get("total_value_estimated", 0.0)
     opps = stats.get("opportunities_found", 0)
 
-    if has_usage and value > 0:
-        preheader_text = f"Você já analisou {_format_brl(value)} em oportunidades"
-        headline = f"Você já analisou {_format_brl(value)} em oportunidades"
-        intro = (
-            f"Olá, {user_name}! Em apenas 3 dias no SmartLic, você já está "
-            f"descobrindo oportunidades reais de licitação."
+    # Personalize intro based on usage tier — keep it founder-led, never institutional
+    if has_usage and (value > 0 or opps > 0):
+        usage_line = (
+            f"Vi que você já rodou algumas análises por aí — "
+            f"{opps if opps else 'várias'} oportunidades aparecendo até agora."
         )
-    elif has_usage and opps > 0:
-        preheader_text = f"{opps} oportunidades encontradas em 3 dias"
-        headline = f"{opps} oportunidades encontradas em 3 dias"
-        intro = (
-            f"Olá, {user_name}! Você já encontrou {opps} oportunidades. "
-            f"Explore mais setores para ampliar seus resultados."
-        )
+        question = "Tá batendo com o que sua empresa procura? Falta alguma coisa?"
+    elif has_usage:
+        usage_line = "Vi que você fez sua primeira busca — bom começo."
+        question = "Os filtros tão fazendo sentido? Algum setor faltando que devíamos cobrir?"
     else:
-        preheader_text = "Você ainda tem 11 dias para descobrir oportunidades"
-        headline = "Você ainda tem 11 dias para descobrir oportunidades"
-        intro = (
-            f"Olá, {user_name}! Seu trial do SmartLic está apenas começando e "
-            f"há oportunidades esperando por você. Faça sua primeira análise agora!"
+        usage_line = (
+            "Vi que você ainda não rodou nenhuma busca — sem stress, "
+            "leva uns 30 segundos."
+        )
+        question = (
+            "Antes de você apertar o play: tem algum setor específico que sua empresa atende? "
+            "Posso te dar dicas de filtro pra pegar os editais certos."
         )
 
     body = f"""
-    {_preheader(preheader_text)}
-    <h1 style="color: #333; font-size: 22px; margin: 0 0 16px;">
-      {headline}
+    {_preheader("Pergunta rápida: tá fazendo sentido?")}
+    <h1 style="color: #333; font-size: 22px; margin: 0 0 20px;">
+      Tá fazendo sentido?
     </h1>
-    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      {intro}
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      {user_name}, aqui é o Tiago, fundador do SmartLic.
     </p>
-    {_stats_block(stats) if has_usage else ''}
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      {usage_line}
+    </p>
+    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 14px; font-weight: 600;">
+      {question}
+    </p>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      Responde esse email com 1 linha — chega direto na minha caixa.
+      Leio e respondo todos. Ainda faltam {days_remaining} dias do seu trial,
+      dá pra explorar com calma.
+    </p>
+
     <p style="text-align: center; margin: 24px 0 16px;">
-      <a href="{FRONTEND_URL}/buscar" class="btn"
-         style="display: inline-block; padding: 14px 32px; background-color: {SMARTLIC_GREEN}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-        Explorar mais setores
+      <a href="{FRONTEND_URL}/buscar"
+         style="display: inline-block; padding: 12px 28px; background-color: {SMARTLIC_GREEN}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+        {'Voltar pra busca' if has_usage else 'Fazer minha primeira busca'}
       </a>
     </p>
-    <p style="color: #888; font-size: 13px; text-align: center; margin: 16px 0 0;">
-      Seu trial gratuito termina em 11 dias.
+
+    {_founder_signature_html()}
+
+    <p style="color: #999; font-size: 13px; line-height: 1.6; margin: 28px 0 0; padding-top: 16px; border-top: 1px solid #f0f0f0;">
+      P.S.: existe um <a href="{FRONTEND_URL}/fundadores" style="color: #f59e0b; text-decoration: underline; font-weight: 600;">plano vitalício de R$ 997</a>
+      — pra quem tá usando ativo e quer travar o preço pra sempre. Não é pra todo mundo, mas tá lá se interessar.
     </p>
+
     {_unsubscribe_block(unsubscribe_url)}
     """
 
     return email_base(
-        title="Suas primeiras descobertas — SmartLic",
+        title="Pergunta rápida: tá fazendo sentido?",
         body_html=body,
         is_transactional=False,
         unsubscribe_url=unsubscribe_url,
@@ -236,70 +210,80 @@ def render_trial_engagement_email(user_name: str, stats: dict, unsubscribe_url: 
 # Email #3 — Day 7: Paywall Alert (AC7 — NEW)
 # ============================================================================
 
-def render_trial_paywall_alert_email(user_name: str, stats: dict, unsubscribe_url: str = "") -> str:
-    """STORY-321 AC7: Day 7 — Paywall alert. Preview limited starting tomorrow.
+def render_trial_paywall_alert_email(
+    user_name: str,
+    stats: dict,
+    unsubscribe_url: str = "",
+    seats_remaining: int | None = None,
+) -> str:
+    """EMAIL-TRIAL-006 (#1005) Day 7: Pro vs Vitalício — a conta nua.
 
-    References STORY-320 soft paywall that activates on day 7.
+    Tom Belgray "ouça antes de decidir" + tabela visual R$397 × 12 = R$4.764 vs R$997.
+    CTA primário Founders, CTA secundário Pro mensal.
 
     Args:
         user_name: User's display name.
         stats: Dict with keys from TrialUsageStats.
         unsubscribe_url: URL for one-click unsubscribe.
+        seats_remaining: From #1002 founders availability. None → fallback genérico.
     """
     has_usage = stats.get("searches_count", 0) > 0
     value = stats.get("total_value_estimated", 0.0)
 
     if has_usage and value > 0:
-        value_line = f"Você já descobriu <strong>{_format_brl(value)}</strong> em oportunidades. "
+        usage_line = (
+            f"Em 7 dias você já mapeou <strong>{_format_brl(value)}</strong> em "
+            f"oportunidades. Tá funcionando."
+        )
+    elif has_usage:
+        usage_line = "Você já tá usando — bom sinal."
     else:
-        value_line = ""
+        usage_line = (
+            "Você ainda não rodou uma busca — sem stress, "
+            "mas tem 7 dias pra testar antes do trial virar preview limitado."
+        )
 
     body = f"""
-    {_preheader("A partir de hoje, resultados ficam limitados. Assine para acesso completo.")}
-    <h1 style="color: #333; font-size: 22px; margin: 0 0 16px;">
-      Metade do trial — preview limitado a partir de hoje
+    {_preheader("Ouça antes de decidir: a conta do Pro mensal vs vitalício.")}
+    <h1 style="color: #333; font-size: 22px; margin: 0 0 18px;">
+      A conta nua: Pro mensal × Vitalício
     </h1>
-    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Olá, {user_name}! Você está na metade do seu trial de 14 dias.
-      {value_line}A partir de hoje, os resultados de busca serão
-      exibidos em modo preview (limitado a 10 resultados).
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      {user_name}, metade do trial e queria ser direto com você.
     </p>
-    {_stats_block(stats, show_pipeline=True) if has_usage else ''}
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
-      <tr>
-        <td style="background-color: #fff3e0; border-radius: 8px; padding: 16px; border-left: 4px solid #ff9800;">
-          <p style="color: #e65100; font-size: 14px; margin: 0; font-weight: 600;">
-            O que muda a partir de hoje:
-          </p>
-          <ul style="color: #555; font-size: 14px; margin: 8px 0 0; padding-left: 20px;">
-            <li>Resultados limitados a 10 por busca (preview)</li>
-            <li>Pipeline limitado a 5 itens</li>
-            <li>Análises e IA continuam funcionando normalmente</li>
-          </ul>
-        </td>
-      </tr>
-    </table>
-
-    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-      Assine o SmartLic Pro <strong>agora</strong> e recupere acesso
-      completo a todos os resultados, pipeline ilimitado e relatórios Excel.
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      {usage_line}
+    </p>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 12px;">
+      Antes de você decidir entre seguir trial ou assinar, dá uma olhada nos números:
     </p>
 
-    <p style="text-align: center; margin: 24px 0 16px;">
-      <a href="{FRONTEND_URL}/planos" class="btn"
-         style="display: inline-block; padding: 14px 32px; background-color: {SMARTLIC_GREEN}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-        Assine antes do limite
+    {_founders_pricing_table_html()}
+
+    <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 14px;">
+      <strong>Por que o vitalício existe:</strong> tô captando os primeiros 50 fundadores
+      que vão ajudar o SmartLic a virar a ferramenta certa pra B2G. Em troca, você trava
+      acesso pra sempre — sem mensalidade, sem reajuste anual.
+    </p>
+
+    {_founders_cross_sell_block(seats_remaining)}
+
+    <p style="text-align: center; margin: 12px 0 8px;">
+      <a href="{FRONTEND_URL}/planos"
+         style="display: inline-block; padding: 10px 22px; color: {SMARTLIC_GREEN}; text-decoration: none; border: 1px solid {SMARTLIC_GREEN}; border-radius: 6px; font-weight: 600; font-size: 14px;">
+        Ou continuar com Pro mensal →
       </a>
     </p>
-    <p style="color: #888; font-size: 13px; text-align: center; margin: 16px 0 0;">
-      Seu trial gratuito termina em 7 dias.
+    <p style="color: #888; font-size: 13px; text-align: center; margin: 8px 0 0;">
+      Restam 7 dias do seu trial. Sem pressa, sem cartão.
     </p>
+
+    {_founder_signature_html()}
     {_unsubscribe_block(unsubscribe_url)}
     """
 
     return email_base(
-        title="Metade do trial — preview limitado a partir de hoje",
+        title="Ouça antes de decidir: a conta do Pro vs vitalício",
         body_html=body,
         is_transactional=False,
         unsubscribe_url=unsubscribe_url,
@@ -356,93 +340,107 @@ def _top_opportunity_block(stats: dict) -> str:
     </table>"""
 
 
-def render_trial_value_email(user_name: str, stats: dict, unsubscribe_url: str = "") -> str:
-    """STORY-321 AC7: Day 10 — Accumulated value. Social proof with big R$ number.
+def render_trial_value_email(
+    user_name: str,
+    stats: dict,
+    unsubscribe_url: str = "",
+    seats_remaining: int | None = None,
+    days_remaining: int = 4,
+) -> str:
+    """EMAIL-TRIAL-006 (#1005) Day 10: Chaperon open loop — terceira opção.
+
+    "Antes de você escolher entre cancelar ou virar Pro, tem uma terceira opção
+    que talvez ninguém te contou ainda." → Reveal: Founders.
 
     Args:
         user_name: User's display name.
         stats: Dict with keys from TrialUsageStats.
         unsubscribe_url: URL for one-click unsubscribe.
+        seats_remaining: From #1002. None → fallback copy.
+        days_remaining: dias até trial expirar (Day 10 → 4).
     """
     value = stats.get("total_value_estimated", 0.0)
     opps = stats.get("opportunities_found", 0)
-    pipeline = stats.get("pipeline_items_count", 0)
 
-    if value > 0:
-        big_value = _format_brl(value)
-        preheader_text = f"Você já analisou {big_value} em oportunidades. Não perca."
-        headline = f"Você já analisou {big_value}"
-    elif opps > 0:
-        preheader_text = f"{opps} oportunidades encontradas. Não perca esse progresso."
-        headline = f"{opps} oportunidades encontradas"
+    seats_text = (
+        f"{seats_remaining} vagas vitalícias"
+        if seats_remaining is not None and seats_remaining > 0
+        else "vagas vitalícias limitadas"
+    )
+
+    preheader_text = (
+        f"Faltam {seats_remaining} vagas vitalícias (e {days_remaining} dias)"
+        if seats_remaining is not None and seats_remaining > 0
+        else f"Antes de decidir: tem uma terceira opção (faltam {days_remaining} dias)"
+    )
+
+    if seats_remaining is not None and seats_remaining > 0:
+        headline = f"Faltam {seats_remaining} vagas vitalícias (e {days_remaining} dias)"
     else:
-        preheader_text = "Restam 4 dias. Descubra oportunidades antes que seu trial expire."
-        headline = "Restam 4 dias no seu trial"
+        headline = f"Antes de decidir, tem uma terceira opção (faltam {days_remaining} dias)"
 
-    # Big value highlight block
-    value_highlight = ""
-    if value > 0:
-        value_highlight = f"""
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-           style="margin: 16px 0 24px;">
+    # Open loop intro — Chaperon style
+    body = f"""
+    {_preheader(preheader_text)}
+    <h1 style="color: #333; font-size: 22px; margin: 0 0 18px;">
+      {headline}
+    </h1>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      {user_name}, faltam {days_remaining} dias do seu trial.
+    </p>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      A maioria das pessoas chega aqui pensando em duas opções: <strong>cancelar</strong>
+      ou <strong>virar Pro mensal</strong> (R$ 397/mês).
+    </p>
+    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 14px; font-weight: 600;">
+      Mas tem uma terceira opção que talvez ninguém te contou ainda.
+    </p>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Eu tô abrindo um <strong>Plano Fundadores</strong>: você paga R$ 997 uma vez e
+      usa o SmartLic Pro <em>vitalício</em> — sem mensalidade, sem reajuste, pra sempre.
+      Restam {seats_text}, e a oferta encerra dia 30/06.
+    </p>
+    """
+
+    # Inline progress block — concrete proof user is getting value
+    if value > 0 or opps > 0:
+        body += f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0 20px;">
       <tr>
-        <td align="center"
-            style="background-color: #e8f5e9; border-radius: 12px; padding: 24px;">
-          <p style="color: #888; font-size: 13px; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 1px;">
-            Valor total analisado
-          </p>
-          <p style="color: {SMARTLIC_GREEN}; font-size: 36px; font-weight: 700; margin: 0; line-height: 1.2;">
-            {_format_brl(value)}
-          </p>
-          <p style="color: #666; font-size: 14px; margin: 8px 0 0;">
-            em {opps} oportunidades{f" | {pipeline} no pipeline" if pipeline > 0 else ""}
+        <td style="background-color: #f8faf8; border-left: 3px solid {SMARTLIC_GREEN}; padding: 14px 18px;">
+          <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.5;">
+            Em 10 dias você já mapeou <strong>{opps} oportunidade{'s' if opps != 1 else ''}</strong>
+            {f"totalizando <strong>{_format_brl(value)}</strong>" if value > 0 else ""}.
+            Não jogue isso fora.
           </p>
         </td>
       </tr>
-    </table>"""
+    </table>
+    """
 
-    body = f"""
-    {_preheader(preheader_text)}
-    <h1 style="color: #333; font-size: 22px; margin: 0 0 16px;">
-      {headline}
-    </h1>
-    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Olá, {user_name}! Seu trial termina em 4 dias. Veja o progresso que você
-      construiu até agora:
-    </p>
-    {value_highlight}
+    body += f"""
     {_top_opportunity_block(stats)}
-    {_stats_block(stats, show_pipeline=True) if value == 0 and opps > 0 else ''}
-    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-      Não perca esse progresso. Com o SmartLic Pro, você mantém acesso a tudo:
-      análises ilimitadas, IA de classificação, pipeline e relatórios Excel.
-    </p>
-    <tr><td style="padding: 20px 30px;">
-      <p style="font-size: 15px; color: #1a1a2e; margin: 0 0 12px;">
-        <strong>Sabia que voce pode ganhar ate 7 dias extras?</strong>
-      </p>
-      <p style="font-size: 14px; color: #4a4a6a; margin: 0 0 16px;">
-        Complete seu perfil (+3 dias), de feedback sobre uma busca (+2 dias)
-        ou convide um colega (+7 dias).
-      </p>
-      <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">
-        Ver minhas opcoes
-      </a>
-    </td></tr>
-    <p style="text-align: center; margin: 24px 0 16px;">
-      <a href="{FRONTEND_URL}/planos" class="btn"
-         style="display: inline-block; padding: 14px 32px; background-color: {SMARTLIC_GREEN}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-        Não perca esse progresso
+    {_founders_cross_sell_block(seats_remaining)}
+
+    <p style="text-align: center; margin: 12px 0 8px;">
+      <a href="{FRONTEND_URL}/planos"
+         style="display: inline-block; padding: 10px 22px; color: {SMARTLIC_GREEN}; text-decoration: none; border: 1px solid {SMARTLIC_GREEN}; border-radius: 6px; font-weight: 600; font-size: 14px;">
+        Prefiro Pro mensal →
       </a>
     </p>
-    <p style="color: #888; font-size: 13px; text-align: center; margin: 16px 0 0;">
-      Economize 20% com o plano anual.
-    </p>
+
+    {_founder_signature_html()}
     {_unsubscribe_block(unsubscribe_url)}
     """
 
+    title = (
+        f"Faltam {seats_remaining} vagas vitalícias"
+        if seats_remaining is not None and seats_remaining > 0
+        else "Antes de decidir, tem uma terceira opção"
+    )
+
     return email_base(
-        title="Você já analisou oportunidades — SmartLic",
+        title=title,
         body_html=body,
         is_transactional=False,
         unsubscribe_url=unsubscribe_url,
@@ -453,61 +451,128 @@ def render_trial_value_email(user_name: str, stats: dict, unsubscribe_url: str =
 # Email #5 — Day 13: Ultimo Dia (AC7)
 # ============================================================================
 
-def render_trial_last_day_email(user_name: str, stats: dict, unsubscribe_url: str = "") -> str:
-    """STORY-321 AC7: Day 13 — Last day. Maximum urgency with countdown.
+def _day13_comparison_table_html() -> str:
+    """3-column comparison: cancelar / Pro mensal / Vitalício.
+
+    EMAIL-TRIAL-006 (#1005) Day 13 — honesty-driven decision aid.
+    """
+    return f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="margin: 18px 0 22px; border-collapse: separate; border-spacing: 0;">
+      <tr>
+        <td style="width: 33%; vertical-align: top; padding: 0 4px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px;">
+            <tr><td style="padding: 14px; text-align: center;">
+              <p style="color: #6b7280; font-size: 12px; margin: 0 0 6px; text-transform: uppercase; font-weight: 600;">Cancelar</p>
+              <p style="color: #374151; font-size: 18px; font-weight: 700; margin: 0 0 6px;">R$ 0</p>
+              <p style="color: #6b7280; font-size: 12px; margin: 0; line-height: 1.4;">Você perde acesso e os dados ficam salvos por 30 dias.</p>
+            </td></tr>
+          </table>
+        </td>
+        <td style="width: 33%; vertical-align: top; padding: 0 4px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px;">
+            <tr><td style="padding: 14px; text-align: center;">
+              <p style="color: #6b7280; font-size: 12px; margin: 0 0 6px; text-transform: uppercase; font-weight: 600;">Pro mensal</p>
+              <p style="color: #374151; font-size: 18px; font-weight: 700; margin: 0 0 6px;">R$ 397/mês</p>
+              <p style="color: #6b7280; font-size: 12px; margin: 0; line-height: 1.4;">Acesso completo. Cancele quando quiser.</p>
+            </td></tr>
+          </table>
+        </td>
+        <td style="width: 33%; vertical-align: top; padding: 0 4px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border: 2px solid #f59e0b; border-radius: 8px; background-color: #fffbeb;">
+            <tr><td style="padding: 13px; text-align: center;">
+              <p style="color: #92400e; font-size: 12px; margin: 0 0 6px; text-transform: uppercase; font-weight: 700;">Vitalício</p>
+              <p style="color: #78350f; font-size: 18px; font-weight: 700; margin: 0 0 6px;">R$ 997 uma vez</p>
+              <p style="color: #92400e; font-size: 12px; margin: 0; line-height: 1.4;">Pague 1×, use pra sempre.</p>
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>"""
+
+
+def render_trial_last_day_email(
+    user_name: str,
+    stats: dict,
+    unsubscribe_url: str = "",
+    seats_remaining: int | None = None,
+) -> str:
+    """EMAIL-TRIAL-006 (#1005) Day 13 (legacy branch): "amanhã vira abóbora" + comparison.
+
+    Tom leve, honest, sem urgência fake. 3-column table cancelar/Pro/Founders lado a lado.
+
+    NOTA: Aplica-se SOMENTE quando user NÃO tem cartão (rollout_branch="legacy").
+    Para cartão na mão, ver render_trial_last_day_card_email (compliance copy distinto).
 
     Args:
         user_name: User's display name.
         stats: Dict with keys from TrialUsageStats.
         unsubscribe_url: URL for one-click unsubscribe.
+        seats_remaining: From #1002. None → fallback genérico.
     """
     value = stats.get("total_value_estimated", 0.0)
-    opps = stats.get("opportunities_found", 0)  # noqa: F841
+    opps = stats.get("opportunities_found", 0)
 
     if value > 0:
-        preheader_text = f"Amanhã você perde acesso a {_format_brl(value)} em oportunidades."
+        preheader_text = (
+            f"Amanhã seu trial vira abóbora 🎃 — você perde acesso a "
+            f"{_format_brl(value)} em oportunidades mapeadas."
+        )
     else:
-        preheader_text = "Amanhã seu acesso expira. Assine agora."
+        preheader_text = "Amanhã seu trial vira abóbora 🎃 — sem pressão, mas..."
+
+    if value > 0 and opps > 0:
+        progress_line = (
+            f"Em 13 dias você mapeou <strong>{opps} oportunidades</strong> totalizando "
+            f"<strong>{_format_brl(value)}</strong>. Amanhã esse acesso vai embora — "
+            f"os dados ficam salvos por 30 dias, mas a busca/IA/pipeline não."
+        )
+    elif opps > 0:
+        progress_line = (
+            f"Você mapeou <strong>{opps} oportunidade{'s' if opps != 1 else ''}</strong> "
+            f"até aqui. Amanhã o acesso fecha — sem drama, é só o trial chegando ao fim."
+        )
+    else:
+        progress_line = (
+            "Você não chegou a rodar muita coisa, e tudo bem. "
+            "Amanhã o trial fecha mesmo assim — queria deixar todas as opções na mesa antes."
+        )
 
     body = f"""
     {_preheader(preheader_text)}
-    <h1 style="color: #d32f2f; font-size: 22px; margin: 0 0 16px;">
-      Amanhã seu acesso expira — não perca o que você construiu
+    <h1 style="color: #333; font-size: 22px; margin: 0 0 16px;">
+      Amanhã seu trial vira abóbora 🎃
     </h1>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      {user_name}, sem pressão — mas queria ser direto com você antes do trial fechar.
+    </p>
     <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Olá, {user_name}! Este é o <strong>último dia</strong> do seu trial no SmartLic.
-      Amanhã você perderá acesso às funcionalidades completas.
+      {progress_line}
     </p>
-    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 8px;">
-      <strong>Resumo do seu trial:</strong>
+    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 6px; font-weight: 600;">
+      Suas três opções, lado a lado:
     </p>
-    {_stats_block(stats, show_pipeline=True)}
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
-      <tr>
-        <td style="background-color: #fff3e0; border-radius: 8px; padding: 16px; border-left: 4px solid #ff9800;">
-          <p style="color: #e65100; font-size: 14px; margin: 0; font-weight: 600;">
-            Ative hoje e não perca nenhuma oportunidade
-          </p>
-          <p style="color: #555; font-size: 14px; margin: 8px 0 0;">
-            SmartLic Pro — R$ 397/mês &nbsp;|&nbsp;
-            Economia de 20% no plano anual
-          </p>
-        </td>
-      </tr>
-    </table>
+    {_day13_comparison_table_html()}
 
-    <p style="text-align: center; margin: 24px 0 16px;">
-      <a href="{FRONTEND_URL}/planos" class="btn"
-         style="display: inline-block; padding: 14px 32px; background-color: #d32f2f; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-        Assinar agora — R$ 397/mês
+    {_founders_cross_sell_block(seats_remaining)}
+
+    <p style="text-align: center; margin: 4px 0 16px;">
+      <a href="{FRONTEND_URL}/planos"
+         style="display: inline-block; padding: 10px 22px; color: {SMARTLIC_GREEN}; text-decoration: none; border: 1px solid {SMARTLIC_GREEN}; border-radius: 6px; font-weight: 600; font-size: 14px;">
+        Ou continuar com Pro mensal →
       </a>
     </p>
+    <p style="color: #888; font-size: 13px; text-align: center; margin: 8px 0 0;">
+      Sem cartão cadastrado, então ninguém vai cobrar nada amanhã. É só seu trial fechando.
+    </p>
+
+    {_founder_signature_html()}
     {_unsubscribe_block(unsubscribe_url)}
     """
 
     return email_base(
-        title="Último dia de trial — SmartLic",
+        title="Amanhã seu trial vira abóbora 🎃 — sem pressão, mas...",
         body_html=body,
         is_transactional=False,
         unsubscribe_url=unsubscribe_url,
@@ -654,7 +719,9 @@ def render_trial_expired_email(
     unsubscribe_url: str = "",
     coupon_checkout_url: str = "",
 ) -> str:
-    """STORY-321 AC7 + AC14: Day 16 — Expired. Reengagement with 20% off coupon.
+    """EMAIL-TRIAL-006 (#1005) Day 16 (lapsed): "Errei algo? Resposta de 1 linha resolve"
+
+    Founder pergunta diretamente o que faltou. PS mantém cupom TRIAL_COMEBACK_20.
 
     Args:
         user_name: User's display name.
@@ -665,69 +732,60 @@ def render_trial_expired_email(
     opps = stats.get("opportunities_found", 0)
     pipeline = stats.get("pipeline_items_count", 0)
 
-    if opps > 0 or pipeline > 0:
-        if pipeline > 0:
-            headline = f"Suas {pipeline} oportunidades estão esperando por você"
-        else:
-            headline = f"Suas {opps} oportunidades estão esperando por você"
-        preheader_text = "Sentimos sua falta. Volte com 20% off."
-    else:
-        headline = "Sentimos sua falta"
-        preheader_text = "As oportunidades continuam surgindo. Volte com 20% off."
-
-    # Determine CTA URL — use coupon checkout if available, else /planos
     cta_url = coupon_checkout_url if coupon_checkout_url else f"{FRONTEND_URL}/planos"
-    cta_text = "Voltar com 20% off" if coupon_checkout_url else "Reativar acesso"
+
+    progress_recap = ""
+    if opps > 0 or pipeline > 0:
+        progress_recap = f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 14px 0 18px;">
+      <tr>
+        <td style="background-color: #f8faf8; border-left: 3px solid {SMARTLIC_GREEN}; padding: 12px 16px;">
+          <p style="color: #555; font-size: 14px; margin: 0; line-height: 1.5;">
+            Pra constar: você deixou {opps} oportunidade{'s' if opps != 1 else ''} mapeada{'s' if opps != 1 else ''}
+            {f"e {pipeline} item{'ns' if pipeline != 1 else ''} no pipeline" if pipeline > 0 else ""}.
+            Seus dados ficam salvos por 30 dias.
+          </p>
+        </td>
+      </tr>
+    </table>"""
 
     body = f"""
-    {_preheader(preheader_text)}
-    <h1 style="color: #333; font-size: 22px; margin: 0 0 16px;">
-      {headline}
+    {_preheader("Errei algo? Resposta direta de 1 linha resolve.")}
+    <h1 style="color: #333; font-size: 22px; margin: 0 0 18px;">
+      Errei algo?
     </h1>
-    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
-      Olá, {user_name}! Seu trial expirou, mas seus dados ficam salvos por 30 dias.
-      Reative o acesso para continuar de onde parou.
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      {user_name}, seu trial fechou ontem.
     </p>
-    {_stats_block(stats, show_pipeline=True) if (opps > 0 or pipeline > 0) else ''}
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
-      <tr>
-        <td style="background-color: #e8f5e9; border-radius: 8px; padding: 16px; border-left: 4px solid {SMARTLIC_GREEN};">
-          <p style="color: #1b5e20; font-size: 14px; margin: 0;">
-            Seus dados ficam salvos por 30 dias — análises, pipeline e histórico.
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;">
-      <tr>
-        <td align="center"
-            style="background: linear-gradient(135deg, {SMARTLIC_GREEN}, #1B5E20); border-radius: 12px; padding: 20px;">
-          <p style="color: #ffffff; font-size: 13px; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 1px;">
-            Oferta exclusiva de retorno
-          </p>
-          <p style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">
-            20% OFF
-          </p>
-          <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 4px 0 0;">
-            no primeiro mês do SmartLic Pro
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <p style="text-align: center; margin: 24px 0 16px;">
-      <a href="{cta_url}" class="btn"
-         style="display: inline-block; padding: 14px 32px; background-color: {SMARTLIC_GREEN}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-        {cta_text}
-      </a>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 14px;">
+      Sem dramatização — é só que eu preferia entender o que rolou. Te ajudaria
+      muito se você respondesse com 1 linha:
     </p>
+    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 14px; padding-left: 16px; border-left: 3px solid #d1d5db;">
+      <em>"Cancelei porque ___"</em>
+    </p>
+    <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 18px;">
+      Pode ser preço, pode ser que faltava feature X, pode ser que não era
+      o momento. Qualquer resposta me ajuda a melhorar o produto.
+    </p>
+    {progress_recap}
+
+    {_founder_signature_html()}
+
+    <p style="color: #999; font-size: 13px; line-height: 1.6; margin: 28px 0 0; padding-top: 16px; border-top: 1px solid #f0f0f0;">
+      P.S.: se quiser voltar, segura aí 20% off no primeiro mês do Pro com o cupom
+      <strong>TRIAL_COMEBACK_20</strong> —
+      <a href="{cta_url}" style="color: {SMARTLIC_GREEN}; text-decoration: underline; font-weight: 600;">aplicar agora</a>.
+      Ou se preferir vitalício pra travar preço pra sempre, o
+      <a href="{FRONTEND_URL}/fundadores" style="color: #f59e0b; text-decoration: underline; font-weight: 600;">Plano Fundadores R$ 997</a>
+      ainda tá em pé.
+    </p>
+
     {_unsubscribe_block(unsubscribe_url)}
     """
 
     return email_base(
-        title="Sentimos sua falta — SmartLic",
+        title="Errei algo? Resposta direta de 1 linha resolve",
         body_html=body,
         is_transactional=False,
         unsubscribe_url=unsubscribe_url,
