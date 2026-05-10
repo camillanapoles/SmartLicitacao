@@ -52,6 +52,8 @@ VALID_EVENT_TYPES: Set[str] = {
     "billing.subscription_change",
     "data.search",
     "data.download",
+    # LGPD opt-in / opt-out toggles (issue #1008 — Hall of Founders consent).
+    "lgpd.consent_change",
 }
 
 

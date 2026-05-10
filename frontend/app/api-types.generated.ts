@@ -24,6 +24,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/founders/hall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Hall Listing
+         * @description Public Hall of Founders listing (issue #1008).
+         *
+         *     Anonymous endpoint consumed by ``/fundadores/hall`` (ISR revalidate=300s).
+         *     Returns up to 100 founders that opted in via
+         *     ``founder_public_listing_consent=TRUE``.
+         */
+        get: operations["get_hall_listing_api_founders_hall_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/founders/hall/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toggle Consent
+         * @description Authenticated opt-in / opt-out toggle (issue #1008).
+         *
+         *     Updates ``profiles.founder_public_listing_consent`` for the caller and,
+         *     on opt-in, also persists optional display name and logo URL. Logs an
+         *     LGPD audit event regardless of direction.
+         */
+        post: operations["toggle_consent_api_founders_hall_consent_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/debug/pncp-test": {
         parameters: {
             query?: never;
@@ -8034,6 +8082,96 @@ export interface components {
             uf: string;
         };
         /**
+         * FounderConsentRequest
+         * @description Body for ``POST /api/founders/hall/consent`` toggle.
+         */
+        FounderConsentRequest: {
+            /**
+             * Consent
+             * @description TRUE to opt in to public listing, FALSE to opt out.
+             */
+            consent: boolean;
+            /**
+             * Display Name
+             * @description Optional display name override (only persisted on opt-in).
+             */
+            display_name?: string | null;
+            /**
+             * Logo Url
+             * @description Optional logo URL (only persisted on opt-in).
+             */
+            logo_url?: string | null;
+        };
+        /**
+         * FounderConsentResponse
+         * @description Response for the consent toggle.
+         */
+        FounderConsentResponse: {
+            /** Consent */
+            consent: boolean;
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Is Founder
+             * @description Reflects profiles.is_founder so the UI can show context.
+             * @default false
+             */
+            is_founder: boolean;
+            /** Logo Url */
+            logo_url?: string | null;
+        };
+        /**
+         * FounderHallEntry
+         * @description Public listing entry. Only populated when consent=TRUE.
+         */
+        FounderHallEntry: {
+            /**
+             * Display Name
+             * @description Razao social or chosen display name.
+             */
+            display_name: string;
+            /**
+             * Founder Since
+             * @description ISO-8601 timestamp of when the user became a founder.
+             */
+            founder_since?: string | null;
+            /**
+             * Logo Url
+             * @description Optional logo URL.
+             */
+            logo_url?: string | null;
+            /**
+             * Setor
+             * @description Sector / category derived from CNAE (best-effort).
+             */
+            setor?: string | null;
+            /**
+             * Uf
+             * @description State code (2 letters).
+             */
+            uf?: string | null;
+        };
+        /**
+         * FoundersHallResponse
+         * @description Response shape for ``GET /api/founders/hall``.
+         */
+        FoundersHallResponse: {
+            /**
+             * Count
+             * @description Number of opt-in founders.
+             * @default 0
+             */
+            count: number;
+            /**
+             * Fallback
+             * @description TRUE when DB unavailable; founders=[] returned conservatively.
+             * @default false
+             */
+            fallback: boolean;
+            /** Founders */
+            founders?: components["schemas"]["FounderHallEntry"][];
+        };
+        /**
          * FoundingAvailabilityResponse
          * @description Public availability snapshot for landing-page seat counter + countdown.
          */
@@ -11994,6 +12132,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RootResponse"];
+                };
+            };
+        };
+    };
+    get_hall_listing_api_founders_hall_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundersHallResponse"];
+                };
+            };
+        };
+    };
+    toggle_consent_api_founders_hall_consent_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FounderConsentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FounderConsentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

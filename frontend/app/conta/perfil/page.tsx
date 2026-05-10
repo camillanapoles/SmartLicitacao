@@ -15,6 +15,7 @@ import { ProfileField, SelectField, NumberField } from "../conta-fields";
 import { Label } from "../../../components/ui/Label";
 import { profileSchema, type ProfileFormData } from "../../../lib/schemas/forms";
 import { useProfileContext } from "../../../hooks/useProfileContext";
+import HallOfFoundersConsent from "./HallOfFoundersConsent";
 
 /** DEBT-011 FE-001: /conta/perfil — Profile editing + Licitante profile. */
 export default function PerfilPage() {
@@ -415,6 +416,16 @@ export default function PerfilPage() {
           </form>
         )}
       </div>
+
+      {/* Issue #1008 (COPY-HALL-009): Hall of Founders opt-in (LGPD).
+          Defaults to opt-OUT; full state hydration happens server-side once
+          GET /v1/user/me exposes the consent fields (follow-up). */}
+      <HallOfFoundersConsent
+        initialConsent={false}
+        initialDisplayName=""
+        initialLogoUrl=""
+        isFounder={Boolean((user as { is_founder?: boolean } | null)?.is_founder)}
+      />
 
       {/* STORY-442 AC5: Ver tour novamente */}
       <div className="p-6 bg-[var(--surface-0)] border border-[var(--border)] rounded-card">
