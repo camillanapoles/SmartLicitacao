@@ -10203,6 +10203,10 @@ export interface components {
         RelatorioMensal: {
             /** Ano */
             ano: number;
+            /** Coverage Window */
+            coverage_window?: {
+                [key: string]: unknown;
+            } | null;
             /** Fonte */
             fonte: string;
             /** Gerado Em */
@@ -10220,6 +10224,8 @@ export interface components {
             mes_nome: string;
             /** Modalidades */
             modalidades: components["schemas"]["routes__observatorio__ModalidadeCount"][];
+            /** Period Label */
+            period_label?: string | null;
             /** Periodo */
             periodo: string;
             /** Setores Em Alta */
