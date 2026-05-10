@@ -1960,6 +1960,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/api/subscriptions/upgrade-to-lifetime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upgrade To Lifetime
+         * @description Upgrade Pro mensal -> Lifetime founder (#1011 / UPGRADE-PATH-013).
+         *
+         *     Flow:
+         *       1. Re-check founder cap via existing ``check_founding_availability()`` RPC
+         *          (race-guarded, atomic). Reject 410 if cap reached.
+         *       2. Reject 409 if ``profiles.is_founder`` is already TRUE (idempotent).
+         *       3. Cancel the active Stripe subscription with ``prorate=True``. Stripe
+         *          issues a credit balance to the customer automatically — no custom
+         *          prorata math.
+         *       4. Create a Stripe Checkout Session in ``mode='payment'`` for the
+         *          R$997 one-time founder price (``FOUNDING_ONE_TIME_PRICE_ID``).
+         *          Customer balance is consumed automatically by Stripe.
+         *       5. Return checkout URL. The existing webhook handler
+         *          (``webhooks/handlers/founding.py::_activate_lifetime_founder_entitlement``)
+         *          flips ``is_founder=TRUE`` once payment completes — DO NOT duplicate.
+         *       6. Audit log via ``audit_logger`` for billing.subscription_change.
+         */
+        post: operations["upgrade_to_lifetime_v1_api_subscriptions_upgrade_to_lifetime_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/api/subscriptions/upgrade-to-lifetime/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Upgrade To Lifetime Preview
+         * @description Preview pro-rata math for the upgrade-to-lifetime modal (#1011).
+         *
+         *     Returns ``eligible=False`` with a structured ``reason`` whenever the user
+         *     is not allowed to upgrade (already founder, no active sub, cap reached,
+         *     feature flag off). Front-end uses this to render the right copy without
+         *     parsing free text.
+         */
+        get: operations["upgrade_to_lifetime_preview_v1_api_subscriptions_upgrade_to_lifetime_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/check-email": {
         parameters: {
             query?: never;
@@ -11546,6 +11606,85 @@ export interface components {
             plan_id?: string | null;
         };
         /**
+         * UpgradeToLifetimePreviewResponse
+         * @description Pro-rata preview for the modal confirmation step.
+         *
+         *     Stripe handles the actual proration when we cancel with ``prorate=True`` and
+         *     create the new charge — these numbers are an *estimate* surfaced to the
+         *     user so they understand what will happen. The webhook is the source of
+         *     truth for the final charge.
+         */
+        UpgradeToLifetimePreviewResponse: {
+            /** Eligible */
+            eligible: boolean;
+            /**
+             * Estimated Credit Brl Cents
+             * @default 0
+             */
+            estimated_credit_brl_cents: number;
+            /**
+             * Has Active Subscription
+             * @default false
+             */
+            has_active_subscription: boolean;
+            /**
+             * Is Already Founder
+             * @default false
+             */
+            is_already_founder: boolean;
+            /**
+             * Lifetime Price Brl Cents
+             * @default 99700
+             */
+            lifetime_price_brl_cents: number;
+            /**
+             * Net Charge Brl Cents
+             * @default 99700
+             */
+            net_charge_brl_cents: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Seats Remaining
+             * @default 0
+             */
+            seats_remaining: number;
+            /**
+             * Seats Total
+             * @default 0
+             */
+            seats_total: number;
+        };
+        /**
+         * UpgradeToLifetimeRequest
+         * @description Empty body — auth identifies the user.
+         */
+        UpgradeToLifetimeRequest: {
+            /**
+             * Confirmed
+             * @description Client must explicitly confirm to proceed (defense in depth).
+             * @default true
+             */
+            confirmed: boolean;
+        };
+        /** UpgradeToLifetimeResponse */
+        UpgradeToLifetimeResponse: {
+            /** Checkout Url */
+            checkout_url: string;
+            /**
+             * Estimated Credit Brl Cents
+             * @default 0
+             */
+            estimated_credit_brl_cents: number;
+            /**
+             * Net Charge Brl Cents
+             * @default 99700
+             */
+            net_charge_brl_cents: number;
+            /** Session Id */
+            session_id: string;
+        };
+        /**
          * UptimeHistoryEntry
          * @description One day of uptime data.
          */
@@ -14411,6 +14550,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upgrade_to_lifetime_v1_api_subscriptions_upgrade_to_lifetime_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpgradeToLifetimeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpgradeToLifetimeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upgrade_to_lifetime_preview_v1_api_subscriptions_upgrade_to_lifetime_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpgradeToLifetimePreviewResponse"];
                 };
             };
         };
