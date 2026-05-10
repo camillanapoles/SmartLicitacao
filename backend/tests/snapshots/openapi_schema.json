@@ -6135,6 +6135,152 @@
         "title": "FornecedoresStatsResponse",
         "type": "object"
       },
+      "FounderConsentRequest": {
+        "description": "Body for ``POST /api/founders/hall/consent`` toggle.",
+        "properties": {
+          "consent": {
+            "description": "TRUE to opt in to public listing, FALSE to opt out.",
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional display name override (only persisted on opt-in).",
+            "title": "Display Name"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional logo URL (only persisted on opt-in).",
+            "title": "Logo Url"
+          }
+        },
+        "required": [
+          "consent"
+        ],
+        "title": "FounderConsentRequest",
+        "type": "object"
+      },
+      "FounderConsentResponse": {
+        "description": "Response for the consent toggle.",
+        "properties": {
+          "consent": {
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "is_founder": {
+            "default": false,
+            "description": "Reflects profiles.is_founder so the UI can show context.",
+            "title": "Is Founder",
+            "type": "boolean"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          }
+        },
+        "required": [
+          "consent"
+        ],
+        "title": "FounderConsentResponse",
+        "type": "object"
+      },
+      "FounderHallEntry": {
+        "description": "Public listing entry. Only populated when consent=TRUE.",
+        "properties": {
+          "display_name": {
+            "description": "Razao social or chosen display name.",
+            "title": "Display Name",
+            "type": "string"
+          },
+          "founder_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO-8601 timestamp of when the user became a founder.",
+            "title": "Founder Since"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional logo URL.",
+            "title": "Logo Url"
+          },
+          "setor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sector / category derived from CNAE (best-effort).",
+            "title": "Setor"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "State code (2 letters).",
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "display_name"
+        ],
+        "title": "FounderHallEntry",
+        "type": "object"
+      },
       "FoundersAvailabilityResponse": {
         "description": "Response shape for ``GET /api/founders/availability`` (issue #1002).\n\nOn the happy path all numeric fields are populated and ``fallback=false``.\nOn DB/Redis failure ``vagasRestantes=null`` + ``fallback=true`` and the\nfrontend renders the conservative copy (\"Vagas limitadas \u2014 encerra 30/06\").",
         "properties": {
@@ -6244,6 +6390,32 @@
           }
         },
         "title": "FoundersAvailabilityResponse",
+        "type": "object"
+      },
+      "FoundersHallResponse": {
+        "description": "Response shape for ``GET /api/founders/hall``.",
+        "properties": {
+          "count": {
+            "default": 0,
+            "description": "Number of opt-in founders.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "fallback": {
+            "default": false,
+            "description": "TRUE when DB unavailable; founders=[] returned conservatively.",
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "founders": {
+            "items": {
+              "$ref": "#/components/schemas/FounderHallEntry"
+            },
+            "title": "Founders",
+            "type": "array"
+          }
+        },
+        "title": "FoundersHallResponse",
         "type": "object"
       },
       "FoundingAvailabilityResponse": {
@@ -15730,6 +15902,75 @@
           }
         },
         "summary": "Founders Availability",
+        "tags": [
+          "founders"
+        ]
+      }
+    },
+    "/api/founders/hall": {
+      "get": {
+        "description": "Public Hall of Founders listing (issue #1008).\n\nAnonymous endpoint consumed by ``/fundadores/hall`` (ISR revalidate=300s).\nReturns up to 100 founders that opted in via\n``founder_public_listing_consent=TRUE``.",
+        "operationId": "get_hall_listing_api_founders_hall_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundersHallResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Hall Listing",
+        "tags": [
+          "founders"
+        ]
+      }
+    },
+    "/api/founders/hall/consent": {
+      "post": {
+        "description": "Authenticated opt-in / opt-out toggle (issue #1008).\n\nUpdates ``profiles.founder_public_listing_consent`` for the caller and,\non opt-in, also persists optional display name and logo URL. Logs an\nLGPD audit event regardless of direction.",
+        "operationId": "toggle_consent_api_founders_hall_consent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FounderConsentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FounderConsentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Toggle Consent",
         "tags": [
           "founders"
         ]

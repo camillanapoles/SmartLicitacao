@@ -84,6 +84,9 @@ class TestValidEventTypes:
         "billing.subscription_change",
         "data.search",
         "data.download",
+        # Issue #1008 (COPY-HALL-009): LGPD opt-in/opt-out toggles for the
+        # public Hall of Founders consent flag.
+        "lgpd.consent_change",
     }
 
     def test_all_expected_types_present(self):
