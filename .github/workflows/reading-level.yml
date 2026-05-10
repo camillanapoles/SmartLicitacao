@@ -1,0 +1,88 @@
+name: Reading Level (PT-BR)
+
+# Issue #1012 — Flesch-Kincaid PT-BR adaptation gate.
+# Currently runs in WARN-ONLY mode (does not fail PRs). Threshold gating
+# is implemented in scripts/seo/reading_level_pt.py and can be enabled
+# by adding --strict to the run step.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/app/page.tsx'
+      - 'frontend/app/planos/**'
+      - 'frontend/app/pricing/**'
+      - 'frontend/app/fundadores/**'
+      - 'frontend/app/consultoria-b2g/**'
+      - 'frontend/app/observatorio/**'
+      - 'scripts/seo/reading_level_pt.py'
+      - '.github/workflows/reading-level.yml'
+  pull_request:
+    paths:
+      - 'frontend/app/page.tsx'
+      - 'frontend/app/planos/**'
+      - 'frontend/app/pricing/**'
+      - 'frontend/app/fundadores/**'
+      - 'frontend/app/consultoria-b2g/**'
+      - 'frontend/app/observatorio/**'
+      - 'scripts/seo/reading_level_pt.py'
+      - '.github/workflows/reading-level.yml'
+
+concurrency:
+  group: reading-level-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  measure:
+    name: Measure reading level
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Run reading level scorer
+        id: score
+        run: |
+          python scripts/seo/reading_level_pt.py --root . --format markdown \
+            --output reading-level-report.md
+          {
+            echo "report<<EOF"
+            cat reading-level-report.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Append to step summary
+        run: cat reading-level-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on PR (sticky)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('reading-level-report.md', 'utf8');
+            const marker = '<!-- reading-level-pt:1012 -->';
+            const fullBody = `${marker}\n${body}\n\n_Issue #1012 — warn-only mode._`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body: fullBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body: fullBody,
+              });
+            }

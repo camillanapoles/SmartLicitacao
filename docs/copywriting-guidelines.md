@@ -175,9 +175,75 @@ Antes de publicar qualquer copy, verifique:
 
 ---
 
-## 7. Referências
+## 7. Reading Level (Flesch-Kincaid PT-BR)
+
+**Referência:** issue [#1012](https://github.com/tjsasakifln/pncp-poc/issues/1012) (CI-READING-014).
+
+### Princípio
+
+Diretriz Universal #11 do consenso de copy: landing pages devem ler em nível **6ª-7ª série**. Research 2026: conteúdo nesse nível converte +109% vs nível faculdade. Mantemos um gate em CI para evitar drift.
+
+### Fórmulas
+
+O scorer (`scripts/seo/reading_level_pt.py`) reporta dois números por página:
+
+1. **Índice Flesch PT-BR (Martins et al. 1996):**
+   `IF = 248.835 − 1.015·ASL − 84.6·ASW`
+   - Range 0–100, **maior = mais fácil**.
+   - Referência: ~75 = 6ª série; ~50 = ensino médio; <30 = faculdade.
+
+2. **Flesch-Kincaid Grade (Kincaid 1975) sobre contagem PT-BR:**
+   `FKGL = 0.39·ASL + 11.8·ASW − 15.59`
+   - Aproxima o "grade level" americano. Mapeamos para série brasileira via `ceil(FKGL)`.
+
+`ASL` = palavras / frases. `ASW` = sílabas / palavras (heurística de grupo vocálico).
+
+### Threshold
+
+| Faixa | Status |
+|-------|--------|
+| `grade ≤ 7` | OK |
+| `7 < grade ≤ 9` | WARN |
+| `grade > 9` | FAIL (gate desligado inicialmente) |
+
+CI roda atualmente em **modo warn-only** (não bloqueia merge). Para ativar enforcement, adicionar `--strict` ao step de execução em `.github/workflows/reading-level.yml`.
+
+### Allowlist de termos técnicos
+
+Termos do domínio B2G não penalizam ASW (são forçados a 1 sílaba):
+`CNPJ, PNCP, ComprasGov, Comprasnet, SmartLic, TCU, TCE, STJ, STF, AGU, CGU, Pix, PJ, PF, SaaS, API, CSV, XLSX, PDF, URL, RFP, RFB, SICAF, SIASG, BNC, BBMNet, dispensa, pregão, concorrência, credenciamento, habilitação, edital, ata, SRP, ARO`.
+
+A lista é editável em `scripts/seo/reading_level_pt.py` (constante `ALLOWLIST_TERMS`). Critério para inclusão: termo é (a) jargão obrigatório do domínio, (b) usado em ≥2 landing pages, e (c) não tem sinônimo mais simples sem perder precisão.
+
+### Páginas auditadas
+
+- `/` (homepage)
+- `/planos`, `/pricing`
+- `/fundadores` (+ `FundadoresClient.tsx`)
+- `/consultoria-b2g`
+- `/observatorio` + sample `/observatorio/[slug]` (PSEO)
+
+### Como rodar local
+
+```bash
+python3 scripts/seo/reading_level_pt.py --root . --format markdown
+python3 scripts/seo/reading_level_pt.py --root . --strict   # exit code != 0 acima de FAIL
+```
+
+CI publica um sticky comment no PR com a tabela e atualiza o `$GITHUB_STEP_SUMMARY`.
+
+### Limitação documentada
+
+A extração de texto de `.tsx` é heurística (regex sobre JSX text + string literals filtrados por prosa). Aceita ~10 % de ruído. Para reduzir falsos positivos, atualizar `_looks_like_human_text()` em vez de relaxar o threshold.
+
+---
+
+## 8. Referências
 
 - Plano de reposicionamento: `docs/sessions/2026-05/2026-05-07-reposicionamento-b2g-issues-plan.md`
 - Issue: [#754](https://github.com/tjsasakifln/pncp-poc/issues/754)
+- CI gate reading level: [#1012](https://github.com/tjsasakifln/pncp-poc/issues/1012)
+- Martins, T. B. F. et al. (1996). _Readability formulas applied to textbooks in Brazilian Portuguese._
+- Kincaid, J. P. et al. (1975). _Derivation of new readability formulas for Navy enlisted personnel._
 - CONAR: https://www.conar.org.br/codigo/codigo.php
 - CDC art. 37: Lei 8.078/90
