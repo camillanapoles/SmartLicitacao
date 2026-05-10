@@ -185,6 +185,16 @@ Tags: `govtech` · `b2g-saas` · `pncp` · `comprasgov` · `public-procurement` 
 
 ---
 
+## Operational Status
+
+Live SLO surface for SmartLic backend (target: p95 < 2s, /health/ready uptime > 99.5%, MTTR < 30min). Detailed runbook and error budget live in [`_reversa_sdd/operational-reliability-2026-05.md`](./_reversa_sdd/operational-reliability-2026-05.md).
+
+- Sentry (errors + performance): https://confenge.sentry.io/projects/smartlic-backend/
+- Health probe: https://api.smartlic.tech/health/ready
+- Railway logs / metrics: dashboard `bidiq-backend` (auth required)
+
+---
+
 ## License
 
 **© 2024–2026 CONFENGE AVALIAÇÕES E INTELIGÊNCIA ARTIFICIAL LTDA — All rights reserved.**
