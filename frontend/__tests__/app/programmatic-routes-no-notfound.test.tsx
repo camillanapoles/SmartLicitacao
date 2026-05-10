@@ -14,7 +14,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { globSync } from 'glob';
 
 const FRONTEND_ROOT = path.resolve(__dirname, '../../');
 
@@ -37,12 +36,26 @@ const PROTECTED_PREFIXES = [
   'app/compliance',
 ];
 
+function collectFilesRecursive(dir: string, exts: string[]): string[] {
+  const results: string[] = [];
+  if (!fs.existsSync(dir)) return results;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...collectFilesRecursive(fullPath, exts));
+    } else if (exts.some((ext) => entry.name.endsWith(ext))) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
 function collectFiles(): string[] {
   const results: string[] = [];
   for (const prefix of PROTECTED_PREFIXES) {
-    const pattern = path.join(FRONTEND_ROOT, prefix, '**/*.{ts,tsx}');
-    const files = globSync(pattern, { nodir: true });
-    results.push(...files);
+    const dir = path.join(FRONTEND_ROOT, prefix);
+    results.push(...collectFilesRecursive(dir, ['.ts', '.tsx']));
   }
   return results;
 }
