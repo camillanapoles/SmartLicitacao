@@ -28,6 +28,7 @@ from pydantic import BaseModel
 from metrics import OBSERVATORIO_BUDGET_EXCEEDED
 from pipeline.budget import _run_with_budget
 from utils.postgrest_paginate import paginate_full
+from utils.seo_response import apply_seo_empty_response
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["observatorio"])
@@ -179,11 +180,23 @@ def _apply_empty_period_response(
         )
 
     # behavior in {"noindex", "auto"+historical} → 200 + is_empty_period + noindex
-    # Mark the payload as an empty period so the frontend renders the
-    # EmptyStatePeriod CTA rather than the misleading "R$ 0,00" cards.
-    if response is not None:
-        response.headers["X-Robots-Tag"] = "noindex"
-    payload = {**data, "is_empty_period": True}
+    # Issue #1036: delegate header + payload mark to the central
+    # `apply_seo_empty_response` helper so all programmatic SEO routes share
+    # the same shape (also adds X-Coverage-Status:empty for sitemap-gating).
+    period_label = f"{MONTH_NAMES_PT.get(mes, str(mes))}/{ano}"
+    try:
+        _, last_day = calendar.monthrange(ano, mes)
+        coverage_window = (date(ano, mes, 1), date(ano, mes, last_day))
+    except (ValueError, calendar.IllegalMonthError):
+        coverage_window = None
+    payload = apply_seo_empty_response(
+        {**data},
+        is_empty=True,
+        is_historical=is_historical,
+        period_label=period_label,
+        coverage_window=coverage_window,
+        response=response,
+    )
     return RelatorioMensal(**payload)
 
 
