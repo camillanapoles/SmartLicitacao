@@ -1,0 +1,265 @@
+name: "Audit SEO notFound (ADR-SEO-001)"
+
+# Operationalises ADR-SEO-001 (`docs/adr/ADR-SEO-001-programmatic-routes-no-notfound-on-data-gap.md`):
+# programmatic SEO routes (16 path prefixes, ~10k URLs) MUST NOT call
+# `notFound()` on empty data or transient fetch failure. ISR caches
+# `notFound()` for up to 24h with no auto-recovery — Googlebot drops the
+# URL and de-indexation cascades to siblings.
+#
+# Allow path: lines that legitimately need `notFound()` (malformed slug,
+# unknown catalog entry) carry the marker `// adr-seo-001-allow: <reason>`
+# on the same line OR on the immediately preceding line.
+#
+# The gate fails the PR for any unmarked occurrence and posts a sticky
+# comment linking to the ADR. PR-only trigger with `paths:` filter so the
+# gate stays cheap and never fires on unrelated PRs.
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/app/observatorio/**'
+      - 'frontend/app/cnpj/**'
+      - 'frontend/app/fornecedores/**'
+      - 'frontend/app/orgaos/**'
+      - 'frontend/app/municipios/**'
+      - 'frontend/app/licitacoes/**'
+      - 'frontend/app/contratos/**'
+      - 'frontend/app/alertas-publicos/**'
+      - 'frontend/app/itens/**'
+      - 'frontend/app/blog/**'
+      - 'frontend/app/casos/**'
+      - 'frontend/app/glossario/**'
+      - 'frontend/app/guia/**'
+      - 'frontend/app/masterclass/**'
+      - 'frontend/app/perguntas/**'
+      - 'frontend/app/compliance/**'
+      # Intentionally NOT including this workflow's own path: the gate
+      # exists to guard route files. Modifying the workflow itself
+      # should not retroactively scan the legacy `notFound()` call
+      # sites that the in-flight 17-route sweep (#1035) is removing.
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: audit-seo-notfound-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit notFound() in protected SEO routes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Scan for unmarked notFound() calls
+        id: scan
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROTECTED_DIRS=(
+            frontend/app/observatorio
+            frontend/app/cnpj
+            frontend/app/fornecedores
+            frontend/app/orgaos
+            frontend/app/municipios
+            frontend/app/licitacoes
+            frontend/app/contratos
+            frontend/app/alertas-publicos
+            frontend/app/itens
+            frontend/app/blog
+            frontend/app/casos
+            frontend/app/glossario
+            frontend/app/guia
+            frontend/app/masterclass
+            frontend/app/perguntas
+            frontend/app/compliance
+          )
+
+          EXISTING_DIRS=()
+          for d in "${PROTECTED_DIRS[@]}"; do
+            if [ -d "$d" ]; then
+              EXISTING_DIRS+=("$d")
+            fi
+          done
+
+          if [ "${#EXISTING_DIRS[@]}" -eq 0 ]; then
+            echo "No protected directories present in this checkout — nothing to audit."
+            echo "violations_found=false" >> "$GITHUB_OUTPUT"
+            echo "violation_count=0" >> "$GITHUB_OUTPUT"
+            : > /tmp/seo_notfound_violations.txt
+            exit 0
+          fi
+
+          # Collect all notFound() / notFound ( occurrences with file:line:content.
+          # Restrict to .ts/.tsx/.js/.jsx so we don't flag markdown/comments in unrelated files.
+          : > /tmp/seo_notfound_hits.txt
+          grep -RHn -E "notFound\s*\(" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            "${EXISTING_DIRS[@]}" >> /tmp/seo_notfound_hits.txt || true
+
+          # Also scan sitemap.ts / sitemap/[id].ts — they share the same antipattern.
+          if [ -f frontend/app/sitemap.ts ]; then
+            grep -Hn -E "notFound\s*\(" frontend/app/sitemap.ts >> /tmp/seo_notfound_hits.txt || true
+          fi
+          if [ -d frontend/app/sitemap ]; then
+            grep -RHn -E "notFound\s*\(" \
+              --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+              frontend/app/sitemap >> /tmp/seo_notfound_hits.txt || true
+          fi
+
+          if [ ! -s /tmp/seo_notfound_hits.txt ]; then
+            echo "No notFound() calls found in protected SEO routes."
+            echo "violations_found=false" >> "$GITHUB_OUTPUT"
+            echo "violation_count=0" >> "$GITHUB_OUTPUT"
+            : > /tmp/seo_notfound_violations.txt
+            exit 0
+          fi
+
+          echo "Hits to classify:"
+          cat /tmp/seo_notfound_hits.txt
+          echo ""
+
+          # Classify each hit: allowed if `adr-seo-001-allow:` is on the same
+          # line OR on the immediately preceding line.
+          : > /tmp/seo_notfound_violations.txt
+          while IFS= read -r hit; do
+            [ -z "$hit" ] && continue
+            file="${hit%%:*}"
+            rest="${hit#*:}"
+            lineno="${rest%%:*}"
+            content="${rest#*:}"
+
+            # Same-line marker?
+            if printf '%s' "$content" | grep -q "adr-seo-001-allow:"; then
+              continue
+            fi
+
+            # Preceding-line marker?
+            prev_line=$((lineno - 1))
+            if [ "$prev_line" -ge 1 ] && [ -f "$file" ]; then
+              prev_content=$(sed -n "${prev_line}p" "$file" || true)
+              if printf '%s' "$prev_content" | grep -q "adr-seo-001-allow:"; then
+                continue
+              fi
+            fi
+
+            # Unmarked — record the violation.
+            printf '%s:%s: %s\n' "$file" "$lineno" "$content" >> /tmp/seo_notfound_violations.txt
+          done < /tmp/seo_notfound_hits.txt
+
+          if [ ! -s /tmp/seo_notfound_violations.txt ]; then
+            echo "All notFound() calls carry the adr-seo-001-allow: marker."
+            echo "violations_found=false" >> "$GITHUB_OUTPUT"
+            echo "violation_count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          COUNT=$(wc -l < /tmp/seo_notfound_violations.txt | tr -d ' ')
+          echo "violations_found=true" >> "$GITHUB_OUTPUT"
+          echo "violation_count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          echo ""
+          echo "::error::Found $COUNT unmarked notFound() call(s) in protected SEO routes."
+          echo "Violations:"
+          cat /tmp/seo_notfound_violations.txt
+
+          # Annotate each violation line in the GitHub UI.
+          while IFS= read -r v; do
+            [ -z "$v" ] && continue
+            file="${v%%:*}"
+            rest="${v#*:}"
+            lineno="${rest%%:*}"
+            echo "::error file=${file},line=${lineno}::Unmarked notFound() in protected SEO route. See ADR-SEO-001 for the allowed-marker convention."
+          done < /tmp/seo_notfound_violations.txt
+
+          # Do NOT exit non-zero yet — let the comment step run first; final
+          # gate decision is enforced in the "Fail if violations" step below.
+
+      - name: Post / update sticky PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        env:
+          VIOLATIONS_FOUND: ${{ steps.scan.outputs.violations_found }}
+          VIOLATION_COUNT: ${{ steps.scan.outputs.violation_count }}
+        with:
+          script: |
+            const fs = require('fs');
+            const violationsFound = process.env.VIOLATIONS_FOUND === 'true';
+            const count = process.env.VIOLATION_COUNT || '0';
+            const marker = '<!-- audit-seo-notfound-sticky -->';
+
+            const adrLink =
+              'https://github.com/' + context.repo.owner + '/' + context.repo.repo +
+              '/blob/main/docs/adr/ADR-SEO-001-programmatic-routes-no-notfound-on-data-gap.md';
+
+            let body;
+            if (violationsFound) {
+              let detail = '';
+              try {
+                detail = fs.readFileSync('/tmp/seo_notfound_violations.txt', 'utf8').trim();
+              } catch (_) {
+                detail = '(violation list unavailable)';
+              }
+              body =
+                marker + '\n' +
+                '## SEO notFound() audit — FAIL (' + count + ' violation' + (count === '1' ? '' : 's') + ')\n\n' +
+                'One or more protected programmatic SEO routes call `notFound()` ' +
+                'without the `// adr-seo-001-allow: <reason>` marker.\n\n' +
+                'ISR caches `notFound()` for up to 24h with no auto-recovery — ' +
+                'Googlebot drops the URL and de-indexation cascades to siblings. ' +
+                'See [ADR-SEO-001](' + adrLink + ') for the full rationale.\n\n' +
+                '### Violations\n\n' +
+                '```\n' + detail + '\n```\n\n' +
+                '### How to fix\n\n' +
+                '- **Empty data on a known slug** → render `<EmptyStateSEO>` with ' +
+                '`robots: \'noindex,follow\'`. Remove the `notFound()` call.\n' +
+                '- **Transient fetch failure** → re-throw so ISR falls back to ' +
+                'last-good. Remove the `notFound()` call.\n' +
+                '- **Malformed slug / unknown catalog entry** → keep `notFound()` ' +
+                'and add `// adr-seo-001-allow: <one-line reason>` on the same ' +
+                'line or the line above.\n\n' +
+                '> _Powered by ADR-SEO-001 — prevents SEN-FE-001 recidiva and ISR ' +
+                '404-cache de-indexation cascades._';
+            } else {
+              body =
+                marker + '\n' +
+                '## SEO notFound() audit — PASS\n\n' +
+                'No unmarked `notFound()` calls found in protected programmatic ' +
+                'SEO routes. See [ADR-SEO-001](' + adrLink + ') for the rule.\n';
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(
+              c => c.user && c.user.type === 'Bot' && c.body && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail if violations
+        if: steps.scan.outputs.violations_found == 'true'
+        run: |
+          echo "Failing gate due to ${{ steps.scan.outputs.violation_count }} unmarked notFound() call(s) in protected SEO routes."
+          exit 1
