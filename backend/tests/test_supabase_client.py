@@ -309,21 +309,40 @@ class TestThreadSafety:
 
     @pytest.mark.timeout(30)
     def test_get_supabase_singleton_initialized_once_under_concurrency(self, monkeypatch):
+        """Issue #967 RCA: original test used inter-thread `Event.wait(timeout=5)` to
+        orchestrate "first thread blocks inside create_client; contenders queue on the
+        double-checked lock; first releases; everyone gets same instance".
+
+        Under coverage tracing on CI runners, the GIL contention between 9 threads + the
+        initial thread spin-up made `create_started.wait(timeout=5)` (line 344) flake to
+        False with no real bug in `get_supabase()`. The 5s wait is a deadlock-prevention
+        guard for the test, not a meaningful SLA — bumping it would just be a band-aid.
+
+        Fix: prove the SAME invariants ("create_client called exactly once", "all callers
+        get the same object", "no errors under concurrent entry") with a simpler
+        contention scheme that has no cross-thread Event.wait, so the test is resilient
+        to coverage-induced scheduling jitter.
+        """
         import supabase_client
 
         monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
         monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key")
+        # Reset both the singleton and its lock so prior test pollution (if any thread
+        # ever held the lock and crashed without release) cannot wedge this test.
         monkeypatch.setattr(supabase_client, "_supabase_client", None)
+        monkeypatch.setattr(supabase_client, "_supabase_client_lock", threading.Lock())
         monkeypatch.setattr(supabase_client, "_configure_httpx_pool", lambda client: None)
 
         create_calls = []
-        create_started = threading.Event()
-        release_create = threading.Event()
+        create_lock = threading.Lock()
 
         def create_client(url, key):
-            create_calls.append((url, key))
-            create_started.set()
-            assert release_create.wait(timeout=5)
+            # Sleep briefly to widen the window where contender threads find the
+            # singleton lock contended (proves the double-checked lock works) — but
+            # without any cross-thread Event coordination that depends on scheduling.
+            with create_lock:
+                create_calls.append((url, key))
+            time.sleep(0.05)
             return object()
 
         fake_supabase = types.ModuleType("supabase")
@@ -332,27 +351,32 @@ class TestThreadSafety:
 
         results = []
         errors = []
+        results_lock = threading.Lock()
+        start_barrier = threading.Barrier(9)
 
         def get_client():
+            # Synchronize start so all 9 threads race into get_supabase() together,
+            # maximizing the chance that contenders hit the held lock.
             try:
-                results.append(supabase_client.get_supabase())
+                start_barrier.wait(timeout=10)
+                client = supabase_client.get_supabase()
+                with results_lock:
+                    results.append(client)
             except Exception as exc:
-                errors.append(exc)
+                with results_lock:
+                    errors.append(exc)
 
-        first = threading.Thread(target=get_client)
-        first.start()
-        assert create_started.wait(timeout=5)
+        threads = [threading.Thread(target=get_client) for _ in range(9)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=15)
 
-        contenders = [threading.Thread(target=get_client) for _ in range(8)]
-        for thread in contenders:
-            thread.start()
-
-        release_create.set()
-        first.join(timeout=5)
-        for thread in contenders:
-            thread.join(timeout=5)
-
-        assert errors == []
-        assert len(results) == 9
+        # All threads must have completed — none stuck on the lock.
+        assert all(not t.is_alive() for t in threads), "threads stuck"
+        assert errors == [], f"unexpected errors: {errors}"
+        assert len(results) == 9, f"expected 9 results, got {len(results)}"
+        # Singleton invariant: every caller got the same object.
         assert len({id(client) for client in results}) == 1
+        # Init-once invariant: create_client invoked exactly once despite 9 racers.
         assert create_calls == [("https://test.supabase.co", "service-role-key")]
