@@ -5,12 +5,19 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { QUESTIONS, getQuestionBySlug, getAllQuestionSlugs, CATEGORY_META, getQuestionsByCategory } from '@/lib/questions';
 import { GLOSSARY_TERMS } from '@/lib/glossary-terms';
-import { buildCanonical, SITE_URL } from '@/lib/seo';
+import { buildCanonical } from '@/lib/seo';
 import { stripMarkdown } from '@/lib/text';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import AuthorByline from '@/components/seo/AuthorByline';
 import { getAuthorBySlug, DEFAULT_AUTHOR_SLUG } from '@/lib/authors';
+import {
+  buildPersonAuthorLd,
+  buildQaPageLd,
+  buildArticleLd,
+  buildBreadcrumbLd,
+  buildFaqPageLd,
+} from './json-ld';
 
 export const revalidate = 86400;
 
@@ -85,91 +92,11 @@ export default async function PerguntaPage({
 
   // SEO-P2-011 (#997): E-E-A-T Person author for Article + QAPage schemas.
   const author = getAuthorBySlug(DEFAULT_AUTHOR_SLUG);
-  const personAuthorLd = author
-    ? {
-        '@type': 'Person',
-        name: author.name,
-        url: `${SITE_URL}/blog/author/${author.slug}`,
-        jobTitle: author.role,
-        image: author.image,
-        sameAs: author.sameAs,
-        knowsAbout: author.knowsAbout,
-      }
-    : {
-        '@type': 'Organization',
-        name: 'SmartLic',
-        url: SITE_URL,
-      };
-
-  /* QAPage JSON-LD — primary schema for AI Overviews */
-  const qaPageLd = {
-    '@context': 'https://schema.org',
-    '@type': 'QAPage',
-    mainEntity: {
-      '@type': 'Question',
-      name: question.title,
-      text: question.title,
-      answerCount: 1,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: plainAnswer,
-        author: personAuthorLd,
-      },
-    },
-  };
-
-  /* Article JSON-LD — SEO-P2-011 #997: E-E-A-T signal for legal/Lei 14.133 pages.
-     Layered alongside QAPage (which serves AI Overviews). Together they tell
-     Google "this is a Q&A page authored by a real, credentialed Person."     */
-  const articleLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: question.title,
-    description: question.metaDescription,
-    author: personAuthorLd,
-    publisher: {
-      '@type': 'Organization',
-      name: 'SmartLic',
-      logo: {
-        '@type': 'ImageObject',
-        url: `${SITE_URL}/logo.svg`,
-      },
-    },
-    datePublished: ARTICLE_PUBLISHED_AT,
-    dateModified: ARTICLE_UPDATED_AT,
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': buildCanonical(`/perguntas/${slug}`),
-    },
-    inLanguage: 'pt-BR',
-    ...(question.legalBasis ? { citation: [{ '@type': 'CreativeWork', name: question.legalBasis }] } : {}),
-  };
-
-  const breadcrumbLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Perguntas', item: buildCanonical('/perguntas') },
-      { '@type': 'ListItem', position: 3, name: question.title.slice(0, 60), item: buildCanonical(`/perguntas/${slug}`) },
-    ],
-  };
-
-  /* FAQPage JSON-LD — rich snippets para perguntas relacionadas da sidebar */
-  const faqPageLd = relatedQuestions.length > 0
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'FAQPage',
-        mainEntity: relatedQuestions.map((q) => ({
-          '@type': 'Question',
-          name: q.title,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: stripMarkdown(q.answer).slice(0, 500),
-          },
-        })),
-      }
-    : null;
+  const personAuthorLd = buildPersonAuthorLd(author);
+  const qaPageLd = buildQaPageLd(question, plainAnswer, personAuthorLd);
+  const articleLd = buildArticleLd(question, slug, personAuthorLd, ARTICLE_PUBLISHED_AT, ARTICLE_UPDATED_AT);
+  const breadcrumbLd = buildBreadcrumbLd(question, slug);
+  const faqPageLd = buildFaqPageLd(relatedQuestions);
 
   return (
     <>
