@@ -127,6 +127,11 @@ class RelatorioMensal(BaseModel):
     # STORY-431 AC11: marker for historical empty months (no data ingested in window).
     # Frontend uses this to render EmptyStatePeriod CTA instead of "R$ 0,00" cards.
     is_empty_period: bool = False
+    # Issue #1036: SEO empty-period fields set by apply_seo_empty_response.
+    # Without these declarations Pydantic v2 silently drops them on model
+    # construction, so the frontend never receives them.
+    period_label: Optional[str] = None
+    coverage_window: Optional[dict] = None
 
 
 # ---------------------------------------------------------------------------
