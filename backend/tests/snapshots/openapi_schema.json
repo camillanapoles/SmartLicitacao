@@ -11312,6 +11312,18 @@
             "title": "Ano",
             "type": "integer"
           },
+          "coverage_window": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Window"
+          },
           "fonte": {
             "title": "Fonte",
             "type": "string"
@@ -11343,6 +11355,17 @@
             },
             "title": "Modalidades",
             "type": "array"
+          },
+          "period_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Label"
           },
           "periodo": {
             "title": "Periodo",
