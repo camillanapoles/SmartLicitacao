@@ -459,6 +459,7 @@ class SupabaseCircuitBreaker:
             self._window.clear()
             self._trial_successes = 0
             self._opened_at = None
+            self._consecutive_failures = 0
 
 
 def _is_schema_error(exc: Exception) -> bool:
