@@ -1,11 +1,18 @@
-# NOTE: E2E tests are also run in tests.yml (as a job after unit tests pass).
-# This standalone workflow exists for targeted E2E runs — e.g., path-triggered on
-# frontend/backend critical files. It includes smoke test quality gate (GTM-QUAL-001 AC13).
+# NOTE: E2E tests are also run in tests.yml (as a job on push to main, after unit
+# tests pass). This standalone workflow exists for targeted PR-gated E2E runs —
+# path-triggered on frontend/backend critical files. It includes smoke test quality
+# gate (GTM-QUAL-001 AC13).
+#
+# Issue #968 (2026-05-09): The `push: [main, develop]` trigger was removed because
+# every push to main triggered an unconditional run (no path filter), and the
+# 15-minute job timeout was insufficient for the full pipeline (npm ci + 2 browsers
+# via `--with-deps` + Next.js 16 monorepo build + tests), producing `cancelled`
+# conclusions on every merge. Coverage on main is preserved by tests.yml's E2E job.
+# E2E Tests (Playwright) is NOT a required branch-protection check (only Backend
+# Tests, Frontend Tests, Check Real Merge Conflicts are).
 name: "E2E Tests (Playwright)"
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
     # GTM-QUAL-001 AC12: Trigger when GTM-ROOT stories touch affected files
@@ -27,6 +34,11 @@ on:
       - 'backend/job_queue.py'
       - 'backend/main.py'
   workflow_dispatch: # Allow manual trigger
+
+# Cancel stale PR runs when new commits are pushed; never cancel manual runs.
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   e2e-tests:
