@@ -1,0 +1,57 @@
+name: "Audit RLS coverage (RLS-AUDIT-001)"
+
+# Operationalises ADR-RLS-MANDATORY-001 (`docs/adr/ADR-RLS-MANDATORY-001-policy.md`):
+# every public-schema table on Supabase must have ROW LEVEL SECURITY enabled
+# with at least one policy, OR carry a `-- rls-exempt: <reason>` marker in
+# its migration. The audit script (`backend/scripts/audit_rls_coverage.py`)
+# pulls live coverage via the Supabase Management API and exits 1 on gaps.
+#
+# Triggers:
+#   - Push to main → fail fast if a merged migration drops RLS coverage.
+#   - Weekly Monday 06:00 UTC → drift detection independent of PRs.
+#   - Manual dispatch → on-demand re-run after fixing a gap.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/scripts/audit_rls_coverage.py'
+      - '.github/workflows/audit-rls-coverage.yml'
+      - 'supabase/migrations/**'
+  schedule:
+    # 06:00 UTC = 03:00 BRT Monday morning, before business hours.
+    - cron: '0 6 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-rls-coverage-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit pg_policy coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install httpx
+        run: pip install --quiet httpx
+      - name: Run audit
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python backend/scripts/audit_rls_coverage.py
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rls-coverage-report
+          path: _reversa_sdd/rls-coverage-*.md
+          if-no-files-found: ignore
+          retention-days: 30

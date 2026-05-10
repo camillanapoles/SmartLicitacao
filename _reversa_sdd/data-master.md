@@ -148,6 +148,22 @@
 
 ## 5. RLS Policies
 
+### 5.1 RLS Coverage (RLS-AUDIT-001 / #969)
+
+Coverage empírica do schema `public` via `pg_tables` ⨝ `pg_policies` (export Management API):
+
+- **Última auditoria:** 2026-05-09 — `_reversa_sdd/rls-coverage-2026-05-09.md`
+- **Tables totais (`public`):** 60
+- **Compliant (RLS on + ≥1 policy):** 59 (98.3%)
+- **Documented exempt (`-- rls-exempt:`):** 0
+- **Gap:** 1 (`auth_attempts` — RLS on, 0 policies; service-role-only por intent, mas precisa policy explícita ou marker `-- rls-exempt:` para passar o gate)
+
+**Política formal:** ADR-RLS-MANDATORY-001 (`docs/adr/ADR-RLS-MANDATORY-001-policy.md`) — toda table em `public` deve ter RLS habilitado com ≥1 policy, ou carregar comentário `-- rls-exempt: <reason>` na migration.
+
+**Audit script:** `backend/scripts/audit_rls_coverage.py` (httpx + Management API; exit 1 em gap, 0 em coverage 100% ou exempt). CI gate: `.github/workflows/audit-rls-coverage.yml` (push to main + weekly Mon 06:00 UTC + manual dispatch).
+
+### 5.2 Policy patterns
+
 Todas tables com `user_id` têm RLS ativo:
 - SELECT: `user_id = auth.uid()`
 - INSERT: `user_id = auth.uid()` (defesa via service-role bypass + `.eq("user_id")` defense-in-depth)
@@ -194,7 +210,7 @@ Monitor: `cron_job_health` view + `get_cron_health()` RPC + ARQ hourly `cron_mon
 
 ## 9. Lacunas
 
-- 🔴 RLS policies não-documentadas exhaustively (precisa export `SELECT polname, polrelid::regclass FROM pg_policy`)
+- 🟢 RLS policies exportadas em `_reversa_sdd/rls-coverage-2026-05-09.md` (RLS-AUDIT-001 / #969); CI gate live; gap residual: `auth_attempts` precisa policy explícita ou `-- rls-exempt:` marker
 - 🟡 `service_role` sem statement_timeout (memory) — risco identificado mas não-fixed
 - 🔴 `psc_municipio_trgm` index criado mas planner não-pick com ORDER+LIMIT (memory) — query rewrite pendente
 - 🟡 Foreign keys: investigar CASCADE vs RESTRICT consistency (e.g., `pipeline_items.user_id` ON DELETE CASCADE?)
