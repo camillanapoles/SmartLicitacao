@@ -152,6 +152,11 @@ export function extractHowToSteps(answer: string): Array<{ name: string; text: s
   // Pattern 2 (fallback): `N. Title` numbered list lines.
   // We can't use stripMarkdown here because it strips leading `N. `; instead
   // we only remove inline bold/italic decorations and keep block structure.
+  //
+  // To avoid mixing two independent numbered lists (e.g. cost categories +
+  // procedure steps), we scope extraction in priority order:
+  //  a) Lines AFTER a "Passo a passo" section heading, if one exists.
+  //  b) Otherwise, the LAST contiguous numbered sequence in the answer.
   if (steps.length === 0) {
     const inlineStrip = (s: string) =>
       s
@@ -160,20 +165,58 @@ export function extractHowToSteps(answer: string): Array<{ name: string; text: s
         .replace(/`([^`]+)`/g, '$1')
         .trim();
 
-    const lines = answer.split('\n').map((l) => l.trim()).filter(Boolean);
-    for (const line of lines) {
-      const m = /^(\d+)\.\s+(.+)$/.exec(line);
-      if (m) {
-        const fullText = inlineStrip(m[2]);
-        // Bold-list pattern `1. **Title:** body` → split on first `:`.
-        const colonIdx = fullText.indexOf(':');
-        const name =
-          colonIdx > 0 && colonIdx < 80
-            ? fullText.slice(0, colonIdx).trim()
-            : fullText.length > 80
-              ? fullText.slice(0, 80) + '…'
-              : fullText;
-        steps.push({ name, text: fullText });
+    const lines = answer.split('\n').map((l) => l.trim());
+
+    // Locate "Passo a passo" anchor (e.g. "**Passo a passo:**" or "Passo a passo:").
+    const anchorIdx = lines.findIndex((l) => /passo\s+a\s+passo/i.test(l));
+
+    // Determine the slice of lines to collect numbered items from.
+    const candidateLines = anchorIdx >= 0 ? lines.slice(anchorIdx + 1) : lines;
+
+    if (anchorIdx >= 0) {
+      // Anchor found: collect all numbered lines in the post-anchor section.
+      for (const line of candidateLines) {
+        if (!line) continue;
+        const m = /^(\d+)\.\s+(.+)$/.exec(line);
+        if (m) {
+          const fullText = inlineStrip(m[2]);
+          const colonIdx = fullText.indexOf(':');
+          const name =
+            colonIdx > 0 && colonIdx < 80
+              ? fullText.slice(0, colonIdx).trim()
+              : fullText.length > 80
+                ? fullText.slice(0, 80) + '…'
+                : fullText;
+          steps.push({ name, text: fullText });
+        }
+      }
+    } else {
+      // No anchor: collect the LAST contiguous numbered sequence only,
+      // to avoid mixing two independent lists.
+      const groups: Array<Array<{ name: string; text: string }>> = [];
+      let current: Array<{ name: string; text: string }> = [];
+      for (const line of candidateLines) {
+        const m = /^(\d+)\.\s+(.+)$/.exec(line);
+        if (m) {
+          const fullText = inlineStrip(m[2]);
+          const colonIdx = fullText.indexOf(':');
+          const name =
+            colonIdx > 0 && colonIdx < 80
+              ? fullText.slice(0, colonIdx).trim()
+              : fullText.length > 80
+                ? fullText.slice(0, 80) + '…'
+                : fullText;
+          current.push({ name, text: fullText });
+        } else if (line && current.length > 0) {
+          // Non-blank, non-numbered line breaks the sequence.
+          groups.push(current);
+          current = [];
+        }
+      }
+      if (current.length > 0) groups.push(current);
+      // Use the last group (most likely the procedure steps).
+      if (groups.length > 0) {
+        steps.push(...groups[groups.length - 1]);
       }
     }
   }

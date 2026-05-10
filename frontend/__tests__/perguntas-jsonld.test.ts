@@ -86,7 +86,7 @@ describe('buildHowToLd', () => {
     expect(ld.inLanguage).toBe('pt-BR');
     expect(ld.mainEntityOfPage['@id']).toContain('/perguntas/como-calcular-preco-proposta-licitacao');
     expect(Array.isArray(ld.step)).toBe(true);
-    expect(ld.step.length).toBeGreaterThanOrEqual(3);
+    expect(ld.step.length).toBe(8);
     ld.step.forEach((step, i) => {
       expect(step['@type']).toBe('HowToStep');
       expect(step.position).toBe(i + 1);
@@ -135,10 +135,11 @@ describe('HowTo conditional emission (sample slugs)', () => {
     expect(question).toBeDefined();
     expect(isHowToEligible(slug)).toBe(true);
     const steps = extractHowToSteps(question!.answer);
-    // This particular question is procedural and has a "Passo a passo:" block,
-    // so we expect ≥3 steps to be extractable.
+    // This particular question is procedural and has a "Passo a passo:" block
+    // with exactly 8 procedure steps — extraction must be scoped to that block
+    // only (not mixing the 7-item "Estrutura básica" cost-categories list).
     expect(steps).not.toBeNull();
-    expect(steps!.length).toBeGreaterThanOrEqual(3);
+    expect(steps!.length).toBe(8);
   });
 
   it('does NOT emit HowTo for definitional "qualificacao-*" slug', () => {
