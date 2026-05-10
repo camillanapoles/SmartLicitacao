@@ -114,6 +114,12 @@ export default function BlogArticleLayout({
       '@type': 'WebPage',
       '@id': canonicalUrl,
     },
+    ...(article.pillarSlug && {
+      isPartOf: {
+        '@type': 'Article',
+        '@id': `https://smartlic.tech/blog/${article.pillarSlug}`,
+      },
+    }),
     wordCount: article.wordCount,
     articleSection: article.category,
     inLanguage: 'pt-BR',

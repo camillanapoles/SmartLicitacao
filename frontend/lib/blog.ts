@@ -23,6 +23,12 @@ export interface BlogArticleMeta {
   relatedSlugs: string[];
   sources?: string[];
   authorSlug?: string;
+  /**
+   * Pillar slug for topic-cluster spokes (issue #992). When set, the article
+   * is rendered as `Article.isPartOf` referencing the pillar — strengthens
+   * topical authority signal.
+   */
+  pillarSlug?: string;
 }
 
 /**
@@ -2203,6 +2209,256 @@ export const BLOG_ARTICLES: BlogArticleMeta[] = [
       'CGU — Controladoria-Geral da União',
     ],
     authorSlug: 'tiago',
+  },
+
+  // ──────────────────────────────────────────────
+  // SEO-P1-005 (#992) — Cluster PNCP — 8 spokes
+  // Pillar: pncp-guia-completo-empresas
+  // ──────────────────────────────────────────────
+
+  // PNCP-SPOKE-01
+  {
+    slug: 'pncp-modalidade-pregao-eletronico',
+    title: 'PNCP e Pregão Eletrônico: como encontrar e participar',
+    description:
+      'Guia prático: como filtrar pregões eletrônicos no PNCP, ler o edital, montar a proposta e enviar lance dentro da Lei 14.133/2021.',
+    category: 'Guias',
+    tags: ['PNCP', 'pregão eletrônico', 'Lei 14.133', 'modalidade'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1100),
+    wordCount: 1100,
+    keywords: [
+      'pncp pregão eletrônico',
+      'pncp licitações',
+      'pregão eletrônico Lei 14.133',
+      'como participar pregão pncp',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'pncp-timeline-publicacao-edital',
+      'pncp-erros-comuns-empresas-iniciantes',
+    ],
+    sources: [
+      'Lei 14.133/2021 — Art. 28-29 (modalidades)',
+      'PNCP — Portal Nacional de Contratações Públicas',
+      'TCU — Acórdão 2.622/2023 (pregão eletrônico)',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
+  },
+
+  // PNCP-SPOKE-02
+  {
+    slug: 'pncp-timeline-publicacao-edital',
+    title: 'PNCP: prazos e timeline de publicação do edital',
+    description:
+      'Quando um edital aparece no PNCP, qual o prazo até a sessão pública e como antecipar leitura para ganhar vantagem competitiva.',
+    category: 'Guias',
+    tags: ['PNCP', 'prazos', 'timeline', 'publicação edital'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1050),
+    wordCount: 1050,
+    keywords: [
+      'prazo publicação edital pncp',
+      'pncp timeline',
+      'pncp prazos',
+      'quando edital aparece pncp',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'pncp-modalidade-pregao-eletronico',
+      'pncp-erros-comuns-empresas-iniciantes',
+    ],
+    sources: [
+      'Lei 14.133/2021 — Art. 54-55 (prazos mínimos)',
+      'PNCP — Portal Nacional de Contratações Públicas',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
+  },
+
+  // PNCP-SPOKE-03
+  {
+    slug: 'pncp-vs-comprasgov-diferencas',
+    title: 'PNCP vs ComprasGov: diferenças, sobreposição e qual usar',
+    description:
+      'PNCP centraliza toda compra pública desde 2024; ComprasGov atende apenas o Executivo Federal. Entenda a diferença prática para empresas B2G.',
+    category: 'Guias',
+    tags: ['PNCP', 'ComprasGov', 'comparação', 'portais'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1080),
+    wordCount: 1080,
+    keywords: [
+      'pncp vs comprasgov',
+      'diferença pncp comprasgov',
+      'pncp ou comprasgov',
+      'portal compras governo',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'pncp-api-integracao-empresas',
+      'pncp-modalidade-pregao-eletronico',
+    ],
+    sources: [
+      'Lei 14.133/2021 — Art. 174-176 (PNCP)',
+      'Decreto 10.024/2019 — ComprasGov / Pregão Eletrônico',
+      'PNCP — Portal Nacional de Contratações Públicas',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
+  },
+
+  // PNCP-SPOKE-04
+  {
+    slug: 'pncp-consulta-contratos-passo-a-passo',
+    title: 'PNCP: consulta de contratos públicos passo a passo',
+    description:
+      'Como buscar contratos por CNPJ, órgão ou objeto no PNCP, exportar dados e usar o histórico para inteligência competitiva B2G.',
+    category: 'Guias',
+    tags: ['PNCP', 'contratos', 'consulta', 'inteligência competitiva'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1100),
+    wordCount: 1100,
+    keywords: [
+      'pncp consulta contratos',
+      'consultar contrato pncp',
+      'pncp histórico contratos',
+      'pncp por cnpj',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'como-consultar-contratos-publicos-pncp',
+      'pncp-api-integracao-empresas',
+    ],
+    sources: [
+      'Lei 14.133/2021 — Art. 87, 174 (publicação contratos)',
+      'PNCP — Portal Nacional de Contratações Públicas',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
+  },
+
+  // PNCP-SPOKE-05
+  {
+    slug: 'pncp-dispensa-licitacao-quando-aplicar',
+    title: 'PNCP e Dispensa de Licitação (Lei 14.133): quando se aplica',
+    description:
+      'Hipóteses de dispensa do art. 75, valores limite atualizados e como localizar dispensas publicadas no PNCP.',
+    category: 'Guias',
+    tags: ['PNCP', 'dispensa de licitação', 'Lei 14.133', 'art. 75'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1080),
+    wordCount: 1080,
+    keywords: [
+      'pncp dispensa licitação',
+      'dispensa Lei 14.133',
+      'art 75 dispensa',
+      'dispensa eletrônica pncp',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'pncp-modalidade-pregao-eletronico',
+      'pncp-erros-comuns-empresas-iniciantes',
+    ],
+    sources: [
+      'Lei 14.133/2021 — Art. 75 (dispensa)',
+      'TCU — Acórdão 1.927/2023 (dispensa eletrônica)',
+      'PNCP — Portal Nacional de Contratações Públicas',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
+  },
+
+  // PNCP-SPOKE-06
+  {
+    slug: 'pncp-registro-precos-como-participar',
+    title: 'PNCP e Sistema de Registro de Preços: como participar',
+    description:
+      'O que é Ata de Registro de Preços, como achar SRPs no PNCP e por que esta modalidade é uma das mais previsíveis para empresas B2G.',
+    category: 'Guias',
+    tags: ['PNCP', 'registro de preços', 'ata SRP', 'Lei 14.133'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1100),
+    wordCount: 1100,
+    keywords: [
+      'pncp registro de preços',
+      'ata registro preços pncp',
+      'srp pncp',
+      'sistema registro preços Lei 14.133',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'ata-registro-precos-como-escolher',
+      'ata-registro-precos-estrategia-licitacao',
+    ],
+    sources: [
+      'Lei 14.133/2021 — Art. 82-86 (SRP)',
+      'Decreto 11.462/2023 — SRP federal',
+      'PNCP — Portal Nacional de Contratações Públicas',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
+  },
+
+  // PNCP-SPOKE-07
+  {
+    slug: 'pncp-api-integracao-empresas',
+    title: 'API do PNCP: como integrar e automatizar busca de editais',
+    description:
+      'Endpoints públicos do PNCP, paginação, rate limit e como uma empresa B2G constrói um pipeline de monitoramento automático.',
+    category: 'Guias',
+    tags: ['PNCP', 'API', 'integração', 'automação'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1150),
+    wordCount: 1150,
+    keywords: [
+      'pncp api',
+      'pncp api editais',
+      'integrar pncp',
+      'automatizar busca editais',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'pncp-vs-comprasgov-diferencas',
+      'pncp-consulta-contratos-passo-a-passo',
+    ],
+    sources: [
+      'PNCP — API de Consulta v1 (pncp.gov.br/api/consulta)',
+      'Lei 14.133/2021 — Art. 174-176',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
+  },
+
+  // PNCP-SPOKE-08
+  {
+    slug: 'pncp-erros-comuns-empresas-iniciantes',
+    title: 'PNCP: 7 erros que empresas iniciantes cometem (e como evitar)',
+    description:
+      'Filtros mal configurados, prazos perdidos e leitura superficial do edital — os tropeços mais frequentes de quem entra agora no PNCP.',
+    category: 'Guias',
+    tags: ['PNCP', 'iniciantes', 'erros comuns', 'B2G'],
+    publishDate: '2026-05-10',
+    readingTime: calculateReadingTime(1050),
+    wordCount: 1050,
+    keywords: [
+      'pncp erros',
+      'erros licitação iniciantes',
+      'pncp empresa iniciante',
+      'como começar pncp',
+    ],
+    relatedSlugs: [
+      'pncp-guia-completo-empresas',
+      'empresa-iniciante-ganhar-contratos-governo',
+      'pncp-timeline-publicacao-edital',
+    ],
+    sources: [
+      'Lei 14.133/2021 — Lei Geral de Licitações',
+      'PNCP — Portal Nacional de Contratações Públicas',
+      'TCU — Manual de Boas Práticas em Licitações',
+    ],
+    authorSlug: 'tiago',
+    pillarSlug: 'pncp-guia-completo-empresas',
   },
 ];
 
