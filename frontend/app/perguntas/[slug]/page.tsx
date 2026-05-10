@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { QUESTIONS, getQuestionBySlug, getAllQuestionSlugs, CATEGORY_META, getQuestionsByCategory } from '@/lib/questions';
@@ -49,7 +49,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const question = getQuestionBySlug(slug);
-  if (!question) return {};
+  if (!question) return { robots: { index: false, follow: true } };
 
   return {
     title: `${question.title}`,
@@ -77,7 +77,20 @@ export default async function PerguntaPage({
 }) {
   const { slug } = await params;
   const question = getQuestionBySlug(slug);
-  if (!question) notFound();
+  if (!question) {
+    return (
+      <>
+        <LandingNavbar />
+        <EmptyStateSEO
+          title="Pergunta não encontrada"
+          description="Esta pergunta pode ter sido removida ou o endereço está incorreto. Consulte todas as perguntas sobre licitações públicas."
+          ctaHref="/perguntas"
+          ctaLabel="Ver todas as perguntas"
+        />
+        <Footer />
+      </>
+    );
+  }
 
   // Related glossary terms
   const relatedTermObjects = question.relatedTerms

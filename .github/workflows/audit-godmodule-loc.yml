@@ -164,8 +164,12 @@ jobs:
 
           FAILURES_JSON=$(printf '%s\n' "${FAILURES[@]+"${FAILURES[@]}"}" | jq -Rs 'split("\n") | map(select(length > 0))')
           WARNINGS_JSON=$(printf '%s\n' "${WARNINGS[@]+"${WARNINGS[@]}"}" | jq -Rs 'split("\n") | map(select(length > 0))')
-          echo "failures_json=${FAILURES_JSON}" >> "$GITHUB_OUTPUT"
-          echo "warnings_json=${WARNINGS_JSON}" >> "$GITHUB_OUTPUT"
+          echo "failures_json<<EOF" >> "$GITHUB_OUTPUT"
+          echo "${FAILURES_JSON}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "warnings_json<<EOF" >> "$GITHUB_OUTPUT"
+          echo "${WARNINGS_JSON}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Post / update PR comment
         if: github.event_name == 'pull_request'
