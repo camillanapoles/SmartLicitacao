@@ -54,15 +54,36 @@ def test_check_user_roles_no_time_sleep_import():
 async def test_check_user_roles_uses_asyncio_sleep_on_retry():
     """AC15: _check_user_roles uses asyncio.sleep for retry delays.
 
-    BTS-012 (#971 AC5) RCA: previous version provided only 2 ``side_effect``
-    entries, but the retry path runs ``2 attempts x 2 fallback queries`` (the
-    ``is_admin`` column fallback at authorization.py:78-85). When side_effect
-    exhausts mid-retry, MagicMock raises ``StopIteration`` inside
-    ``asyncio.to_thread``, which asyncio cannot propagate into a Future
-    (TypeError "StopIteration interacts badly with generators"). The Future
-    never resolves and the test hangs — historically misdiagnosed as
-    "0 retries called". Provide 4 exceptions to cover both attempts cleanly.
+    BTS-012 (#971 AC5) RCA — TWO compounding bugs in the original test:
+
+    1) **Mock side_effect exhaustion** — the retry path runs
+       ``2 attempts × 2 fallback queries`` (the ``is_admin`` column fallback
+       at authorization.py:78-85). Providing only 2 side_effects exhausts the
+       iterator mid-retry, raising ``StopIteration`` inside
+       ``asyncio.to_thread``, which asyncio cannot propagate into a Future
+       ("StopIteration interacts badly with generators"). Fix: 4 exceptions.
+
+    2) **Read circuit-breaker pollution from sibling tests** — ``read_cb`` is
+       a module-level singleton in ``supabase_client``. Earlier tests in the
+       suite (e.g. retry / pool-exhaustion suites) leave a non-zero
+       ``_consecutive_failures`` streak. This test then adds 4 more failures,
+       crossing the streak threshold (``_CB_READ_STREAK``) and tripping the
+       breaker mid-flight. ``sb_execute`` then raises
+       ``CircuitBreakerOpenError``, which ``_check_user_roles`` short-circuits
+       at line 103-109 → returns ``(False, False)`` **without** reaching
+       ``await asyncio.sleep(0.3)`` → assertion fails with
+       "Expected 'sleep' to be called once. Called 0 times."
+
+       ``read_cb.reset()`` does NOT zero ``_consecutive_failures`` (only
+       state/window/trial counters). We force-clear it here defensively so
+       the test is robust against polluters. A separate story will fix
+       ``SupabaseCircuitBreaker.reset()`` itself to also clear the streak.
     """
+    # Defensive isolation against sibling-test CB pollution (see RCA #2).
+    from supabase_client import read_cb
+    read_cb.reset()
+    read_cb._consecutive_failures = 0  # reset() does not clear this — see RCA
+
     with patch("supabase_client.get_supabase") as mock_sb:
         # Force retry path: 2 attempts x 2 fallback queries each = 4 failures
         mock_sb.return_value.table.return_value.select.return_value.eq.return_value.single.return_value.execute.side_effect = [
