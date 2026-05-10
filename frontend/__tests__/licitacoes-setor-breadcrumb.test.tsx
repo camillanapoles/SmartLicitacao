@@ -10,6 +10,15 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 
+// RecentEditaisBlock and TopSuppliersBlock call fetch() in useEffect.
+// jsdom does not ship with fetch — provide a no-op mock so the module
+// loads without ReferenceError. Individual tests that care about data
+// can override this mock locally.
+global.fetch = jest.fn(() =>
+  Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
+) as jest.Mock;
+
+
 // Mock next/link
 jest.mock('next/link', () => {
   return ({ children, href, ...props }: { children: React.ReactNode; href: string; [k: string]: unknown }) => (

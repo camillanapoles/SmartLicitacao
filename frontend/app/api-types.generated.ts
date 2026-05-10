@@ -4401,6 +4401,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/pseo/recent-editais": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 5 últimos editais abertos no setor (público)
+         * @description Most recent open editais for sector+UF.
+         *
+         *     Returns orgao, objeto, valor_estimado, data_limite, link_interno.
+         *     link_interno = /licitacoes/{setor}?query={orgao}
+         *     Cache: 6h InMemory.
+         */
+        get: operations["get_recent_editais_v1_pseo_recent_editais_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pseo/top-suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Top 5 fornecedores por volume de contratos no setor (público)
+         * @description Top suppliers by contract volume in sector, last 12 months.
+         *
+         *     Returns cnpj, razao_social, contratos_count, valor_total.
+         *     If total contracts < 10, returns empty list (avoid weak social proof).
+         *     Cache: 6h InMemory.
+         */
+        get: operations["get_top_suppliers_v1_pseo_top_suppliers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/referral/code": {
         parameters: {
             query?: never;
@@ -10179,6 +10227,36 @@ export interface components {
             /** Valor */
             valor?: number | null;
         };
+        /** RecentEditaisResponse */
+        RecentEditaisResponse: {
+            /** Items */
+            items: components["schemas"]["RecentEditalItem"][];
+            /** Last Updated */
+            last_updated: string;
+            /** Municipio */
+            municipio?: string | null;
+            /** Setor */
+            setor: string;
+            /** Total */
+            total: number;
+            /** Uf */
+            uf?: string | null;
+        };
+        /** RecentEditalItem */
+        RecentEditalItem: {
+            /** Data Limite */
+            data_limite?: string | null;
+            /** Data Publicacao */
+            data_publicacao?: string | null;
+            /** Link Interno */
+            link_interno: string;
+            /** Objeto */
+            objeto: string;
+            /** Orgao */
+            orgao: string;
+            /** Valor Estimado */
+            valor_estimado?: number | null;
+        };
         /**
          * Recomendacao
          * @description Actionable recommendation for a specific procurement opportunity.
@@ -11625,6 +11703,32 @@ export interface components {
             title: string;
             /** Value */
             value: number;
+        };
+        /** TopSupplierItem */
+        TopSupplierItem: {
+            /** Cnpj */
+            cnpj: string;
+            /** Contratos Count */
+            contratos_count: number;
+            /** Razao Social */
+            razao_social: string;
+            /** Valor Total */
+            valor_total: number;
+        };
+        /** TopSuppliersResponse */
+        TopSuppliersResponse: {
+            /** Items */
+            items: components["schemas"]["TopSupplierItem"][];
+            /** Last Updated */
+            last_updated: string;
+            /** Municipio */
+            municipio?: string | null;
+            /** Setor */
+            setor: string;
+            /** Total Contracts In Scope */
+            total_contracts_in_scope: number;
+            /** Uf */
+            uf?: string | null;
         };
         /**
          * TourEventRequest
@@ -17942,6 +18046,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PerfilContextoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_recent_editais_v1_pseo_recent_editais_get: {
+        parameters: {
+            query: {
+                setor: string;
+                uf?: string | null;
+                municipio?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentEditaisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_top_suppliers_v1_pseo_top_suppliers_get: {
+        parameters: {
+            query: {
+                setor: string;
+                uf?: string | null;
+                municipio?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopSuppliersResponse"];
                 };
             };
             /** @description Validation Error */

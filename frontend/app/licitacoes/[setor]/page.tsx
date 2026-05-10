@@ -19,6 +19,8 @@ import StickyTrialCTA from "@/app/components/StickyTrialCTA";
 import { buildDatasetJsonLd } from "./_jsonld";
 import { FoundersRibbon } from "@/components/banners/FoundersRibbon";
 import { AdvisoryDisclaimer } from "@/components/legal/AdvisoryDisclaimer";
+import { RecentEditaisBlock } from "@/app/components/programmatic/RecentEditaisBlock";
+import { TopSuppliersBlock } from "@/app/components/programmatic/TopSuppliersBlock";
 
 /**
  * STORY-324 AC5: SSG with ISR 6h for sector landing pages.
@@ -210,6 +212,14 @@ export default async function SectorPage({
         </section>
       )}
 
+      {/* #1007: 5 últimos editais abertos — social proof DataLake */}
+      <RecentEditaisBlock
+        setor={setor}
+        setorLabel={sector.name}
+        ufLabel="Brasil"
+        totalOpen={stats?.total_open}
+      />
+
       {/* AC6: CTA (inline — catches users who don't scroll) */}
       <section className="bg-brand-blue/5 dark:bg-brand-blue/10 py-12 px-4">
         <div className="max-w-3xl mx-auto text-center">
@@ -231,6 +241,13 @@ export default async function SectorPage({
           </p>
         </div>
       </section>
+
+      {/* #1007: Top 5 fornecedores — social proof DataLake */}
+      <TopSuppliersBlock
+        setor={setor}
+        setorLabel={sector.name}
+        ufLabel="Brasil"
+      />
 
       {/* AC6: Como Funciona */}
       <section className="max-w-5xl mx-auto py-16 px-4">
