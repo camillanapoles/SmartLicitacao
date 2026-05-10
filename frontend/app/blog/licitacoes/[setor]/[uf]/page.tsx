@@ -25,6 +25,7 @@ import {
 } from '@/lib/contracts-fallback';
 import { getCitiesByUf } from '@/lib/cities';
 import { getFreshnessLabel } from '@/lib/seo';
+import { isNoindexed } from '@/lib/seo/noindex';
 
 /**
  * MKT-003 AC1: Sector × UF programmatic page.
@@ -137,6 +138,11 @@ export async function generateMetadata({
   // AC5: noindex apenas quando bids === 0 E contracts === 0
   // AC7: canonical auto-referencial em TODOS os branches
   const canonicalUrl = `https://smartlic.tech/blog/licitacoes/${setor}/${uf}`;
+  // SEO-P0-003 (#989): also noindex when uniqueness audit flagged this slug.
+  const flaggedDuplicate = isNoindexed(
+    'blog-licitacoes-setor-uf',
+    `/blog/licitacoes/${setor}/${uf}`,
+  );
   if (total === 0 && totalContracts === 0) {
     return {
       title: `Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} | SmartLic`,
@@ -155,7 +161,7 @@ export async function generateMetadata({
   return {
     title: `${total > 0 ? `${total} ` : ''}Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}${modalidadeSuffix} — ${getMonthYear()}`,
     description: `Encontre ${total > 0 ? total : ''} licitações de ${sector.name.toLowerCase()}${modalidadeInfo ? ` via ${modalidadeInfo.name}` : ''} ${getUfPrep(ufUpper)} ${ufName}. Dados ao vivo de PNCP, PCP e ComprasGov${contractsClause}. Filtre por valor, modalidade e prazo. Teste grátis.`,
-    robots: { index: true },
+    robots: { index: !flaggedDuplicate },
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: `${total > 0 ? `${total} ` : ''}Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}${modalidadeSuffix} — ${getMonthYear()} | SmartLic`,

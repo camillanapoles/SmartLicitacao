@@ -6,6 +6,7 @@ import { LeadCapture } from '@/components/LeadCapture';
 import TrackingLink from '@/components/TrackingLink';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
+import { isNoindexed } from '@/lib/seo/noindex';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
@@ -103,6 +104,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title: `Contratos de ${stats.orgao_nome}`,
       description: `${stats.total_contracts} contratos | ${totalFormatado}`,
+    },
+    // SEO-P0-003 (#989): gate on uniqueness audit (see lib/seo/noindex.ts).
+    robots: {
+      index: !isNoindexed('contratos-orgao', `/contratos/orgao/${cnpj}`),
+      follow: true,
     },
   };
 }

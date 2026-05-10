@@ -5,6 +5,7 @@ import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import FornecedorPseoCTA from './FornecedorPseoCTA';
+import { isNoindexed } from '@/lib/seo/noindex';
 
 // Sprint 3 Parte 13: paginas de perfil de fornecedor por CNPJ
 // ISR 24h — dados do PNCP atualizados diariamente
@@ -111,7 +112,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'website',
       locale: 'pt_BR',
     },
-    robots: { index: true, follow: true },
+    // SEO-P0-003 (#989): gate on uniqueness audit (see lib/seo/noindex.ts).
+    robots: {
+      index: !isNoindexed('fornecedores-cnpj', `/fornecedores/${cnpj}`),
+      follow: true,
+    },
   };
 }
 
