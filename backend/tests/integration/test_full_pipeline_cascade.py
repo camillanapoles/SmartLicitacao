@@ -250,11 +250,17 @@ def test_llm_timeout_returns_fallback_resumo(
         new_callable=AsyncMock,
         return_value=pncp_success,
     ), patch(
-        # Patch the direct import reference in pipeline.stages.generate (where
-        # stage_generate actually calls gerar_resumo post-DEBT-110 refactor).
-        # Patching "llm.gerar_resumo" only affects the llm module namespace,
-        # not the submodule's own reference from `from llm import gerar_resumo`.
-        "pipeline.stages.generate.gerar_resumo",
+        # Issue #966: Patch the actual call site in stage_generate. PR #160
+        # introduced `get_or_generate_resumo_cached` (Redis-backed wrapper) as
+        # the inline LLM entry point — `gerar_resumo` is now only called
+        # *inside* that wrapper, so patching it here was a dead target and
+        # the real OpenAI path executed (returning llm_source='ai').
+        # Patching the cached wrapper with an AsyncMock that raises ensures
+        # the timeout reaches the `except Exception` branch in generate.py
+        # (sets ctx.llm_source = "fallback"). Redis is not involved because
+        # the wrapper itself is replaced — no cache layer to absorb the error.
+        "pipeline.stages.generate.get_or_generate_resumo_cached",
+        new_callable=AsyncMock,
         side_effect=TimeoutError("OpenAI request timed out after 30s"),
     ):
         payload = make_busca_request(ufs=_DEFAULT_UFS)
