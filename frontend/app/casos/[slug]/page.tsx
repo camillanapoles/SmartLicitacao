@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getAllCaseSlugs, getCaseBySlug } from '@/lib/cases';
 import BlogInlineCTA from '@/app/blog/components/BlogInlineCTA';
+import BreadcrumbNav from '@/components/seo/BreadcrumbNav';
 
 const baseUrl = process.env.NEXT_PUBLIC_CANONICAL_URL || 'https://smartlic.tech';
 
@@ -98,15 +99,14 @@ export default async function CaseDetailPage({
     reviewBody: c.description,
   };
 
-  const breadcrumbSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: baseUrl },
-      { '@type': 'ListItem', position: 2, name: 'Casos de Sucesso', item: `${baseUrl}/casos` },
-      { '@type': 'ListItem', position: 3, name: c.sector, item: `${baseUrl}/casos/${c.slug}` },
-    ],
-  };
+  // SEO-P1-007 (#993): Visual breadcrumb + matching JSON-LD via shared BreadcrumbNav.
+  // Replaces bespoke inline <nav> + duplicate breadcrumbSchema script with a single
+  // source of truth (BreadcrumbNav emits the BreadcrumbList JSON-LD inline).
+  const breadcrumbItems = [
+    { label: 'Início', href: '/' },
+    { label: 'Casos de Sucesso', href: '/casos' },
+    { label: c.sector },
+  ];
 
   return (
     <>
@@ -118,26 +118,10 @@ export default async function CaseDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewSchema) }}
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="mb-8">
-          <ol className="flex items-center gap-2 text-sm text-ink-secondary">
-            <li>
-              <Link href="/" className="hover:text-brand-blue transition-colors">Home</Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li>
-              <Link href="/casos" className="hover:text-brand-blue transition-colors">Casos</Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li className="text-ink font-medium truncate max-w-[200px]">{c.sector}</li>
-          </ol>
-        </nav>
+        {/* SEO-P1-007 (#993): visual breadcrumb + JSON-LD from a single source */}
+        <BreadcrumbNav items={breadcrumbItems} className="mb-8" />
 
         {/* Header */}
         <header className="mb-10">

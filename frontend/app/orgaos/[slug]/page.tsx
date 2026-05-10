@@ -161,19 +161,20 @@ export default async function OrgaoPerfilPage({
     },
   };
 
-  const breadcrumbSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Início', item: 'https://smartlic.tech' },
-      { '@type': 'ListItem', position: 2, name: 'Órgãos Compradores', item: 'https://smartlic.tech/orgaos' },
-      { '@type': 'ListItem', position: 3, name: stats.nome, item: `https://smartlic.tech/orgaos/${slug}` },
-    ],
-  };
+  // SEO-P1-007 (#993): Visual breadcrumb derived from same trail as JSON-LD.
+  // ContentPageLayout's BreadcrumbNav emits the BreadcrumbList JSON-LD when
+  // breadcrumbItems is provided (suppressSchema=false), so we no longer need
+  // an inline breadcrumbSchema script — single source of truth.
+  const breadcrumbItems = [
+    { label: 'Início', href: '/' },
+    { label: 'Órgãos Compradores', href: '/orgaos' },
+    { label: stats.nome },
+  ];
 
   return (
     <ContentPageLayout
       breadcrumbLabel={stats.nome}
+      breadcrumbItems={breadcrumbItems}
       relatedPages={[
         { href: '/orgaos', title: 'Órgãos Compradores' },
         { href: '/cnpj', title: 'Consulta CNPJ' },
@@ -188,10 +189,6 @@ export default async function OrgaoPerfilPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
       <OrgaoPerfilClient stats={stats} />

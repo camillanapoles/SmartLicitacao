@@ -148,19 +148,20 @@ export default async function CnpjPerfilPage({
     },
   };
 
-  const breadcrumbSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Início', item: 'https://smartlic.tech' },
-      { '@type': 'ListItem', position: 2, name: 'Consulta CNPJ', item: 'https://smartlic.tech/cnpj' },
-      { '@type': 'ListItem', position: 3, name: empresa.razao_social, item: `https://smartlic.tech/cnpj/${cnpj}` },
-    ],
-  };
+  // SEO-P1-007 (#993): Visual breadcrumb derived from same trail as JSON-LD.
+  // ContentPageLayout's BreadcrumbNav emits the BreadcrumbList JSON-LD when
+  // breadcrumbItems is provided (suppressSchema=false), so we no longer need
+  // an inline breadcrumbSchema script — single source of truth.
+  const breadcrumbItems = [
+    { label: 'Início', href: '/' },
+    { label: 'Consulta CNPJ', href: '/cnpj' },
+    { label: empresa.razao_social },
+  ];
 
   return (
     <ContentPageLayout
       breadcrumbLabel={empresa.razao_social}
+      breadcrumbItems={breadcrumbItems}
       relatedPages={[
         { href: `/fornecedores/${cnpj}`, title: `${empresa.razao_social} — Histórico de Fornecedor` },
         { href: '/cnpj', title: 'Nova consulta CNPJ' },
@@ -176,10 +177,6 @@ export default async function CnpjPerfilPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
       <CnpjPerfilClient perfil={perfil} />
