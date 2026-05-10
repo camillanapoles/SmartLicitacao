@@ -7,6 +7,11 @@ import FundadoresForm from './components/FundadoresForm';
 import FundadoresFAQ from './components/FundadoresFAQ';
 import FundadoresFeatures from './components/FundadoresFeatures';
 import FundadoresCountdown, { FoundingAvailabilitySnapshot } from './components/FundadoresCountdown';
+import FundadoresFounderLetter from './components/FundadoresFounderLetter';
+import FundadoresComparisonTable from './components/FundadoresComparisonTable';
+import FundadoresDoNotBuy from './components/FundadoresDoNotBuy';
+import FundadoresGuarantee from './components/FundadoresGuarantee';
+import FundadoresLegalFooter from './components/FundadoresLegalFooter';
 
 function trackEvent(name: string, props?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
@@ -21,6 +26,17 @@ function trackEvent(name: string, props?: Record<string, unknown>) {
 
 const REFRESH_INTERVAL_MS = 60_000;
 
+const UNAVAILABLE_SNAPSHOT: FoundingAvailabilitySnapshot = {
+  available: false,
+  seats_total: 50,
+  seats_remaining: 0,
+  seats_taken: 50,
+  deadline_at: null,
+  paused: false,
+  reason: 'unavailable',
+  coupon_code: 'FOUNDING_LIFETIME',
+  discount_pct: 0,
+};
 
 // TODO: remove hardcoded fallback after #782 merges (price_brl_cents in API response)
 function formatPrice(priceBrlCents: number | undefined): string {
@@ -55,37 +71,13 @@ export default function FundadoresClient() {
       try {
         const res = await fetch('/api/founding/availability', { cache: 'no-store' });
         if (!res.ok) {
-          if (!cancelled) {
-            setSnapshot({
-              available: false,
-              seats_total: 50,
-              seats_remaining: 0,
-              seats_taken: 50,
-              deadline_at: null,
-              paused: false,
-              reason: 'unavailable',
-              coupon_code: 'FOUNDING_LIFETIME',
-              discount_pct: 0,
-            });
-          }
+          if (!cancelled) setSnapshot(UNAVAILABLE_SNAPSHOT);
           return;
         }
         const data = (await res.json()) as FoundingAvailabilitySnapshot;
         if (!cancelled) setSnapshot(data);
       } catch {
-        if (!cancelled) {
-          setSnapshot({
-            available: false,
-            seats_total: 50,
-            seats_remaining: 0,
-            seats_taken: 50,
-            deadline_at: null,
-            paused: false,
-            reason: 'unavailable',
-            coupon_code: 'FOUNDING_LIFETIME',
-            discount_pct: 0,
-          });
-        }
+        if (!cancelled) setSnapshot(UNAVAILABLE_SNAPSHOT);
       }
     }
 
@@ -98,20 +90,24 @@ export default function FundadoresClient() {
   }, []);
 
   const price = formatPrice(snapshot?.price_brl_cents);
+  const seatsRemaining = snapshot?.seats_remaining ?? null;
+  const seatsRemainingText = seatsRemaining !== null ? `${seatsRemaining}` : '50';
 
   return (
     <main className="min-h-screen bg-white">
-      {/* Hero */}
+      {/* Hero — founder pact framing */}
       <section className="bg-slate-900 text-white">
         <div className="mx-auto max-w-3xl px-4 py-16">
           <p className="text-sm uppercase tracking-widest text-blue-400 font-semibold mb-3">
-            Plano Fundadores — encerra 30/06/2026
+            Plano Fundadores · 50 vagas · Encerra 30/06/2026
           </p>
           <h1 className="text-3xl sm:text-5xl font-bold leading-tight mb-4">
-            Pare de perder licitações por falta de informação.
+            Pague {price} uma vez. Use o SmartLic pra sempre.
           </h1>
           <p className="text-lg sm:text-xl text-slate-300 mb-8">
-            IA que encontra e classifica editais do seu setor — R$997 uma única vez, sem mensalidade, para sempre.
+            50 empresas. {price} pagamento único. Acesso vitalício a tudo que existe e tudo
+            que vier. Sem mensalidade. Encerra 30 de junho de 2026 — ou quando as 50 vagas
+            acabarem (faltam {seatsRemainingText}).
           </p>
 
           <div className="mb-8">
@@ -119,101 +115,53 @@ export default function FundadoresClient() {
           </div>
 
           <div className="rounded-xl border border-blue-500/30 bg-blue-950/40 p-6">
-            <p className="text-2xl font-bold text-white mb-1">{price} <span className="text-base font-normal text-slate-400">pagamento único</span></p>
-            <p className="text-slate-300 text-sm mb-4">Sem mensalidade. Sem renovação. Acesso permanente. Encerra 30/06/2026.</p>
+            <p className="text-2xl font-bold text-white mb-1">
+              {price} <span className="text-base font-normal text-slate-400">pagamento único</span>
+            </p>
+            <p className="text-slate-300 text-sm mb-4">
+              Pagamento único no Pix ou cartão. 60 dias de garantia incondicional.
+            </p>
             <FundadoresForm availability={snapshot} price={price} />
+            <p className="mt-3 text-xs text-slate-400">
+              Prefere testar antes?{' '}
+              <a href="/planos" className="text-blue-300 underline hover:text-blue-200">
+                Comece com 14 dias grátis →
+              </a>
+            </p>
           </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-3xl px-4 py-12">
-        {/* Problema */}
-        <section aria-labelledby="problema-heading" className="mb-16">
-          <h2 id="problema-heading" className="text-2xl font-semibold text-slate-900 mb-4">
-            Por que empresas B2G perdem licitações
-          </h2>
-          <div className="prose prose-slate max-w-none">
-            <p>
-              Editais relevantes para o seu setor são publicados todos os dias — em portais
-              diferentes, com formatação inconsistente, prazos curtos. Sua equipe gasta horas
-              vasculhando PNCP, ComprasGov e portais estaduais antes de saber se vale a pena
-              participar.
-            </p>
-            <p className="mt-4">
-              <strong>Enquanto você está pesquisando, o concorrente está elaborando a proposta.</strong>{' '}
-              O SmartLic faz a triagem automaticamente: agrega, filtra por setor e aponta os
-              editais com maior probabilidade de viabilidade — para que sua equipe foque no que
-              importa.
-            </p>
-            <p className="mt-4">
-              <strong>Informação certa, na hora certa.</strong> Classificação setorial por IA
-              com precisão ≥85%, análise de viabilidade em quatro fatores e histórico de 2 milhões
-              de contratos públicos para benchmark de preço.
-            </p>
-          </div>
-        </section>
+        <FundadoresFounderLetter />
+        <FundadoresComparisonTable />
 
-        {/* Features */}
+        {/* O que está incluído (9 bullets) */}
         <FundadoresFeatures />
 
-        {/* Comparação */}
-        <section aria-labelledby="comparacao-heading" className="mt-16">
-          <h2 id="comparacao-heading" className="text-2xl font-semibold text-slate-900 mb-6">
-            Fundador vs Assinatura recorrente
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-slate-100">
-                  <th className="text-left px-4 py-3 font-semibold text-slate-700 border border-slate-200"></th>
-                  <th className="text-center px-4 py-3 font-semibold text-blue-700 border border-slate-200">
-                    Plano Fundadores
-                  </th>
-                  <th className="text-center px-4 py-3 font-semibold text-slate-700 border border-slate-200">
-                    Pro Recorrente
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ['Modelo de cobrança', 'R$997 único', 'R$397/mês'],
-                  ['Custo em 12 meses', 'R$997', 'R$4.764'],
-                  ['Acesso', 'Vitalício', 'Enquanto pagar'],
-                  ['Todas as funcionalidades', '✓', '✓'],
-                  ['Atualizações futuras', '✓ incluídas', '✓ incluídas'],
-                  ['Encerra em', '30/06/2026', 'A qualquer momento'],
-                  ['Influência no roadmap', '✓ direto', '—'],
-                ].map(([label, founder, regular]) => (
-                  <tr key={label} className="border border-slate-200 hover:bg-slate-50">
-                    <td className="px-4 py-3 text-slate-700 border border-slate-200">{label}</td>
-                    <td className="px-4 py-3 text-center font-medium text-blue-700 border border-slate-200">{founder}</td>
-                    <td className="px-4 py-3 text-center text-slate-600 border border-slate-200">{regular}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Sobre o SmartLic */}
-        <section aria-labelledby="sobre-heading" className="mt-16 rounded-lg border border-slate-200 bg-slate-50 p-6">
-          <h2 id="sobre-heading" className="text-xl font-semibold text-slate-900 mb-3">
-            Sobre o SmartLic (v0.5 — beta produtivo)
-          </h2>
-          <p className="text-slate-700 leading-relaxed">
-            2 milhões de contratos públicos indexados. 50 mil licitações abertas em tempo real.
-            20 setores com classificação por IA. Infra production-ready (Railway, Supabase).
-            Ferramenta é real — estamos abrindo acesso vitalício para os primeiros fundadores que
-            ajudam a financiar e moldar a próxima fase do produto.
-          </p>
-          <p className="mt-3 text-slate-700">
-            <strong>Ajude a financiar a próxima fase do SmartLic.</strong> Cada fundador é um
-            parceiro estratégico, não apenas um cliente.
-          </p>
-        </section>
-
-        {/* FAQ */}
+        {/* As 4 perguntas que todo mundo me faz */}
         <FundadoresFAQ />
+
+        <FundadoresDoNotBuy />
+        <FundadoresGuarantee />
+
+        {/* Vagas em tempo real */}
+        <section
+          aria-labelledby="vagas-heading"
+          className="mt-16 rounded-lg border border-slate-200 bg-slate-50 p-6"
+        >
+          <h2 id="vagas-heading" className="text-xl font-semibold text-slate-900 mb-3">
+            Vagas em tempo real
+          </h2>
+          <p className="text-slate-700">
+            <strong className="text-blue-700 text-2xl">{seatsRemainingText}</strong>{' '}
+            <span className="text-slate-600">de 50 vagas restantes.</span>
+          </p>
+          <p className="text-sm text-slate-500 mt-2">
+            Contador atualiza a cada minuto direto do banco — não é counter de marketing.
+            Quando zerar, encerra antes de 30/06/2026.
+          </p>
+        </section>
 
         {/* CTA final */}
         <section
@@ -221,32 +169,22 @@ export default function FundadoresClient() {
           className="mt-16 rounded-xl border border-blue-200 bg-blue-50 p-8"
         >
           <h2 id="cta-final-heading" className="text-2xl font-semibold text-slate-900 mb-2">
-            Garanta acesso vitalício agora
+            Quero uma das {seatsRemainingText} vagas — {price}
           </h2>
           <p className="text-slate-700 mb-6">
-            {price} uma única vez. Sem mensalidade. Sem renovação. Encerra 30/06/2026 — depois disso, apenas planos mensais.
+            Pagamento único no Pix ou cartão. 60 dias de garantia incondicional. Acesso
+            ativado na hora.
           </p>
           <FundadoresForm availability={snapshot} price={price} />
+          <p className="mt-4 text-sm text-slate-600">
+            Prefere testar antes?{' '}
+            <a href="/planos" className="text-blue-700 underline hover:text-blue-800 font-medium">
+              Comece com 14 dias grátis →
+            </a>
+          </p>
         </section>
 
-        {/* Disclaimer legal */}
-        <footer className="mt-12 border-t border-slate-200 pt-6 text-sm text-slate-500">
-          <p>
-            Ao prosseguir, você concorda com os{' '}
-            <a href="/termos/fundadores" className="text-blue-600 underline">
-              Termos do Plano Fundadores
-            </a>{' '}
-            e a{' '}
-            <a href="/privacidade" className="text-blue-600 underline">
-              Política de Privacidade
-            </a>
-            . Em caso de dúvida, escreva para{' '}
-            <a href="mailto:tiago.sasaki@confenge.com.br" className="text-blue-600 underline">
-              tiago.sasaki@confenge.com.br
-            </a>
-            .
-          </p>
-        </footer>
+        <FundadoresLegalFooter />
       </div>
     </main>
   );

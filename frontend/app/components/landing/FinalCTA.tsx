@@ -37,8 +37,17 @@ export default function FinalCTA({ className = '' }: FinalCTAProps) {
               <a
                 href="/signup?source=landing-cta"
                 className="w-full sm:w-auto bg-white text-brand-navy hover:bg-surface-1 font-bold px-8 py-4 rounded-button transition-all hover:scale-[1.02] active:scale-[0.98] text-center text-lg focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/50"
+                data-testid="final-cta-primary"
               >
-                Analisar oportunidades do meu setor
+                Testar 14 dias grátis
+              </a>
+              {/* COPY-LANDING-004 (#1003): Cross-sell sutil Plano Fundadores */}
+              <a
+                href="/planos#fundadores"
+                className="w-full sm:w-auto border border-white/40 text-white hover:bg-white/10 font-semibold px-8 py-4 rounded-button transition-all text-center text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/50"
+                data-testid="final-cta-fundadores"
+              >
+                Ou: Plano Fundadores R$997 vitalício →
               </a>
             </div>
           </AnimateOnScroll>

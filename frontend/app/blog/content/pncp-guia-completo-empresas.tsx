@@ -673,6 +673,69 @@ export default function PncpGuiaCompletoEmpresas() {
         requisição. A API é utilizada por ferramentas de inteligência como o
         SmartLic para automatizar a busca de editais em escala.
       </p>
+
+      {/* SEO-P1-005 (#992) — Cluster PNCP: links para os 8 spokes */}
+      <h2 id="aprenda-mais-pncp">Aprenda mais sobre PNCP</h2>
+      <p>
+        Aprofunde tópicos específicos do PNCP — cada link a seguir é um
+        guia dedicado e parte deste cluster:
+      </p>
+      <ul>
+        <li>
+          <Link href="/blog/pncp-modalidade-pregao-eletronico">
+            PNCP e Pregão Eletrônico — como filtrar e participar
+          </Link>{' '}
+          — entenda a modalidade que responde por mais de 70% das compras
+          publicadas no portal.
+        </li>
+        <li>
+          <Link href="/blog/pncp-timeline-publicacao-edital">
+            PNCP — timeline de publicação do edital
+          </Link>{' '}
+          — quando um edital aparece, quanto tempo você tem e como
+          organizar a janela.
+        </li>
+        <li>
+          <Link href="/blog/pncp-vs-comprasgov-diferencas">
+            PNCP vs ComprasGov — diferenças e qual usar
+          </Link>{' '}
+          — o que cada portal cobre e onde sua empresa precisa estar
+          cadastrada.
+        </li>
+        <li>
+          <Link href="/blog/pncp-consulta-contratos-passo-a-passo">
+            PNCP — consulta de contratos passo a passo
+          </Link>{' '}
+          — inteligência competitiva a partir do histórico de contratos
+          públicos.
+        </li>
+        <li>
+          <Link href="/blog/pncp-dispensa-licitacao-quando-aplicar">
+            PNCP e Dispensa de Licitação (Lei 14.133)
+          </Link>{' '}
+          — hipóteses do art. 75, valores limite e dispensa eletrônica.
+        </li>
+        <li>
+          <Link href="/blog/pncp-registro-precos-como-participar">
+            PNCP e Sistema de Registro de Preços
+          </Link>{' '}
+          — atas, caronas e por que SRP é uma das vias mais previsíveis
+          para empresas B2G.
+        </li>
+        <li>
+          <Link href="/blog/pncp-api-integracao-empresas">
+            API do PNCP — integração e automação
+          </Link>{' '}
+          — endpoints, paginação e como construir um pipeline de
+          monitoramento.
+        </li>
+        <li>
+          <Link href="/blog/pncp-erros-comuns-empresas-iniciantes">
+            7 erros que empresas iniciantes cometem no PNCP
+          </Link>{' '}
+          — os tropeços previsíveis e o roteiro de primeiros 90 dias.
+        </li>
+      </ul>
     </>
   );
 }

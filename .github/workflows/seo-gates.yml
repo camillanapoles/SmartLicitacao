@@ -1,0 +1,197 @@
+name: "SEO Gates"
+
+# SEO-P2-012 (Issue #998) — three deterministic gates that run on PRs
+# touching SEO surface area + a nightly drift check. Designed to be cheap
+# (no Next.js build, no Lighthouse, no Playwright) so the workflow stays
+# under the 20-job concurrency cap and finishes in <2 min.
+#
+# Gates:
+#   1. title-length  — scans BLOG_ARTICLES + QUESTIONS for title length
+#                      violations. Ships in REPORT mode (logs, never fails)
+#                      until the existing baseline of long titles is
+#                      rewritten; flip SEO_TITLE_ENFORCE=1 to enforce.
+#   2. jsonld-validate — scans every JSON-LD <script> in the source for
+#                        missing @context, @type, and per-type required
+#                        fields. Hard fail on schema violations.
+#   3. indexation-drift — non-blocking; reads history CSV / GSC env and
+#                         posts a step summary if drift > thresholds.
+#
+# The Lighthouse gate from issue #998 already exists in lighthouse.yml.
+# The uniqueness gate is tracked separately under SEO-P0-003.
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/blog.ts'
+      - 'frontend/lib/questions.ts'
+      - 'frontend/lib/authors.ts'
+      - 'frontend/lib/cases.ts'
+      - 'frontend/lib/cities.ts'
+      - 'frontend/lib/glossary-terms.ts'
+      - 'frontend/components/seo/**'
+      - 'frontend/components/blog/**'
+      - 'frontend/app/**/page.tsx'
+      - 'frontend/app/**/*.mdx'
+      - 'scripts/seo/**'
+      - '.github/workflows/seo-gates.yml'
+  schedule:
+    # 04:30 UTC daily (01:30 BRT) — drift snapshot before the workday starts.
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: seo-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  title-length:
+    name: Title length
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run title length gate
+        id: title
+        run: |
+          set +e
+          OUTPUT="$(node scripts/seo/title-length-check.js)"
+          STATUS=$?
+          echo "$OUTPUT"
+          {
+            echo "summary<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          exit $STATUS
+
+      - name: Append to step summary
+        if: always()
+        env:
+          SUMMARY: ${{ steps.title.outputs.summary }}
+        run: |
+          {
+            echo "## SEO Gate — Title Length"
+            echo ""
+            echo '```'
+            printf '%s\n' "$SUMMARY"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  jsonld-validate:
+    name: JSON-LD validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run JSON-LD validate gate
+        id: jsonld
+        run: |
+          set +e
+          OUTPUT="$(node scripts/seo/jsonld-validate.js)"
+          STATUS=$?
+          echo "$OUTPUT"
+          {
+            echo "summary<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          exit $STATUS
+
+      - name: Append to step summary
+        if: always()
+        env:
+          SUMMARY: ${{ steps.jsonld.outputs.summary }}
+        run: |
+          {
+            echo "## SEO Gate — JSON-LD Validate"
+            echo ""
+            echo '```'
+            printf '%s\n' "$SUMMARY"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  indexation-drift:
+    name: Indexation drift (warn-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Non-blocking by design — `continue-on-error: true` so a warn never
+    # red-Xes the merge train. Real signal lives in the step summary and
+    # in the daily scheduled run (which can append to the history CSV).
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run indexation drift gate
+        id: drift
+        env:
+          # Optional. When the workflow is given access to a GSC service
+          # account, set this from a previous step that calls the GSC API.
+          # Empty by default — the gate then falls back to the most-recent
+          # row in docs/seo/indexation-history.csv.
+          GSC_INDEXED_COUNT: ${{ vars.GSC_INDEXED_COUNT || '' }}
+        run: |
+          set +e
+          OUTPUT="$(node scripts/seo/indexation-drift.js)"
+          STATUS=$?
+          echo "$OUTPUT"
+          {
+            echo "summary<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          exit $STATUS
+
+      - name: Append to step summary
+        if: always()
+        env:
+          SUMMARY: ${{ steps.drift.outputs.summary }}
+        run: |
+          {
+            echo "## SEO Gate — Indexation Drift (warn-only)"
+            echo ""
+            echo '```'
+            printf '%s\n' "$SUMMARY"
+            echo '```'
+            echo ""
+            echo "_GSC API token not wired into CI yet; gate runs against the most-recent row in \`docs/seo/indexation-history.csv\`. Flip warn-only off after the GSC fetch is automated._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  unit-tests:
+    name: Gate scripts unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run gate unit tests (node:test)
+        run: node --test scripts/seo/__tests__/

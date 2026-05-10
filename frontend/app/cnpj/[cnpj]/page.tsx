@@ -9,6 +9,8 @@ import { LeadCapture } from '@/components/LeadCapture';
 import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
+import { buildOrgSchema } from './_jsonld';
+import { isNoindexed } from '@/lib/seo/noindex';
 
 const BACKEND_URL = getBackendUrl();
 
@@ -111,7 +113,13 @@ export async function generateMetadata({
       title: `${empresa.razao_social} — Score B2G: ${score}`,
       description: `${total_contratos_24m} contratos | ${valorFormatado}`,
     },
-    robots: { index: total_contratos_24m > 0, follow: true },
+    // SEO-P0-003 (#989): also gate on uniqueness audit. Pages flagged as
+    // duplicate by `scripts/seo/uniqueness_audit.py` ship `index: false`
+    // even when they have data, to avoid HCU drag.
+    robots: {
+      index: total_contratos_24m > 0 && !isNoindexed('cnpj', `/cnpj/${cnpj}`),
+      follow: true,
+    },
   };
 }
 
@@ -129,17 +137,9 @@ export default async function CnpjPerfilPage({
 
   const { empresa } = perfil;
 
-  const orgSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: empresa.razao_social,
-    taxID: empresa.cnpj,
-    address: {
-      '@type': 'PostalAddress',
-      addressRegion: empresa.uf,
-      addressCountry: 'BR',
-    },
-  };
+  // #996 SEO-P2-009: Organization JSON-LD enriched with SmartLic-exclusive data
+  // (contract history, sector classification, areas served) for entity profile SERP.
+  const orgSchema = buildOrgSchema(perfil);
 
   const datasetSchema = {
     '@context': 'https://schema.org',
@@ -155,19 +155,20 @@ export default async function CnpjPerfilPage({
     },
   };
 
-  const breadcrumbSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Início', item: 'https://smartlic.tech' },
-      { '@type': 'ListItem', position: 2, name: 'Consulta CNPJ', item: 'https://smartlic.tech/cnpj' },
-      { '@type': 'ListItem', position: 3, name: empresa.razao_social, item: `https://smartlic.tech/cnpj/${cnpj}` },
-    ],
-  };
+  // SEO-P1-007 (#993): Visual breadcrumb derived from same trail as JSON-LD.
+  // ContentPageLayout's BreadcrumbNav emits the BreadcrumbList JSON-LD when
+  // breadcrumbItems is provided (suppressSchema=false), so we no longer need
+  // an inline breadcrumbSchema script — single source of truth.
+  const breadcrumbItems = [
+    { label: 'Início', href: '/' },
+    { label: 'Consulta CNPJ', href: '/cnpj' },
+    { label: empresa.razao_social },
+  ];
 
   return (
     <ContentPageLayout
       breadcrumbLabel={empresa.razao_social}
+      breadcrumbItems={breadcrumbItems}
       relatedPages={[
         { href: `/fornecedores/${cnpj}`, title: `${empresa.razao_social} — Histórico de Fornecedor` },
         { href: '/cnpj', title: 'Nova consulta CNPJ' },
@@ -183,10 +184,6 @@ export default async function CnpjPerfilPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
 
       <CnpjPerfilClient perfil={perfil} />

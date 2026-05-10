@@ -163,28 +163,32 @@ class TestWelcomeEmail:
 # ============================================================================
 
 class TestEngagementEmail:
-    """AC17: Email #2 — Day 3: Engagement with stats."""
+    """EMAIL-TRIAL-006 (#1005) Day 3: founder-led "tá fazendo sentido?"."""
 
     def test_renders_with_stats(self):
         html = render_trial_engagement_email("Joao", SAMPLE_STATS)
         assert "<!DOCTYPE html>" in html
 
-    def test_shows_value_when_used(self):
+    def test_founder_signature_present(self):
+        """Day 3 is founder-led — signed Tiago, not Equipe SmartLic."""
         html = render_trial_engagement_email("Test", SAMPLE_STATS)
-        assert "2.4M" in html or "2.3M" in html
+        assert "Tiago" in html
 
-    def test_adapts_for_zero_usage(self):
-        html = render_trial_engagement_email("Test", ZERO_STATS)
-        assert "11 dias" in html
-
-    def test_cta_explore_sectors(self):
-        """AC1: CTA is 'Explorar mais setores'."""
+    def test_question_subject_in_body(self):
+        """Belgray-style direct question hook."""
         html = render_trial_engagement_email("Test", SAMPLE_STATS)
-        assert "Explorar mais setores" in html
+        assert "fazendo sentido" in html.lower()
 
     def test_contains_buscar_link(self):
         html = render_trial_engagement_email("Test", SAMPLE_STATS)
         assert "/buscar" in html
+
+    def test_founders_link_in_ps(self):
+        """Soft cross-sell — Founders link in PS, not primary CTA."""
+        html = render_trial_engagement_email("Test", SAMPLE_STATS)
+        assert "/fundadores" in html
+        assert "997" in html
+        assert "P.S." in html
 
     def test_empty_stats_safe(self):
         html = render_trial_engagement_email("Test", {})
@@ -204,43 +208,43 @@ class TestEngagementEmail:
 # ============================================================================
 
 class TestPaywallAlertEmail:
-    """AC17: Email #3 — Day 7: Paywall alert."""
+    """EMAIL-TRIAL-006 (#1005) Day 7: pricing comparison + Founders cross-sell."""
 
     def test_renders_without_error(self):
         html = render_trial_paywall_alert_email("Joao", SAMPLE_STATS)
         assert "<!DOCTYPE html>" in html
 
-    def test_mentions_preview_limited(self):
+    def test_pricing_table_present(self):
+        """Day 7 shows the math: R$397/mes vs R$997 vitalício."""
         html = render_trial_paywall_alert_email("Test", SAMPLE_STATS)
-        assert "preview" in html.lower() or "limitado" in html.lower()
+        assert "397" in html
+        assert "997" in html
+        assert "4.764" in html  # annual total — Belgray "show me the money"
 
-    def test_mentions_today(self):
-        """P0 zero-churn: Email now says 'a partir de hoje' (was 'amanhã')."""
+    def test_founders_cross_sell_primary(self):
+        """Day 7 primary CTA is Plano Fundadores."""
         html = render_trial_paywall_alert_email("Test", SAMPLE_STATS)
-        assert "hoje" in html.lower()
+        assert "/fundadores" in html
+        assert "Vitalício" in html or "vitalício" in html
 
-    def test_lists_what_changes(self):
-        """AC7: Lists what changes after paywall."""
-        html = render_trial_paywall_alert_email("Test", SAMPLE_STATS)
-        assert "10" in html  # limited to 10 results
-        assert "5" in html or "pipeline" in html.lower()
-
-    def test_cta_assine(self):
-        """AC1: CTA is 'Assine antes do limite'."""
-        html = render_trial_paywall_alert_email("Test", SAMPLE_STATS)
-        assert "Assine" in html
-
-    def test_links_to_planos(self):
+    def test_pro_mensal_secondary(self):
+        """Pro mensal is the secondary CTA — still present."""
         html = render_trial_paywall_alert_email("Test", SAMPLE_STATS)
         assert "/planos" in html
 
-    def test_7_days_remaining(self):
+    def test_founder_signature_present(self):
         html = render_trial_paywall_alert_email("Test", SAMPLE_STATS)
-        assert "7 dias" in html
+        assert "Tiago" in html
 
-    def test_shows_stats_when_used(self):
-        html = render_trial_paywall_alert_email("Test", SAMPLE_STATS)
-        assert "12" in html  # searches count
+    def test_seats_remaining_when_provided(self):
+        """When seats_remaining > 0, scarcity copy uses concrete number."""
+        html = render_trial_paywall_alert_email("Test", SAMPLE_STATS, seats_remaining=12)
+        assert "12 vagas" in html
+
+    def test_seats_fallback_when_none(self):
+        """Without counter (API fallback) → generic 'vagas limitadas' copy."""
+        html = render_trial_paywall_alert_email("Test", SAMPLE_STATS, seats_remaining=None)
+        assert "limitadas" in html.lower() or "vitalícias" in html
 
     def test_empty_stats_safe(self):
         html = render_trial_paywall_alert_email("Test", {})
@@ -260,48 +264,65 @@ class TestPaywallAlertEmail:
 # ============================================================================
 
 class TestValueEmail:
-    """AC17: Email #4 — Day 10: Accumulated value."""
+    """EMAIL-TRIAL-006 (#1005) Day 10: Chaperon open loop + Founders cross-sell."""
 
     def test_renders_without_error(self):
         html = render_trial_value_email("Joao", SAMPLE_STATS)
         assert "<!DOCTYPE html>" in html
 
-    def test_big_value_highlight(self):
-        """AC7: Shows valor acumulado em destaque (R$ grande)."""
+    def test_chaperon_open_loop(self):
+        """Day 10 uses 'terceira opção' open loop (Chaperon)."""
         html = render_trial_value_email("Test", SAMPLE_STATS)
-        assert "2.4M" in html or "2.3M" in html
-        assert "font-size: 36px" in html  # Big number
+        assert "terceira opção" in html
 
-    def test_cta_nao_perca(self):
-        """AC1: CTA is 'Não perca esse progresso'."""
+    def test_founders_cross_sell_primary(self):
+        """Day 10 primary CTA is Plano Fundadores."""
         html = render_trial_value_email("Test", SAMPLE_STATS)
-        assert "Não perca esse progresso" in html
+        assert "/fundadores" in html
+        assert "997" in html
 
-    def test_links_to_planos(self):
+    def test_pro_mensal_secondary(self):
         html = render_trial_value_email("Test", SAMPLE_STATS)
         assert "/planos" in html
 
-    def test_mentions_annual_discount(self):
+    def test_founder_signature_present(self):
         html = render_trial_value_email("Test", SAMPLE_STATS)
-        assert "20%" in html
-        assert "anual" in html.lower()
+        assert "Tiago" in html
 
-    def test_adapts_for_opps_no_value(self):
-        stats = {**SAMPLE_STATS, "total_value_estimated": 0}
-        html = render_trial_value_email("Test", stats)
-        assert "47" in html  # shows opp count
+    def test_seats_remaining_when_provided(self):
+        html = render_trial_value_email("Test", SAMPLE_STATS, seats_remaining=8)
+        assert "8 vagas" in html
 
-    def test_adapts_for_zero_usage(self):
-        html = render_trial_value_email("Test", ZERO_STATS)
+    def test_seats_fallback_when_none(self):
+        """Without counter → generic copy, no broken {placeholder} in copy text.
+
+        Only checks that template-style placeholders (e.g. {seats_remaining})
+        don't leak into the rendered body — CSS rules in <style> blocks
+        legitimately contain `{`, so we strip them before scanning.
+        """
+        html = render_trial_value_email("Test", SAMPLE_STATS, seats_remaining=None)
+        import re
+        # Strip <style>...</style> blocks; they legitimately contain CSS braces
+        body_text = re.sub(r"<style>.*?</style>", "", html, flags=re.DOTALL)
+        # Also strip inline style="..." attributes which may carry CSS
+        body_text = re.sub(r'style="[^"]*"', "", body_text)
+        assert "{seats" not in body_text
+        assert "{vagas" not in body_text
+        assert "vagas" in html.lower()
+
+    def test_days_remaining_default(self):
+        """Default days_remaining=4 (Day 10 trial → 4 days left)."""
+        html = render_trial_value_email("Test", SAMPLE_STATS)
         assert "4 dias" in html
+
+    def test_progress_recap_when_value(self):
+        """Shows opportunities mapped count when there is usage."""
+        html = render_trial_value_email("Test", SAMPLE_STATS)
+        assert "47" in html  # opps count
 
     def test_empty_stats_safe(self):
         html = render_trial_value_email("Test", {})
         assert "<!DOCTYPE html>" in html
-
-    def test_pipeline_count_shown(self):
-        html = render_trial_value_email("Test", SAMPLE_STATS)
-        assert "8" in html  # pipeline items in sub-text
 
     def test_contains_preheader(self):
         html = render_trial_value_email("Test", SAMPLE_STATS)
@@ -317,32 +338,45 @@ class TestValueEmail:
 # ============================================================================
 
 class TestLastDayEmail:
-    """AC17: Email #5 — Day 13: Last day."""
+    """EMAIL-TRIAL-006 (#1005) Day 13 (legacy branch): vira abóbora + 3-col comparison."""
 
     def test_renders_without_error(self):
         html = render_trial_last_day_email("Joao", SAMPLE_STATS)
         assert "<!DOCTYPE html>" in html
 
-    def test_urgency_styling(self):
+    def test_pumpkin_hook(self):
+        """Belgray-style headline: trial 'vira abóbora'."""
         html = render_trial_last_day_email("Test", SAMPLE_STATS)
-        assert "#d32f2f" in html
+        assert "abóbora" in html
 
-    def test_contains_price(self):
+    def test_three_column_comparison(self):
+        """Day 13 shows 3 options side-by-side: cancelar / Pro / Vitalício."""
         html = render_trial_last_day_email("Test", SAMPLE_STATS)
+        assert "Cancelar" in html
+        assert "Pro mensal" in html
+        assert "Vitalício" in html
+        # All three prices visible
+        assert "R$ 0" in html
         assert "397" in html
+        assert "997" in html
 
     def test_mentions_tomorrow(self):
         html = render_trial_last_day_email("Test", {})
-        assert "Amanhã" in html
+        assert "Amanhã" in html or "amanhã" in html
 
-    def test_cta_assinar_agora(self):
-        """AC1: CTA is 'Assinar agora'."""
-        html = render_trial_last_day_email("Test", {})
-        assert "Assinar agora" in html
-
-    def test_shows_stats(self):
+    def test_founders_cross_sell_block(self):
+        """Day 13 has Founders cross-sell block."""
         html = render_trial_last_day_email("Test", SAMPLE_STATS)
-        assert "12" in html
+        assert "/fundadores" in html
+
+    def test_no_card_charge_language(self):
+        """Legacy branch: user has NO card. Must say no charge tomorrow."""
+        html = render_trial_last_day_email("Test", SAMPLE_STATS)
+        assert "ninguém vai cobrar" in html or "Sem cartão" in html
+
+    def test_founder_signature_present(self):
+        html = render_trial_last_day_email("Test", SAMPLE_STATS)
+        assert "Tiago" in html
 
     def test_empty_stats_safe(self):
         html = render_trial_last_day_email("Test", {})
@@ -351,6 +385,10 @@ class TestLastDayEmail:
     def test_contains_preheader(self):
         html = render_trial_last_day_email("Test", SAMPLE_STATS)
         assert "display:none" in html
+
+    def test_seats_remaining_when_provided(self):
+        html = render_trial_last_day_email("Test", SAMPLE_STATS, seats_remaining=3)
+        assert "3 vagas" in html
 
 
 # ============================================================================
@@ -442,7 +480,7 @@ class TestLastDayCardBranchDispatch:
             captured["cancel_url"] = kwargs.get("cancel_url")
             return "<html>CARD</html>"
 
-        def fake_legacy(user_name, stats, unsubscribe_url=""):
+        def fake_legacy(user_name, stats, unsubscribe_url="", seats_remaining=None):
             captured["variant"] = "legacy"
             return "<html>LEGACY</html>"
 
@@ -481,7 +519,7 @@ class TestLastDayCardBranchDispatch:
             captured["variant"] = "card"
             return "<html>CARD</html>"
 
-        def fake_legacy(user_name, stats, unsubscribe_url=""):
+        def fake_legacy(user_name, stats, unsubscribe_url="", seats_remaining=None):
             captured["variant"] = "legacy"
             return "<html>LEGACY</html>"
 
@@ -565,53 +603,52 @@ class TestFormatChargeDateDisplay:
 # ============================================================================
 
 class TestExpiredEmail:
-    """AC17: Email #6 — Day 16: Expired with 20% off coupon."""
+    """EMAIL-TRIAL-006 (#1005) Day 16 (lapsed): "Errei algo?" founder-led ask."""
 
     def test_renders_without_error(self):
         html = render_trial_expired_email("Joao", SAMPLE_STATS)
         assert "<!DOCTYPE html>" in html
 
+    def test_errei_algo_question(self):
+        """Founder-led headline: 'Errei algo?'."""
+        html = render_trial_expired_email("Test", SAMPLE_STATS)
+        assert "Errei algo" in html
+
+    def test_invites_one_line_reply(self):
+        """Founder asks for 1-line response — primary engagement, not CTA."""
+        html = render_trial_expired_email("Test", SAMPLE_STATS)
+        assert "1 linha" in html or "uma linha" in html.lower()
+
     def test_mentions_data_saved(self):
         html = render_trial_expired_email("Test", SAMPLE_STATS)
         assert "30 dias" in html
 
-    def test_cta_20_off(self):
-        """AC14: Expired email includes 20% off CTA."""
+    def test_coupon_in_ps(self):
+        """Day 16 keeps TRIAL_COMEBACK_20 cupom — but in PS, not primary CTA."""
         html = render_trial_expired_email(
             "Test", SAMPLE_STATS,
             coupon_checkout_url="https://smartlic.tech/planos?coupon=TRIAL_COMEBACK_20",
         )
-        assert "20% OFF" in html or "20% off" in html.lower()
-        assert "Voltar com 20% off" in html
-
-    def test_coupon_url_in_cta(self):
-        """AC14: CTA links to checkout with coupon."""
-        url = "https://smartlic.tech/planos?coupon=TRIAL_COMEBACK_20"
-        html = render_trial_expired_email("Test", SAMPLE_STATS, coupon_checkout_url=url)
+        assert "TRIAL_COMEBACK_20" in html
         assert "coupon=TRIAL_COMEBACK_20" in html
+        assert "20% off" in html.lower()
+        assert "P.S." in html
 
-    def test_fallback_cta_without_coupon(self):
+    def test_founders_cross_sell_in_ps(self):
+        """Day 16 PS also offers Founders alternative."""
         html = render_trial_expired_email("Test", SAMPLE_STATS)
-        assert "Reativar acesso" in html
-        assert "/planos" in html
+        assert "/fundadores" in html
+        assert "997" in html
 
-    def test_adapts_headline_pipeline(self):
-        html = render_trial_expired_email("Test", {
-            "opportunities_found": 30,
-            "pipeline_items_count": 5,
-        })
-        assert "5 oportunidades" in html
+    def test_founder_signature_present(self):
+        html = render_trial_expired_email("Test", SAMPLE_STATS)
+        assert "Tiago" in html
 
-    def test_adapts_headline_opps(self):
-        html = render_trial_expired_email("Test", {
-            "opportunities_found": 30,
-            "pipeline_items_count": 0,
-        })
-        assert "30 oportunidades" in html
-
-    def test_zero_usage_generic(self):
+    def test_zero_usage_renders(self):
+        """Without prior activity still renders without crash."""
         html = render_trial_expired_email("Test", ZERO_STATS)
-        assert "Sentimos sua falta" in html
+        assert "<!DOCTYPE html>" in html
+        assert "Errei algo" in html
 
     def test_empty_stats_safe(self):
         html = render_trial_expired_email("Test", {})
@@ -621,14 +658,14 @@ class TestExpiredEmail:
         html = render_trial_expired_email("Test", SAMPLE_STATS)
         assert "display:none" in html
 
-    def test_20_off_badge(self):
-        """AC14: Shows 20% OFF badge."""
-        html = render_trial_expired_email(
-            "Test", SAMPLE_STATS,
-            coupon_checkout_url="https://smartlic.tech/planos?coupon=X",
-        )
-        assert "20% OFF" in html
-        assert "primeiro mês" in html.lower()
+    def test_progress_recap_when_opps(self):
+        """When user had activity, recap shows opp count."""
+        html = render_trial_expired_email("Test", {
+            "opportunities_found": 30,
+            "pipeline_items_count": 5,
+        })
+        assert "30" in html
+        assert "5" in html
 
 
 # ============================================================================

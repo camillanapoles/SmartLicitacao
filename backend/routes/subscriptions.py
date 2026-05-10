@@ -322,3 +322,12 @@ async def submit_cancel_feedback(
         success=True,
         message="Obrigado pelo feedback!",
     )
+
+
+# ---------------------------------------------------------------------------
+# Pro mensal -> Lifetime founder upgrade (#1011 / UPGRADE-PATH-013)
+# Implemented in `routes/upgrade_to_lifetime.py` — split out to satisfy the
+# godmodule LOC gate (see `.github/workflows/audit-godmodule-loc.yml`).
+# Both routers share the `/api/subscriptions` prefix, so the URL surface is
+# unchanged for clients.
+# ---------------------------------------------------------------------------

@@ -61,6 +61,35 @@ class TestRenderFoundersWelcomeEmail:
         # Tiago signs the email
         assert "Tiago" in html
 
+    def test_mentions_60_day_guarantee_html(self):
+        """COPY-FOUND-002 (#1001): welcome email must surface the 60-day guarantee."""
+        from templates.emails.founders_welcome import render_founders_welcome_email
+
+        html = render_founders_welcome_email("Fundador")
+
+        assert "60 dias" in html
+        assert "R$997" in html
+        # Refund procedure (subject + SLA)
+        assert "reembolso" in html
+        assert "5 dias uteis" in html
+        # Contact channel
+        assert "tiago@smartlic.tech" in html
+        # No drift back to the legacy 7-day promise
+        assert "garantia de 7 dias" not in html
+
+    def test_mentions_60_day_guarantee_plain(self):
+        """Plain-text rendering must mirror the 60-day guarantee block."""
+        from templates.emails.founders_welcome import render_founders_welcome_plain
+
+        text = render_founders_welcome_plain("Fundador")
+
+        assert "60 dias" in text
+        assert "R$997" in text
+        assert "reembolso" in text
+        assert "5 dias uteis" in text
+        assert "tiago@smartlic.tech" in text
+        assert "garantia de 7 dias" not in text
+
     def test_subject_constant(self):
         from templates.emails.founders_welcome import FOUNDERS_WELCOME_SUBJECT
 

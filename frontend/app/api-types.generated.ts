@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/founders/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Founders Availability
+         * @description Public seat counter + countdown feed (issue #1002).
+         */
+        get: operations["founders_availability_api_founders_availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/debug/pncp-test": {
         parameters: {
             query?: never;
@@ -1954,6 +1974,66 @@ export interface paths {
          *     No deferral logic, no manual credit calculations.
          */
         post: operations["update_billing_period_v1_api_subscriptions_update_billing_period_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/api/subscriptions/upgrade-to-lifetime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upgrade To Lifetime
+         * @description Upgrade Pro mensal -> Lifetime founder (#1011 / UPGRADE-PATH-013).
+         *
+         *     Flow:
+         *       1. Re-check founder cap via existing ``check_founding_availability()`` RPC
+         *          (race-guarded, atomic). Reject 410 if cap reached.
+         *       2. Reject 409 if ``profiles.is_founder`` is already TRUE (idempotent).
+         *       3. Cancel the active Stripe subscription with ``prorate=True``. Stripe
+         *          issues a credit balance to the customer automatically — no custom
+         *          prorata math.
+         *       4. Create a Stripe Checkout Session in ``mode='payment'`` for the
+         *          R$997 one-time founder price (``FOUNDING_ONE_TIME_PRICE_ID``).
+         *          Customer balance is consumed automatically by Stripe.
+         *       5. Return checkout URL. The existing webhook handler
+         *          (``webhooks/handlers/founding.py::_activate_lifetime_founder_entitlement``)
+         *          flips ``is_founder=TRUE`` once payment completes — DO NOT duplicate.
+         *       6. Audit log via ``audit_logger`` for billing.subscription_change.
+         */
+        post: operations["upgrade_to_lifetime_v1_api_subscriptions_upgrade_to_lifetime_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/api/subscriptions/upgrade-to-lifetime/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Upgrade To Lifetime Preview
+         * @description Preview pro-rata math for the upgrade-to-lifetime modal (#1011).
+         *
+         *     Returns ``eligible=False`` with a structured ``reason`` whenever the user
+         *     is not allowed to upgrade (already founder, no active sub, cap reached,
+         *     feature flag off). Front-end uses this to render the right copy without
+         *     parsing free text.
+         */
+        get: operations["upgrade_to_lifetime_preview_v1_api_subscriptions_upgrade_to_lifetime_preview_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8034,6 +8114,75 @@ export interface components {
             uf: string;
         };
         /**
+         * FoundersAvailabilityResponse
+         * @description Response shape for ``GET /api/founders/availability`` (issue #1002).
+         *
+         *     On the happy path all numeric fields are populated and ``fallback=false``.
+         *     On DB/Redis failure ``vagasRestantes=null`` + ``fallback=true`` and the
+         *     frontend renders the conservative copy ("Vagas limitadas — encerra 30/06").
+         */
+        FoundersAvailabilityResponse: {
+            /**
+             * Deadline
+             * @description ISO-8601 deadline (FOUNDERS_DEADLINE env var or default).
+             * @default 2026-06-30T23:59:59-03:00
+             */
+            deadline: string;
+            /**
+             * Diasrestantes
+             * @description Whole days until the deadline.
+             */
+            diasRestantes?: number | null;
+            /**
+             * Fallback
+             * @description TRUE when DB or Redis is unavailable. Frontend should render the conservative copy without a number.
+             * @default false
+             */
+            fallback: boolean;
+            /**
+             * Horasrestantes
+             * @description Whole hours until the deadline.
+             */
+            horasRestantes?: number | null;
+            /**
+             * Message
+             * @description Conservative copy returned when fallback=true.
+             */
+            message?: string | null;
+            /**
+             * Sold Out
+             * @description TRUE when vagasPreenchidas >= cap (50).
+             * @default false
+             */
+            sold_out: boolean;
+            /**
+             * Ultimavagaem
+             * @description ISO-8601 timestamp of the most recent founder_since.
+             */
+            ultimaVagaEm?: string | null;
+            /**
+             * Ultimasvagasoptin
+             * @description Up to 5 most recent founders who explicitly opted in via founder_public_listing_consent=TRUE (LGPD).
+             */
+            ultimasVagasOptIn?: components["schemas"]["UltimaVagaOptIn"][];
+            /**
+             * Vagaspreenchidas
+             * @description Seats already taken (count of is_founder=TRUE profiles).
+             */
+            vagasPreenchidas?: number | null;
+            /**
+             * Vagasrestantes
+             * @description Seats still available (50 - taken). NULL when fallback=true.
+             */
+            vagasRestantes?: number | null;
+            /**
+             * Vagastotal
+             * @description Hard cap (50).
+             * @default 50
+             */
+            vagasTotal: number;
+        };
+        /**
          * FoundingAvailabilityResponse
          * @description Public availability snapshot for landing-page seat counter + countdown.
          */
@@ -11469,6 +11618,27 @@ export interface components {
             uf: string;
         };
         /**
+         * UltimaVagaOptIn
+         * @description LGPD-safe public listing entry (only included when consent=TRUE).
+         */
+        UltimaVagaOptIn: {
+            /**
+             * Empresa
+             * @description Display name (razao_social or 'empresa').
+             */
+            empresa: string;
+            /**
+             * Preenchidaem
+             * @description ISO-8601 timestamp.
+             */
+            preenchidaEm: string;
+            /**
+             * Uf
+             * @description State code, 2 letters.
+             */
+            uf: string;
+        };
+        /**
          * UnreadCountResponse
          * @description Unread message count for badge display.
          */
@@ -11544,6 +11714,85 @@ export interface components {
             full_name?: string | null;
             /** Plan Id */
             plan_id?: string | null;
+        };
+        /**
+         * UpgradeToLifetimePreviewResponse
+         * @description Pro-rata preview for the modal confirmation step.
+         *
+         *     Stripe handles the actual proration when we cancel with ``prorate=True`` and
+         *     create the new charge — these numbers are an *estimate* surfaced to the
+         *     user so they understand what will happen. The webhook is the source of
+         *     truth for the final charge.
+         */
+        UpgradeToLifetimePreviewResponse: {
+            /** Eligible */
+            eligible: boolean;
+            /**
+             * Estimated Credit Brl Cents
+             * @default 0
+             */
+            estimated_credit_brl_cents: number;
+            /**
+             * Has Active Subscription
+             * @default false
+             */
+            has_active_subscription: boolean;
+            /**
+             * Is Already Founder
+             * @default false
+             */
+            is_already_founder: boolean;
+            /**
+             * Lifetime Price Brl Cents
+             * @default 99700
+             */
+            lifetime_price_brl_cents: number;
+            /**
+             * Net Charge Brl Cents
+             * @default 99700
+             */
+            net_charge_brl_cents: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Seats Remaining
+             * @default 0
+             */
+            seats_remaining: number;
+            /**
+             * Seats Total
+             * @default 0
+             */
+            seats_total: number;
+        };
+        /**
+         * UpgradeToLifetimeRequest
+         * @description Empty body — auth identifies the user.
+         */
+        UpgradeToLifetimeRequest: {
+            /**
+             * Confirmed
+             * @description Client must explicitly confirm to proceed (defense in depth).
+             * @default true
+             */
+            confirmed: boolean;
+        };
+        /** UpgradeToLifetimeResponse */
+        UpgradeToLifetimeResponse: {
+            /** Checkout Url */
+            checkout_url: string;
+            /**
+             * Estimated Credit Brl Cents
+             * @default 0
+             */
+            estimated_credit_brl_cents: number;
+            /**
+             * Net Charge Brl Cents
+             * @default 99700
+             */
+            net_charge_brl_cents: number;
+            /** Session Id */
+            session_id: string;
         };
         /**
          * UptimeHistoryEntry
@@ -11994,6 +12243,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RootResponse"];
+                };
+            };
+        };
+    };
+    founders_availability_api_founders_availability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoundersAvailabilityResponse"];
                 };
             };
         };
@@ -14411,6 +14680,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upgrade_to_lifetime_v1_api_subscriptions_upgrade_to_lifetime_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpgradeToLifetimeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpgradeToLifetimeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upgrade_to_lifetime_preview_v1_api_subscriptions_upgrade_to_lifetime_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpgradeToLifetimePreviewResponse"];
                 };
             };
         };

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 # Routers
 from admin import router as admin_router
 from routes.subscriptions import router as subscriptions_router
+from routes.upgrade_to_lifetime import router as upgrade_to_lifetime_router
 from routes.features import router as features_router
 from routes.messages import router as messages_router
 from routes.analytics import router as analytics_router
@@ -76,11 +77,13 @@ from routes.indice_municipal import router as indice_municipal_router
 from routes.notifications import router as notifications_router
 from routes.export import router as edital_export_router
 from routes.founding import router as founding_router
+from routes.founders import router as founders_router
 from routes.conta import router as conta_router
 from routes.intel_reports import router as intel_reports_router
 
 _v1_routers = [
-    admin_router, subscriptions_router, features_router, messages_router,
+    admin_router, subscriptions_router, upgrade_to_lifetime_router,
+    features_router, messages_router,
     analytics_router, oauth_router, export_sheets_router,
     search_router, user_router, billing_router, sessions_router, plans_router,
     emails_router, pipeline_router, onboarding_router, auth_email_router,
@@ -141,6 +144,10 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(admin_billing_sync_router)
     app.include_router(admin_founding_router)
     app.include_router(slo_router)
+
+    # Issue #1002: founders availability — self-prefixed at /api/founders/*
+    # (NOT under /v1/ — public landing-page consumers + SEO programmatic).
+    app.include_router(founders_router)
 
     # Stripe webhook at root — DEBT-324: single registration only.
     # Removed from _v1_routers above to prevent duplicate at /v1/webhooks/stripe.

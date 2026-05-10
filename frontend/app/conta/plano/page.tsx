@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useUser } from "../../../contexts/UserContext";
 import { getPlanDisplayName } from "../../../lib/plans";
 import { CancelSubscriptionModal } from "../../../components/account/CancelSubscriptionModal";
+import { UpgradeToLifetimeModal } from "../../../components/account/UpgradeToLifetimeModal";
 import { AlertPreferences } from "./AlertPreferences";
 import Link from "next/link";
 
@@ -14,6 +15,7 @@ import Link from "next/link";
 export default function PlanoPage() {
   const { user, session, authLoading, planInfo, planError, isFromCache, cachedAt, refresh } = useUser();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [cancellingEndsAt, setCancellingEndsAt] = useState<string | null>(null);
 
   if (authLoading) {
@@ -104,6 +106,16 @@ export default function PlanoPage() {
                 <Link href="/planos" className="w-full py-3 px-4 rounded-button bg-[var(--brand-navy)] text-white hover:bg-[var(--brand-blue)] transition-colors flex items-center justify-center gap-2 font-medium" data-testid="plan-cta-primary">Reativar SmartLic Pro</Link>
               ) : null}
 
+              {planInfo.subscription_status === "active" && !cancellingEndsAt && planInfo.plan_id !== "free_trial" && !(planInfo as { is_founder?: boolean }).is_founder && (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="w-full py-3 px-4 rounded-button bg-[var(--brand-blue-subtle)] text-[var(--brand-navy)] hover:bg-[var(--brand-blue)] hover:text-white transition-colors text-sm font-medium"
+                  data-testid="upgrade-to-lifetime-cta"
+                >
+                  Virar Fundador Vitalício (R$997 uma única vez)
+                </button>
+              )}
+
               {planInfo.subscription_status === "active" && !cancellingEndsAt && planInfo.plan_id !== "free_trial" && (
                 <button onClick={() => setShowCancelModal(true)} className="w-full text-center text-xs text-[var(--ink-muted)] hover:text-[var(--error)] transition-colors py-2" data-testid="cancel-link">Cancelar acesso</button>
               )}
@@ -117,6 +129,8 @@ export default function PlanoPage() {
       <AlertPreferences accessToken={session.access_token} />
 
       <CancelSubscriptionModal isOpen={showCancelModal} onClose={() => setShowCancelModal(false)} onCancelled={(endsAt) => { setShowCancelModal(false); setCancellingEndsAt(endsAt); }} accessToken={session.access_token} />
+
+      <UpgradeToLifetimeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} accessToken={session.access_token} />
     </div>
   );
 }

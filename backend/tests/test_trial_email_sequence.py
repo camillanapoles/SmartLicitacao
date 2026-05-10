@@ -605,15 +605,188 @@ class TestRenderEmail:
         )
         assert "coupon" in html.lower() or "20%" in html
 
-    def test_expired_subject_includes_20_off(self):
-        """AC14: Expired email subject mentions 20% off."""
+    def test_expired_subject_is_founder_question(self):
+        """EMAIL-TRIAL-006 (#1005): Day 16 subject is founder-led 'Errei algo?'.
+
+        20% off cupom moved from subject → body PS (still applied via
+        coupon_checkout_url). Validates issue copy spec.
+        """
         from services.trial_email_sequence import _render_email
         subject, html = _render_email(
             email_type="expired",
             user_name="Test",
             stats=SAMPLE_STATS,
         )
-        assert "20%" in subject
+        assert "Errei algo" in subject
+        # Cupom mantém-se no body (AC: PS link)
+        assert "TRIAL_COMEBACK_20" in html or "20%" in html
+
+
+class TestEmailTrial006Subjects:
+    """EMAIL-TRIAL-006 (#1005): subjects per issue copy spec."""
+
+    def test_day3_subject_is_question(self):
+        from services.trial_email_sequence import _render_email
+        subject, _ = _render_email("engagement", "Ana", SAMPLE_STATS)
+        assert "Pergunta" in subject and "fazendo sentido" in subject
+
+    def test_day7_subject_pricing_comparison(self):
+        from services.trial_email_sequence import _render_email
+        with patch(
+            "services.trial_email_sequence._get_founders_seats_remaining",
+            return_value=None,
+        ):
+            subject, html = _render_email("paywall_alert", "Ana", SAMPLE_STATS)
+        assert "Pro" in subject and ("vitalício" in subject or "Vitalício" in subject)
+        # Cross-sell Founders link must be in body
+        assert "/fundadores" in html
+
+    def test_day10_subject_with_seats_counter(self):
+        from services.trial_email_sequence import _render_email
+        stats = {**SAMPLE_STATS, "days_remaining": 4}
+        with patch(
+            "services.trial_email_sequence._get_founders_seats_remaining",
+            return_value=12,
+        ):
+            subject, html = _render_email("value", "Ana", stats)
+        assert "12 vagas" in subject
+        assert "4 dias" in subject
+        assert "/fundadores" in html
+
+    def test_day10_subject_fallback_no_counter(self):
+        from services.trial_email_sequence import _render_email
+        stats = {**SAMPLE_STATS, "days_remaining": 4}
+        with patch(
+            "services.trial_email_sequence._get_founders_seats_remaining",
+            return_value=None,
+        ):
+            subject, _ = _render_email("value", "Ana", stats)
+        # Fallback subject — no broken {placeholder}
+        assert "{" not in subject
+        assert "terceira opção" in subject or "decidir" in subject
+
+    def test_day13_subject_pumpkin_legacy_branch(self):
+        from services.trial_email_sequence import _render_email
+        with patch(
+            "services.trial_email_sequence._get_founders_seats_remaining",
+            return_value=None,
+        ):
+            subject, html = _render_email(
+                "last_day", "Ana", SAMPLE_STATS, has_payment_method=False
+            )
+        assert "abóbora" in subject
+        # Founders cross-sell appears in body
+        assert "/fundadores" in html
+
+    def test_day16_subject_founder_question(self):
+        from services.trial_email_sequence import _render_email
+        subject, _ = _render_email("expired", "Ana", SAMPLE_STATS)
+        assert "Errei algo" in subject
+
+
+class TestEmailTrial006AdminSkip:
+    """EMAIL-TRIAL-006 (#1005): admin/master accounts must be skipped."""
+
+    @pytest.mark.asyncio
+    async def test_admin_user_is_skipped(self):
+        """Memory: admin users bypass paywall via is_admin=True. The trial
+        nurture sequence must not target them — they're internal accounts.
+        """
+        import inspect
+        from services import trial_email_sequence
+
+        source = inspect.getsource(trial_email_sequence.process_trial_emails)
+        # The dispatch loop must guard on is_admin/is_master (issue AC)
+        assert "is_admin" in source
+        assert "is_master" in source
+
+    def test_profile_select_includes_admin_flags(self):
+        """SELECT must pull is_admin/is_master to enable the skip filter."""
+        import inspect
+        from services import trial_email_sequence
+
+        source = inspect.getsource(trial_email_sequence.process_trial_emails)
+        # Single-line check on the .select() call (whitespace-flexible)
+        normalized = " ".join(source.split())
+        assert "is_admin" in normalized and "is_master" in normalized
+
+
+class TestEmailTrial006FoundersFetch:
+    """EMAIL-TRIAL-006 (#1005): _get_founders_seats_remaining graceful fallback."""
+
+    def test_returns_none_when_flag_disabled(self):
+        from services.trial_email_sequence import _get_founders_seats_remaining
+        with patch(
+            "config.features.get_feature_flag", return_value=False
+        ):
+            assert _get_founders_seats_remaining() is None
+
+    def test_returns_none_on_db_failure(self):
+        """Any exception in the RPC path → None (templates use generic copy)."""
+        from services.trial_email_sequence import _get_founders_seats_remaining
+        with patch(
+            "config.features.get_feature_flag", return_value=True
+        ), patch(
+            "supabase_client.get_supabase", side_effect=RuntimeError("db down")
+        ):
+            # Must not raise
+            assert _get_founders_seats_remaining() is None
+
+    def test_returns_seats_when_available(self):
+        from services.trial_email_sequence import _get_founders_seats_remaining
+        snapshot = {
+            "available": True,
+            "seats_remaining": 27,
+            "seats_total": 50,
+            "deadline_at": None,
+            "paused": False,
+            "reason": "ok",
+            "offer_mode": "lifetime",
+            "price_brl_cents": 99700,
+        }
+        with patch(
+            "config.features.get_feature_flag", return_value=True
+        ), patch(
+            "supabase_client.get_supabase", return_value=MagicMock()
+        ), patch(
+            "routes.founding._check_availability", return_value=snapshot
+        ):
+            assert _get_founders_seats_remaining() == 27
+
+    def test_returns_none_when_unavailable_flag(self):
+        """RPC says available=False → None even though seats_remaining is set."""
+        from services.trial_email_sequence import _get_founders_seats_remaining
+        snapshot = {"available": False, "seats_remaining": 0}
+        with patch(
+            "config.features.get_feature_flag", return_value=True
+        ), patch(
+            "supabase_client.get_supabase", return_value=MagicMock()
+        ), patch(
+            "routes.founding._check_availability", return_value=snapshot
+        ):
+            assert _get_founders_seats_remaining() is None
+
+
+class TestEmailTrial006PersonalTone:
+    """EMAIL-TRIAL-006 (#1005): personal-tone send — from tiago@smartlic.tech + reply-to gmail."""
+
+    def test_constants_use_personal_tone(self):
+        """Memory: reference_resend_personal_tone_send."""
+        from services import trial_email_sequence
+
+        assert "smartlic.tech" in trial_email_sequence.TRIAL_EMAIL_FROM
+        assert "Tiago" in trial_email_sequence.TRIAL_EMAIL_FROM
+        # Reply-to is gmail (where the founder actually answers)
+        assert "@gmail.com" in trial_email_sequence.TRIAL_EMAIL_REPLY_TO
+
+    def test_dispatch_passes_from_email_and_reply_to(self):
+        """Dispatch loop must invoke send_email_async with from_email/reply_to."""
+        import inspect
+        from services import trial_email_sequence
+
+        source = inspect.getsource(trial_email_sequence.process_trial_emails)
+        assert "from_email=TRIAL_EMAIL_FROM" in source
+        assert "reply_to=TRIAL_EMAIL_REPLY_TO" in source
 
 
 class TestResendWebhook:

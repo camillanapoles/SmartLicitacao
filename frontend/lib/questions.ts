@@ -409,7 +409,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     slug: 'prazo-publicacao-edital',
-    title: 'Prazo de Publicação de Edital: regras da Lei 14.133/2021',
+    title: 'Prazo Publicação de Edital [Lei 14.133/2026] | SmartLic',
     h1: 'Prazos mínimos de publicação de edital por modalidade licitatória',
     category: 'prazos-cronogramas',
     answer:
@@ -440,7 +440,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: [],
     relatedArticles: [],
     metaDescription:
-      'Prazos mínimos de publicação por modalidade licitatória conforme a Nova Lei de Licitações.',
+      'Prazos mínimos de publicação de edital pela Lei 14.133 em 2026 por modalidade: pregão, concorrência, leilão e diálogo. Veja a tabela completa em 2 min.',
   },
   {
     slug: 'vigencia-contrato-administrativo',
@@ -768,7 +768,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     slug: 'qualificacao-tecnica-lei-14133',
-    title: 'Qualificação Técnica em Licitações: exigências da Lei 14.133 com exemplos',
+    title: 'Qualificação Técnica Lei 14.133 [Guia 2026] | SmartLic',
     h1: 'O que a Lei 14.133 permite exigir como qualificação técnica em licitações',
     category: 'documentacao-habilitacao',
     answer:
@@ -793,7 +793,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: ['engenharia', 'construcao'],
     relatedArticles: ['checklist-habilitacao-licitacao-2026'],
     metaDescription:
-      'O que pode ser exigido como qualificação técnica em pregão, concorrência e RDC. Modelos práticos.',
+      'Qualificação técnica em licitações pela Lei 14.133 em 2026 com exemplos: o que pode ser exigido, atestados, CAT e limites legais. Entenda em 4 minutos.',
   },
   {
     slug: 'me-epp-beneficios-licitacao',
@@ -1266,7 +1266,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     slug: 'indice-reajuste-contrato-publico',
-    title: 'Índice de Reajuste de Contrato Público: calcule IPCA, INPC e IGP-M',
+    title: 'Índice de Reajuste Contrato Público [IPCA 2026] | SmartLic',
     h1: 'Como calcular o reajuste do seu contrato público: IPCA, INPC e IGP-M',
     category: 'precos-propostas',
     answer:
@@ -1299,7 +1299,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: [],
     relatedArticles: [],
     metaDescription:
-      'Calcule o reajuste do seu contrato público com base nos índices oficiais. Resultado imediato.',
+      'Calcule o reajuste do seu contrato público em 2026 com índices IPCA, INPC ou IGP-M e confira a base legal da Lei 14.133/2021. Use a calculadora em 2 min.',
   },
 
   /* ================================================================ */
@@ -1599,7 +1599,8 @@ export const QUESTIONS: Question[] = [
   /* ================================================================ */
   {
     slug: 'pncp-o-que-e-como-usar',
-    title: 'O que é o PNCP e como consultar licitações?',
+    title: 'PNCP O Que É e Como Usar [Guia 2026] | SmartLic',
+    h1: 'O que é o PNCP e como consultar licitações?',
     category: 'tecnologia-sistemas',
     answer:
       'O PNCP (Portal Nacional de Contratações Públicas) e a plataforma digital oficial do Governo Federal criada pela Lei 14.133/2021 para centralizar a divulgação de todas as licitações, contratações diretas, atas de registro de preços e contratos públicos do país — nas esferas federal, estadual e municipal.\n\n' +
@@ -1633,7 +1634,7 @@ export const QUESTIONS: Question[] = [
     relatedSectors: [],
     relatedArticles: [],
     metaDescription:
-      'Saiba o que é o PNCP, como consultar licitações, usar filtros de busca e acessar editais de todas as esferas do governo.',
+      'O PNCP é o portal oficial de licitações da Lei 14.133. Saiba como consultar editais, usar filtros e baixar documentos públicos em 2026. Veja em 3 minutos.',
   },
   {
     slug: 'comprasnet-como-participar',

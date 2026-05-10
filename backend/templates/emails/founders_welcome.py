@@ -83,6 +83,25 @@ def render_founders_welcome_email(user_name: str) -> str:
       de pagamento com o desconto aplicado direto para voce.
     </p>
 
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="background-color: #fff8e1; border-left: 4px solid #f9a825; border-radius: 6px; margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 16px 20px;">
+          <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 8px;">
+            <strong>Garantia de 60 dias &mdash; incondicional.</strong>
+          </p>
+          <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 8px;">
+            Voce tem 60 dias pra usar a vontade. Se nao fizer sentido, devolvo R$997 cheios.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 0;">
+            Sem letra miuda: e so responder este email (ou escrever para
+            <a href="mailto:tiago@smartlic.tech" style="color: {SMARTLIC_GREEN};">tiago@smartlic.tech</a>)
+            com o assunto <strong>"reembolso"</strong>. Retorno em ate 5 dias uteis.
+          </p>
+        </td>
+      </tr>
+    </table>
+
     <p style="text-align: center; margin: 28px 0 24px;">
       <a href="{FRONTEND_URL}/buscar"
          style="display: inline-block; padding: 14px 32px; background-color: {SMARTLIC_GREEN};
@@ -135,6 +154,11 @@ Aqui esta o que esta incluido no seu plano:
 Para resgatar o 50% de desconto na Consultoria: quando quiser contratar,
 responda este email com o assunto "Consultoria Fundador". Eu gero um link
 de pagamento com o desconto aplicado direto para voce.
+
+Garantia de 60 dias - incondicional.
+Voce tem 60 dias pra usar a vontade. Se nao fizer sentido, devolvo R$997 cheios.
+Sem letra miuda: responda este email (ou escreva para tiago@smartlic.tech)
+com o assunto "reembolso". Retorno em ate 5 dias uteis.
 
 Faca sua primeira busca agora: {FRONTEND_URL}/buscar
 

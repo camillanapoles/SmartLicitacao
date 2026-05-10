@@ -6135,6 +6135,117 @@
         "title": "FornecedoresStatsResponse",
         "type": "object"
       },
+      "FoundersAvailabilityResponse": {
+        "description": "Response shape for ``GET /api/founders/availability`` (issue #1002).\n\nOn the happy path all numeric fields are populated and ``fallback=false``.\nOn DB/Redis failure ``vagasRestantes=null`` + ``fallback=true`` and the\nfrontend renders the conservative copy (\"Vagas limitadas \u2014 encerra 30/06\").",
+        "properties": {
+          "deadline": {
+            "default": "2026-06-30T23:59:59-03:00",
+            "description": "ISO-8601 deadline (FOUNDERS_DEADLINE env var or default).",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "diasRestantes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whole days until the deadline.",
+            "title": "Diasrestantes"
+          },
+          "fallback": {
+            "default": false,
+            "description": "TRUE when DB or Redis is unavailable. Frontend should render the conservative copy without a number.",
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "horasRestantes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whole hours until the deadline.",
+            "title": "Horasrestantes"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Conservative copy returned when fallback=true.",
+            "title": "Message"
+          },
+          "sold_out": {
+            "default": false,
+            "description": "TRUE when vagasPreenchidas >= cap (50).",
+            "title": "Sold Out",
+            "type": "boolean"
+          },
+          "ultimaVagaEm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO-8601 timestamp of the most recent founder_since.",
+            "title": "Ultimavagaem"
+          },
+          "ultimasVagasOptIn": {
+            "description": "Up to 5 most recent founders who explicitly opted in via founder_public_listing_consent=TRUE (LGPD).",
+            "items": {
+              "$ref": "#/components/schemas/UltimaVagaOptIn"
+            },
+            "title": "Ultimasvagasoptin",
+            "type": "array"
+          },
+          "vagasPreenchidas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seats already taken (count of is_founder=TRUE profiles).",
+            "title": "Vagaspreenchidas"
+          },
+          "vagasRestantes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seats still available (50 - taken). NULL when fallback=true.",
+            "title": "Vagasrestantes"
+          },
+          "vagasTotal": {
+            "default": 50,
+            "description": "Hard cap (50).",
+            "title": "Vagastotal",
+            "type": "integer"
+          }
+        },
+        "title": "FoundersAvailabilityResponse",
+        "type": "object"
+      },
       "FoundingAvailabilityResponse": {
         "description": "Public availability snapshot for landing-page seat counter + countdown.",
         "properties": {
@@ -14271,6 +14382,33 @@
         "title": "UfStatusDetail",
         "type": "object"
       },
+      "UltimaVagaOptIn": {
+        "description": "LGPD-safe public listing entry (only included when consent=TRUE).",
+        "properties": {
+          "empresa": {
+            "description": "Display name (razao_social or 'empresa').",
+            "title": "Empresa",
+            "type": "string"
+          },
+          "preenchidaEm": {
+            "description": "ISO-8601 timestamp.",
+            "title": "Preenchidaem",
+            "type": "string"
+          },
+          "uf": {
+            "description": "State code, 2 letters.",
+            "title": "Uf",
+            "type": "string"
+          }
+        },
+        "required": [
+          "empresa",
+          "uf",
+          "preenchidaEm"
+        ],
+        "title": "UltimaVagaOptIn",
+        "type": "object"
+      },
       "UnreadCountResponse": {
         "description": "Unread message count for badge display.",
         "properties": {
@@ -14454,6 +14592,101 @@
           }
         },
         "title": "UpdateUserRequest",
+        "type": "object"
+      },
+      "UpgradeToLifetimePreviewResponse": {
+        "description": "Pro-rata preview for the modal confirmation step.\n\nStripe handles the actual proration when we cancel with ``prorate=True`` and\ncreate the new charge \u2014 these numbers are an *estimate* surfaced to the\nuser so they understand what will happen. The webhook is the source of\ntruth for the final charge.",
+        "properties": {
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "estimated_credit_brl_cents": {
+            "default": 0,
+            "title": "Estimated Credit Brl Cents",
+            "type": "integer"
+          },
+          "has_active_subscription": {
+            "default": false,
+            "title": "Has Active Subscription",
+            "type": "boolean"
+          },
+          "is_already_founder": {
+            "default": false,
+            "title": "Is Already Founder",
+            "type": "boolean"
+          },
+          "lifetime_price_brl_cents": {
+            "default": 99700,
+            "title": "Lifetime Price Brl Cents",
+            "type": "integer"
+          },
+          "net_charge_brl_cents": {
+            "default": 99700,
+            "title": "Net Charge Brl Cents",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "seats_remaining": {
+            "default": 0,
+            "title": "Seats Remaining",
+            "type": "integer"
+          },
+          "seats_total": {
+            "default": 0,
+            "title": "Seats Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "eligible",
+          "reason"
+        ],
+        "title": "UpgradeToLifetimePreviewResponse",
+        "type": "object"
+      },
+      "UpgradeToLifetimeRequest": {
+        "description": "Empty body \u2014 auth identifies the user.",
+        "properties": {
+          "confirmed": {
+            "default": true,
+            "description": "Client must explicitly confirm to proceed (defense in depth).",
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "title": "UpgradeToLifetimeRequest",
+        "type": "object"
+      },
+      "UpgradeToLifetimeResponse": {
+        "properties": {
+          "checkout_url": {
+            "title": "Checkout Url",
+            "type": "string"
+          },
+          "estimated_credit_brl_cents": {
+            "default": 0,
+            "title": "Estimated Credit Brl Cents",
+            "type": "integer"
+          },
+          "net_charge_brl_cents": {
+            "default": 99700,
+            "title": "Net Charge Brl Cents",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkout_url",
+          "session_id"
+        ],
+        "title": "UpgradeToLifetimeResponse",
         "type": "object"
       },
       "UptimeHistoryEntry": {
@@ -15478,6 +15711,28 @@
           }
         },
         "summary": "Root"
+      }
+    },
+    "/api/founders/availability": {
+      "get": {
+        "description": "Public seat counter + countdown feed (issue #1002).",
+        "operationId": "founders_availability_api_founders_availability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoundersAvailabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Founders Availability",
+        "tags": [
+          "founders"
+        ]
       }
     },
     "/debug/pncp-test": {
@@ -19226,6 +19481,80 @@
           }
         ],
         "summary": "Update Billing Period",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/v1/api/subscriptions/upgrade-to-lifetime": {
+      "post": {
+        "description": "Upgrade Pro mensal -> Lifetime founder (#1011 / UPGRADE-PATH-013).\n\nFlow:\n  1. Re-check founder cap via existing ``check_founding_availability()`` RPC\n     (race-guarded, atomic). Reject 410 if cap reached.\n  2. Reject 409 if ``profiles.is_founder`` is already TRUE (idempotent).\n  3. Cancel the active Stripe subscription with ``prorate=True``. Stripe\n     issues a credit balance to the customer automatically \u2014 no custom\n     prorata math.\n  4. Create a Stripe Checkout Session in ``mode='payment'`` for the\n     R$997 one-time founder price (``FOUNDING_ONE_TIME_PRICE_ID``).\n     Customer balance is consumed automatically by Stripe.\n  5. Return checkout URL. The existing webhook handler\n     (``webhooks/handlers/founding.py::_activate_lifetime_founder_entitlement``)\n     flips ``is_founder=TRUE`` once payment completes \u2014 DO NOT duplicate.\n  6. Audit log via ``audit_logger`` for billing.subscription_change.",
+        "operationId": "upgrade_to_lifetime_v1_api_subscriptions_upgrade_to_lifetime_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpgradeToLifetimeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpgradeToLifetimeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upgrade To Lifetime",
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/v1/api/subscriptions/upgrade-to-lifetime/preview": {
+      "get": {
+        "description": "Preview pro-rata math for the upgrade-to-lifetime modal (#1011).\n\nReturns ``eligible=False`` with a structured ``reason`` whenever the user\nis not allowed to upgrade (already founder, no active sub, cap reached,\nfeature flag off). Front-end uses this to render the right copy without\nparsing free text.",
+        "operationId": "upgrade_to_lifetime_preview_v1_api_subscriptions_upgrade_to_lifetime_preview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpgradeToLifetimePreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upgrade To Lifetime Preview",
         "tags": [
           "subscriptions"
         ]
