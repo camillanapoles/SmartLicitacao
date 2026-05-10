@@ -15,6 +15,57 @@ from fastapi.testclient import TestClient
 
 
 # ============================================================================
+# File-local autouse fixture — TEST-XFAIL-CLEANUP-001 (#971 AC2)
+# ============================================================================
+
+@pytest.fixture(autouse=True)
+def _force_partners_enabled_in_routes(monkeypatch):
+    """Re-bind ``PARTNERS_ENABLED`` inside ``routes.partners`` for every test.
+
+    Root cause of the historical batch-only failures:
+    ``routes/partners.py`` does ``from config import PARTNERS_ENABLED`` at
+    import time, which creates a module-local copy of the flag. The global
+    autouse fixture in ``tests/conftest.py`` (``_enable_feature_gated_routes``)
+    only patches ``config.PARTNERS_ENABLED``; the bound copy in
+    ``routes.partners`` keeps whatever value it had at import time. When
+    ``routes.partners`` is imported before ``setup_test_env`` runs (which
+    happens in batch mode via ``from main import app`` chains in other tests),
+    the bound copy stays at the production default of ``False``, and every
+    partner endpoint returns 404 "Feature not available".
+
+    Defensive resets for ``shutting_down`` + circuit-breaker state are
+    included as belt-and-suspenders — they were the original hypothesis in
+    issue #971 but turned out not to be the actual cause (failures were 404,
+    not 503 from drain middleware).
+    """
+    # Primary fix: rebind the import-time-copied flag in routes.partners.
+    import routes.partners as _partners_routes
+    monkeypatch.setattr(_partners_routes, "PARTNERS_ENABLED", True)
+
+    # Defense-in-depth: reset graceful-shutdown drain flag.
+    try:
+        import startup.state as _state
+        _original_shutting_down = _state.shutting_down
+        _state.shutting_down = False
+    except Exception:
+        _original_shutting_down = None
+        _state = None
+
+    # Defense-in-depth: reset Supabase circuit breakers to CLOSED.
+    try:
+        from supabase_client import _CB_REGISTRY, supabase_cb
+        for _cb in list(_CB_REGISTRY.values()) + [supabase_cb]:
+            _cb.reset()
+    except Exception:
+        pass
+
+    yield
+
+    if _state is not None and _original_shutting_down is not None:
+        _state.shutting_down = _original_shutting_down
+
+
+# ============================================================================
 # Helpers
 # ============================================================================
 
@@ -263,16 +314,6 @@ class TestPartnerReferralChurn:
 # Routes: Admin partner endpoints (AC10-AC14)
 # ============================================================================
 
-@pytest.mark.xfail(
-    reason="STORY-BTS-FOLLOWUP: batch-only failure — ``from main import app`` picks "
-    "up a polluted process state (``shutting_down=True`` leaked from lifespan tests, "
-    "or CB OPEN state) that no autouse fixture has been able to stabilise without "
-    "introducing regressions elsewhere. Helper/non-route tests in this file pass "
-    "(TestPartnerSignupAttribution, TestPartnerReferralChurn, TestRevenueShareCronJob); "
-    "only the 5 tests that instantiate TestClient(app) fail. Tracked as batch-pollution "
-    "follow-up — do not remove without reproducing in isolation first.",
-    strict=False,
-)
 class TestPartnerRoutes:
     """Test partner admin routes."""
 
