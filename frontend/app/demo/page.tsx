@@ -4,7 +4,7 @@ import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import DemoClient from './DemoClient';
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export const metadata: Metadata = {
   title: 'Demo Interativo — Veja o SmartLic em Ação',

@@ -13381,46 +13381,27 @@
         "type": "object"
       },
       "SitemapHealthResponse": {
-        "additionalProperties": true,
-        "description": "SEO-SITEMAP-TELEMETRY-001: Health envelope for sitemap materialized views.\n\nReturns per-MV status (ok/empty/error) and overall status (ok/degraded).\nHTTP 200 when all MVs are ok; HTTP 503 when any MV is empty or errored.",
+        "description": "Response for GET /health/sitemap endpoint (SEO-SITEMAP-TELEMETRY-001).",
         "properties": {
           "checks": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/SitemapMvCheck"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Checks"
+            "additionalProperties": true,
+            "title": "Checks",
+            "type": "object"
           },
           "status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status"
+            "title": "Status",
+            "type": "string"
           },
           "timestamp": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timestamp"
+            "title": "Timestamp",
+            "type": "string"
           }
         },
+        "required": [
+          "status",
+          "timestamp",
+          "checks"
+        ],
         "title": "SitemapHealthResponse",
         "type": "object"
       },
@@ -13500,47 +13481,6 @@
           "updated_at"
         ],
         "title": "SitemapMunicipiosResponse",
-        "type": "object"
-      },
-      "SitemapMvCheck": {
-        "additionalProperties": true,
-        "description": "Per-MV status entry for the sitemap health endpoint.",
-        "properties": {
-          "count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Count"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Status"
-          }
-        },
-        "title": "SitemapMvCheck",
         "type": "object"
       },
       "SitemapOrgaosResponse": {
@@ -25574,7 +25514,7 @@
     },
     "/v1/sitemap/contratos-orgao-indexable": {
       "get": {
-        "description": "Retorna CNPJs de \u00f3rg\u00e3os com \u22651 contrato ativo em pncp_supplier_contracts.\n\nDiferente de /sitemap/orgaos (que usa mv_sitemap_orgaos/pncp_raw_bids), este\nendpoint consulta pncp_supplier_contracts \u2014 a tabela que alimenta\n/contratos/orgao/{cnpj}/stats. Garante que o sitemap s\u00f3 inclui URLs\nque retornam 200, eliminando os 794 404s reportados no GSC.\nCache: 24h em mem\u00f3ria.",
+        "description": "Retorna CNPJs de \u00f3rg\u00e3os com \u22651 contrato ativo em pncp_supplier_contracts.\n\nDiferente de /sitemap/orgaos (que usa pncp_raw_bids/licita\u00e7\u00f5es), este\nendpoint consulta pncp_supplier_contracts \u2014 a tabela que alimenta\n/contratos/orgao/{cnpj}/stats. Garante que o sitemap s\u00f3 inclui URLs\nque retornam 200, eliminando os 794 404s reportados no GSC.\nCache: 24h em mem\u00f3ria.",
         "operationId": "sitemap_contratos_orgao_indexable_v1_sitemap_contratos_orgao_indexable_get",
         "responses": {
           "200": {
@@ -25596,7 +25536,7 @@
     },
     "/v1/sitemap/fornecedores-cnpj": {
       "get": {
-        "description": "Retorna os CNPJs de fornecedores com mais contratos em pncp_supplier_contracts.\n\nSEO-SITEMAP-MV-001: agora usa mv_sitemap_fornecedores (MV pr\u00e9-agregada).\nUsado pelo frontend para gerar /fornecedores/{cnpj} no sitemap.xml.\nLimite: 5.000 CNPJs por volume de contratos.\nCache: 24h em memoria sucesso, 5min em falha (negative cache PR #529 pattern).",
+        "description": "Retorna os CNPJs de fornecedores com mais contratos em pncp_supplier_contracts.\n\nUsado pelo frontend para gerar /fornecedores/{cnpj} no sitemap.xml.\nLimite: 5.000 CNPJs por volume de contratos (mais contratos = maior valor SEO).\nCache: 24h em memoria sucesso, 5min em falha (negative cache PR #529 pattern).",
         "operationId": "sitemap_fornecedores_cnpj_v1_sitemap_fornecedores_cnpj_get",
         "responses": {
           "200": {

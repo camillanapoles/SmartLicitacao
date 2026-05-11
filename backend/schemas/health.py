@@ -96,3 +96,19 @@ class DebugPNCPResponse(BaseModel):
     error: Optional[str] = None
     error_type: Optional[str] = None
     elapsed_ms: int
+
+
+class MvCheckResult(BaseModel):
+    """Per-MV health check result for SEO-SITEMAP-TELEMETRY-001."""
+    name: str
+    status: str  # "ok" | "degraded" | "missing" | "empty" | "error"
+    row_count: Optional[int] = None
+    last_refresh: Optional[str] = None
+    error: Optional[str] = None
+
+
+class SitemapHealthResponse(BaseModel):
+    """Response for GET /health/sitemap endpoint (SEO-SITEMAP-TELEMETRY-001)."""
+    status: str  # "ok" | "degraded"
+    timestamp: str
+    checks: Dict[str, Any]

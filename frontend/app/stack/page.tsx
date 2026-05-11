@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import { STACK_TOOLS, CATEGORY_LABELS, CATEGORY_COLORS } from '@/lib/stack-data';
 import { buildCanonical, SITE_URL } from '@/lib/seo';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'Tech Stack — SmartLic | Supabase, Next.js, FastAPI, Railway',

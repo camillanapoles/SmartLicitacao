@@ -7,6 +7,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e-tests',
 
+  /* Ignora specs de crawl de produção — não devem rodar em PRs comuns */
+  testIgnore: ['**/seo/**'],
+
   /* Maximum time one test can run */
   timeout: 60 * 1000, // 60s per test (AC7)
 

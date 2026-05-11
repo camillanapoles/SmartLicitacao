@@ -26,6 +26,12 @@ export interface SafeFetchOptions extends RequestInit {
   label?: string;
   /** Timeout in ms (default 15000ms). */
   timeout?: number;
+  /**
+   * When true, HTTP 5xx responses throw an Error instead of returning null.
+   * Use this in ISR pages so transient backend errors preserve last-good cache
+   * (stale-while-revalidate) rather than caching an empty state.
+   */
+  throwOn5xx?: boolean;
 }
 
 /**
@@ -39,7 +45,7 @@ export async function safeFetch(
   url: string,
   options: SafeFetchOptions = {},
 ): Promise<Response | null> {
-  const { label = url, timeout = 15000, ...init } = options;
+  const { label = url, timeout = 15000, throwOn5xx = false, ...init } = options;
   const startedAt = Date.now();
   let outcome: SafeFetchOutcome = 'success';
   let statusCode = 0;
@@ -57,6 +63,11 @@ export async function safeFetch(
         tags: { fetch_label: label, fetch_outcome: 'http_error' },
         contexts: { fetch: { url, status: resp.status } },
       });
+      // ISR stale-while-revalidate: throw on 5xx so Next.js preserves last-good cache
+      // instead of caching an empty/error state for the full revalidate window.
+      if (throwOn5xx && resp.status >= 500) {
+        throw new Error(`safeFetch ${label} server error ${resp.status}`);
+      }
       return null;
     }
     return resp;
@@ -98,6 +109,13 @@ export interface FetchBudgetOptions<T> {
   /** Sentry tag (default url). */
   label?: string;
   /**
+   * When true, HTTP 5xx responses are re-thrown instead of being swallowed.
+   * Use in ISR pages to preserve last-good stale-while-revalidate cache on
+   * transient backend errors (vs caching an empty/error state for the full
+   * revalidate window).
+   */
+  throwOn5xx?: boolean;
+  /**
    * Optional response shape transformer. Receives parsed JSON, must return
    * the typed value or throw on shape mismatch.
    */
@@ -129,6 +147,7 @@ export async function fetchWithBudget<T>(
     fallback = null,
     revalidate = 3600,
     label = url,
+    throwOn5xx = false,
     extract,
   } = opts;
 
@@ -139,6 +158,7 @@ export async function fetchWithBudget<T>(
     const resp = await safeFetch(url, {
       label: attemptLabel,
       timeout,
+      throwOn5xx,
       next: { revalidate },
     });
 

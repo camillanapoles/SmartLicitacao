@@ -36,7 +36,7 @@ import { getFreshnessLabel } from '@/lib/seo';
  * or "editais engenharia salvador".
  */
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export function generateStaticParams() {
   const params: { cidade: string; setor: string }[] = [];

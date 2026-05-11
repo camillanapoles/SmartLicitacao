@@ -26,7 +26,7 @@ import { SECTORS } from '@/lib/sectors';
  * displays a generic fallback and lets the build succeed.
  */
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export function generateStaticParams() {
   return CITIES.map((c) => ({ cidade: c.slug }));

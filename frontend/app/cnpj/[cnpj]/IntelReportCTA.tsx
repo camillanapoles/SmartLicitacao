@@ -16,7 +16,7 @@ interface CnpjProps {
  * Authenticated click → Stripe Checkout for Raio-X do Concorrente (R$197).
  *
  * Must be a separate "use client" file because the parent page.tsx is a
- * Server Component with ISR (revalidate=86400).
+ * Server Component with ISR (revalidate=3600 — SEO-FE-ISR-001 #1038).
  */
 export default function IntelReportCTA({ cnpj }: CnpjProps) {
   const router = useRouter();

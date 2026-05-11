@@ -23,7 +23,7 @@ import {
   extractHowToSteps,
 } from './json-ld';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 /**
  * SEO-P2-011 (Issue #997): E-E-A-T author bylines on legal/Lei 14.133 pages.

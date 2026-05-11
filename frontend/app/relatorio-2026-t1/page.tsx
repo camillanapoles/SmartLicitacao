@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import RelatorioClient from './RelatorioClient';
 
-export const revalidate = 86400; // ISR 24h
+export const revalidate = 3600; // ISR 24h
 
 const CANONICAL = 'https://smartlic.tech/relatorio-2026-t1';
 const OG_IMAGE = '/api/og?title=Panorama+Licita%C3%A7%C3%B5es+Brasil+2026+T1';

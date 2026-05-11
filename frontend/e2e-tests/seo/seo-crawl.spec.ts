@@ -16,7 +16,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const PROD_URL = 'https://smartlic.tech';
+const PROD_URL = process.env.FRONTEND_URL ?? 'https://smartlic.tech';
 
 /** Parse <loc> tags from any sitemap XML. */
 function extractUrlsFromSitemap(xml: string): string[] {
@@ -50,27 +50,29 @@ test.describe('SEO Sitemap Crawl', () => {
     const subSitemapUrls = extractUrlsFromSitemap(sitemapText);
     expect(subSitemapUrls.length).toBeGreaterThanOrEqual(5);
 
-    // Collect all page URLs from the first 5 sub-sitemaps
-    const allUrls: string[] = [];
-    for (const url of subSitemapUrls.slice(0, 5)) {
+    // Collect all page URLs from the first 5 sub-sitemaps, tracking which sub-sitemap each came from
+    const allEntries: { url: string; source: string }[] = [];
+    for (const subSitemapUrl of subSitemapUrls.slice(0, 5)) {
       // eslint-disable-next-line no-await-in-loop
-      const resp = await request.get(url, { timeout: 15000 });
+      const resp = await request.get(subSitemapUrl, { timeout: 15000 });
       expect(resp.status()).toBe(200);
       // eslint-disable-next-line no-await-in-loop
       const xml = await resp.text();
-      allUrls.push(...extractUrlsFromSitemap(xml));
+      for (const url of extractUrlsFromSitemap(xml)) {
+        allEntries.push({ url, source: subSitemapUrl });
+      }
     }
 
-    // Sample 50 URLs randomly
-    const sampled = shuffle(allUrls).slice(0, 50);
+    // Sample 50 entries randomly
+    const sampled = shuffle(allEntries).slice(0, 50);
 
-    // HEAD each — fail if >= 400
-    const failures: { url: string; status: number }[] = [];
-    for (const url of sampled) {
+    // HEAD each sampled URL — no body downloaded, fail if status >= 400.
+    const failures: { url: string; status: number; source: string }[] = [];
+    for (const { url, source } of sampled) {
       // eslint-disable-next-line no-await-in-loop
-      const resp = await request.get(url, { timeout: 30000 });
+      const resp = await request.fetch(url, { method: 'HEAD', timeout: 30000 });
       if (resp.status() >= 400) {
-        failures.push({ url, status: resp.status() });
+        failures.push({ url, status: resp.status(), source });
       }
     }
 
@@ -78,7 +80,7 @@ test.describe('SEO Sitemap Crawl', () => {
       failures,
       failures.length > 0
         ? `SEO crawl failed — ${failures.length}/${sampled.length} URLs returned >= 400:\n${failures
-            .map((f) => `  ${f.status} ${f.url}`)
+            .map((f) => `  ${f.status} ${f.url} (sub-sitemap: ${f.source})`)
             .join('\n')}`
         : undefined,
     ).toEqual([]);

@@ -13,17 +13,19 @@ import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
+from schemas.health import MvCheckResult, SitemapHealthResponse
 from schemas.parity import (
     BackgroundTasksHealthResponse,
     CacheHealthResponse,
     IncidentsResponse,
     PublicStatusResponse,
-    SitemapHealthResponse,
     SourcesHealthMapResponse,
     SystemHealthResponse,
     UptimeHistoryResponse,
 )
+from supabase_client import get_supabase, sb_execute
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +305,7 @@ _SITEMAP_MVS = [
     "mv_sitemap_cnpjs",
     "mv_sitemap_orgaos",
     "mv_sitemap_fornecedores",
+    # mv_sitemap_municipios: added when migration ships (SEO-SITEMAP-MV-001)
 ]
 
 
@@ -314,7 +317,6 @@ async def sitemap_health():
     Used by Sentry monitors and Railway probes to detect empty sitemap
     responses before they reach GSC.
     """
-    from supabase_client import get_supabase, sb_execute
     sb = get_supabase()
 
     checks: dict = {}
@@ -337,7 +339,6 @@ async def sitemap_health():
             }
 
     all_ok = all(v["status"] == "ok" for v in checks.values())
-    from fastapi.responses import JSONResponse
     return JSONResponse(
         content={
             "status": "ok" if all_ok else "degraded",

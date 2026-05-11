@@ -28,7 +28,7 @@ import { SECTORS } from '@/lib/sectors';
  * Schema: FAQPage + Dataset + Article + HowTo.
  */
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export function generateStaticParams() {
   return generateSectorParams(); // 15 sectors

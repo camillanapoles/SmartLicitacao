@@ -7,7 +7,7 @@ import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export function generateStaticParams() {
   return generateSectorUfParams();
@@ -42,7 +42,7 @@ async function fetchFornecedoresStats(setor: string, uf: string): Promise<Fornec
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
   try {
     const res = await fetch(`${backendUrl}/v1/fornecedores/${setor}/${uf}/stats`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 3600 },
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;

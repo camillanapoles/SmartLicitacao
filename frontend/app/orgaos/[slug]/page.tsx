@@ -45,7 +45,7 @@ interface OrgaoStats {
   aviso_legal: string;
 }
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export function generateStaticParams() {
   return []; // SSR on-demand
@@ -53,9 +53,10 @@ export function generateStaticParams() {
 
 async function fetchOrgaoStats(slug: string): Promise<OrgaoStats | null> {
   return fetchWithBudget<OrgaoStats>(`${BACKEND_URL}/v1/orgao/${slug}/stats`, {
-    timeout: 10000,
+    timeout: 15000,
     retries: 1,
-    revalidate: 86400,
+    revalidate: 3600,
+    throwOn5xx: true, // ISR stale-preservation: 5xx re-throws to keep last-good cache
     label: 'orgao-stats',
   });
 }

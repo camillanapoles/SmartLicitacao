@@ -11,7 +11,7 @@ import Footer from '@/app/components/Footer';
 import { LeadCapture } from '@/components/LeadCapture';
 import ReajusteCalculator from './ReajusteCalculator';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 const SLUG = 'indice-reajuste-contrato-publico';
 

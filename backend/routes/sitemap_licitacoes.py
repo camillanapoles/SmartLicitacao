@@ -17,6 +17,7 @@ from typing import Optional
 import sentry_sdk
 
 from fastapi import APIRouter, Depends, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from admin import require_admin
@@ -84,19 +85,17 @@ async def get_licitacoes_indexable(response: Response):
         }
         _cache = (result, time.time(), _CACHE_TTL_SECONDS)
     except asyncio.TimeoutError:
-        logger.warning(
-            "get_licitacoes_indexable: budget %.0fs exceeded — returning empty negative cache",
+        logger.error(
+            "get_licitacoes_indexable: budget %.0fs exceeded — returning 503 (not caching)",
             _BUDGET_S,
         )
         sentry_sdk.capture_message('sitemap_source_timeout', level='warning',
             tags={'endpoint': 'licitacoes-indexable', 'outcome': 'timeout'})
-        result = {
-            "combos": [],
-            "total": 0,
-            "threshold": bids_threshold,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        _cache = (result, time.time(), _NEGATIVE_CACHE_TTL_SECONDS)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "sitemap_source_timeout"},
+            headers={"Retry-After": "30"},
+        )
     except Exception as exc:
         logger.error("get_licitacoes_indexable unexpected error: %s", exc)
         result = {

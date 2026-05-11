@@ -52,7 +52,7 @@ export default async function ObservatorioEmbedPage({
   let relatorio: ObservatorioRelatorio | null = null;
   try {
     const resp = await fetch(`${BACKEND_URL}/v1/observatorio/relatorio/${mes}/${ano}`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 3600 },
       signal: AbortSignal.timeout(10000),
     });
     if (resp.ok) relatorio = (await resp.json()) as ObservatorioRelatorio;

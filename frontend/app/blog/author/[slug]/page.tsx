@@ -7,7 +7,7 @@ import { buildCanonical, SITE_URL } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return getAllAuthorSlugs().map((slug) => ({ slug }));

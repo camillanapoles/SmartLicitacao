@@ -17,9 +17,9 @@ jest.mock('@/components/blog/BlogCTA', () => () => <div data-testid="blog-cta" /
 jest.mock('@/components/blog/RelatedPages', () => () => <div data-testid="related-pages" />);
 
 describe('ContratosSetorPillarPage', () => {
-  it('exports revalidate = 86400', async () => {
+  it('exports revalidate = 3600', async () => {
     const mod = await import('@/app/blog/contratos/[setor]/page');
-    expect(mod.revalidate).toBe(86400);
+    expect(mod.revalidate).toBe(3600);
   });
 
   it('generateStaticParams returns 15 sectors', async () => {

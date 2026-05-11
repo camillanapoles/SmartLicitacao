@@ -59,7 +59,7 @@ def _mock_sb_with_mv_counts(mv_counts: dict[str, int | None]) -> MagicMock:
 class TestSitemapHealth:
     """Tests for GET /v1/health/sitemap."""
 
-    @patch("supabase_client.get_supabase")
+    @patch("routes.health.get_supabase")
     @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs", "mv_sitemap_orgaos"])
     def test_ok_when_all_mvs_have_data(self, mock_get_sb, client):
         """Returns 200 with status=ok when all MVs have data."""
@@ -77,7 +77,7 @@ class TestSitemapHealth:
         assert data["checks"]["mv_sitemap_cnpjs"]["count"] == 150
         assert data["checks"]["mv_sitemap_orgaos"]["status"] == "ok"
 
-    @patch("supabase_client.get_supabase")
+    @patch("routes.health.get_supabase")
     @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs", "mv_sitemap_orgaos"])
     def test_degraded_when_empty_mv(self, mock_get_sb, client):
         """Returns 503 with status=degraded when MV has 0 rows."""
@@ -92,7 +92,7 @@ class TestSitemapHealth:
         assert data["status"] == "degraded"
         assert data["checks"]["mv_sitemap_cnpjs"]["status"] == "empty"
 
-    @patch("supabase_client.get_supabase")
+    @patch("routes.health.get_supabase")
     @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs"])
     def test_degraded_when_mv_errors(self, mock_get_sb, client):
         """Returns 503 with status=error when MV query fails (table not found)."""
@@ -107,31 +107,25 @@ class TestSitemapHealth:
         assert data["checks"]["mv_sitemap_cnpjs"]["status"] == "error"
         assert "error" in data["checks"]["mv_sitemap_cnpjs"]
 
-    @patch("supabase_client.get_supabase")
-    @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores"])
+    @patch("routes.health.get_supabase")
+    @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores", "mv_sitemap_municipios"])
     def test_all_mvs_checked(self, mock_get_sb, client):
-        """All 3 real MVs (cnpjs, orgaos, fornecedores) are present in the checks response.
-
-        mv_sitemap_municipios is intentionally excluded — it was never created
-        by the SEO-SITEMAP-MV-001 migration and would cause a table-not-found
-        error in production.
-        """
+        """All 4 MVs are present in the checks response."""
         mock_get_sb.return_value = _mock_sb_with_mv_counts({
             "mv_sitemap_cnpjs": 100,
             "mv_sitemap_orgaos": 100,
             "mv_sitemap_fornecedores": 100,
+            "mv_sitemap_municipios": 100,
         })
 
         resp = client.get("/v1/health/sitemap")
         assert resp.status_code == 200
         data = resp.json()
-        for mv in ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores"]:
+        for mv in ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores", "mv_sitemap_municipios"]:
             assert mv in data["checks"], f"Missing MV: {mv}"
-        assert "mv_sitemap_municipios" not in data["checks"], (
-            "mv_sitemap_municipios was removed — it was never created in production"
-        )
 
-    @patch("supabase_client.get_supabase")
+    @patch("routes.health.get_supabase")
+    @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs"])
     def test_response_has_timestamp(self, mock_get_sb, client):
         """Response includes ISO timestamp."""
         mock_get_sb.return_value = _mock_sb_with_mv_counts({"mv_sitemap_cnpjs": 5})

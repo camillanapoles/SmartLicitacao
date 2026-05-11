@@ -3,7 +3,7 @@
 A Receita Federal IN 2.229/2024 introduz CNPJs alfanuméricos (12 chars [A-Z0-9]
 + 2 dígitos verificadores) com vigência a partir de 01/07/2026. Este módulo
 centraliza a validação de formato para backend e sitemap, eliminando o uso de
-`str.isdigit` e `length >= 11` que (a) rejeitariam CNPJs futuros e (b) aceitam
+str.isdigit e `length >= 11` que (a) rejeitariam CNPJs futuros e (b) aceitam
 CPFs (11 dígitos) e strings inválidas, causando páginas 404 no GSC.
 
 Uso:

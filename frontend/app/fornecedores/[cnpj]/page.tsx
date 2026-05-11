@@ -10,7 +10,7 @@ import { isNoindexed } from '@/lib/seo/noindex';
 
 // Sprint 3 Parte 13: paginas de perfil de fornecedor por CNPJ
 // ISR 24h — dados do PNCP atualizados diariamente
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 // Limite de CNPJs pre-renderizados no build (resto e on-demand ISR)
 const _MAX_STATIC_CNPJS = 1000;
@@ -59,17 +59,19 @@ interface FornecedorProfile {
 
 async function fetchProfile(cnpj: string): Promise<FornecedorProfile | null> {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-  try {
-    const res = await fetch(`${backendUrl}/v1/fornecedores/${cnpj}/profile`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (res.status === 404) return null;
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
+  // SEO-FE-ISR-001 (#1038): no try/catch — let network/timeout errors propagate so
+  // ISR keeps the last-good cached page rather than caching a null-driven EmptyState.
+  const res = await fetch(`${backendUrl}/v1/fornecedores/${cnpj}/profile`, {
+    next: { revalidate: 3600 }, // 1h ISR
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (res.status >= 500) {
+    // Transient backend error — throw so ISR preserves last-good cache.
+    throw new Error(`fornecedores_profile_backend_5xx:${res.status}`);
   }
+  // 4xx (incl. 404) → genuine "no data" — render EmptyStateSEO.
+  if (!res.ok) return null;
+  return await res.json();
 }
 
 export async function generateStaticParams() {
@@ -90,7 +92,14 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { cnpj } = await params;
-  const profile = await fetchProfile(cnpj);
+  // SEO-FE-ISR-001 (#1038): swallow transient throws in metadata phase — still want
+  // a (noindex) <head> even when the page body is in ISR stale-preservation mode.
+  let profile: FornecedorProfile | null = null;
+  try {
+    profile = await fetchProfile(cnpj);
+  } catch {
+    profile = null;
+  }
 
   if (!profile) {
     return {
