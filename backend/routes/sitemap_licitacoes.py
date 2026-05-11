@@ -14,6 +14,8 @@ import os
 import time
 from typing import Optional
 
+import sentry_sdk
+
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
@@ -86,6 +88,8 @@ async def get_licitacoes_indexable(response: Response):
             "get_licitacoes_indexable: budget %.0fs exceeded — returning empty negative cache",
             _BUDGET_S,
         )
+        sentry_sdk.capture_message('sitemap_source_timeout', level='warning',
+            tags={'endpoint': 'licitacoes-indexable', 'outcome': 'timeout'})
         result = {
             "combos": [],
             "total": 0,
@@ -103,7 +107,27 @@ async def get_licitacoes_indexable(response: Response):
         }
         _cache = (result, time.time(), _NEGATIVE_CACHE_TTL_SECONDS)
 
-    record_sitemap_count("licitacoes-indexable", len(result.get("combos", [])))
+    combos = result.get("combos", [])
+    if len(combos) == 0:
+        try:
+            from supabase_client import get_supabase, sb_execute
+            sb = get_supabase()
+            resp = await sb_execute(
+                sb.table("pncp_raw_bids").select("id", count="exact").limit(0)
+            )
+            bids_count = resp.count if hasattr(resp, 'count') and resp.count is not None else 0
+            resp2 = await sb_execute(
+                sb.table("pncp_supplier_contracts").select("id", count="exact").limit(0)
+            )
+            contracts_count = resp2.count if hasattr(resp2, 'count') and resp2.count is not None else 0
+            total_count = (bids_count or 0) + (contracts_count or 0)
+            if total_count > 0:
+                sentry_sdk.capture_message('sitemap_empty_despite_data', level='error',
+                    tags={'endpoint': 'licitacoes-indexable', 'bids_count': bids_count or 0, 'contracts_count': contracts_count or 0})
+        except Exception:
+            pass
+
+    record_sitemap_count("licitacoes-indexable", len(combos))
     return LicitacoesIndexableResponse(**result)
 
 

@@ -12,6 +12,7 @@ TTL 1h (dia corrente muda durante o dia).
 import asyncio
 import logging
 
+import sentry_sdk
 from pipeline.budget import _run_with_budget
 import time
 from datetime import datetime, timedelta, timezone
@@ -94,6 +95,8 @@ async def sitemap_licitacoes_do_dia_indexable(response: Response):
             "sitemap_licitacoes_do_dia: budget %.0fs exceeded — empty negative cache",
             _BUDGET_S,
         )
+        sentry_sdk.capture_message('sitemap_source_timeout', level='warning',
+            tags={'endpoint': 'licitacoes-do-dia-indexable', 'outcome': 'timeout'})
         data = _empty_dates_response()
         _set_cached("dates", data, ttl=_NEGATIVE_CACHE_TTL_SECONDS)
     except Exception as exc:
@@ -101,7 +104,22 @@ async def sitemap_licitacoes_do_dia_indexable(response: Response):
         data = _empty_dates_response()
         _set_cached("dates", data, ttl=_NEGATIVE_CACHE_TTL_SECONDS)
 
-    record_sitemap_count("licitacoes-do-dia-indexable", len(data.get("dates", [])))
+    dates = data.get("dates", [])
+    if len(dates) == 0:
+        try:
+            from supabase_client import get_supabase, sb_execute
+            sb = get_supabase()
+            resp = await sb_execute(
+                sb.table("pncp_raw_bids").select("id", count="exact").limit(0)
+            )
+            source_count = resp.count if hasattr(resp, 'count') and resp.count is not None else 0
+            if source_count and source_count > 0:
+                sentry_sdk.capture_message('sitemap_empty_despite_data', level='error',
+                    tags={'endpoint': 'licitacoes-do-dia-indexable', 'source_count': source_count})
+        except Exception:
+            pass
+
+    record_sitemap_count("licitacoes-do-dia-indexable", len(dates))
     return SitemapLicitacoesDoDiaResponse(**data)
 
 

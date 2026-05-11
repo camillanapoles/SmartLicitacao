@@ -1,0 +1,61 @@
+name: "Audit CNPJ Sitemap Validation"
+
+# SEO-SITEMAP-TELEMETRY-001: Gates against CNPJ format regressions in
+# sitemap routes that could silently return wrong-length or non-numeric
+# CNPJs to Googlebot — same class of bug as the 2026-05-02 empty-sitemap
+# incident.
+#
+# Two checks:
+# 1. Blocks `length >= 11` in CNPJ context — must use is_valid_cnpj_format()
+# 2. Blocks `isdigit()` in CNPJ context — breaks alphanumeric CNPJ (RFB 2026+)
+
+on:
+  pull_request:
+    paths:
+      - 'backend/routes/sitemap*.py'
+      - 'backend/utils/cnpj*.py'
+      - 'supabase/migrations/**'
+      - 'frontend/app/sitemap.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-sitemap-cnpj-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Validate CNPJ format patterns
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Block length >= 11 in CNPJ context
+        shell: bash
+        run: |
+          set -euo pipefail
+          HITS=$(grep -rn 'length.*>= *11\|len.*>= *11' \
+            backend/routes/sitemap*.py supabase/migrations/*.sql 2>/dev/null \
+            | grep -i cnpj || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::Found length >= 11 in CNPJ context — use is_valid_cnpj_format()"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "No length >= 11 violations in CNPJ context."
+
+      - name: Block isdigit() in CNPJ context
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pattern in 'backend/routes/sitemap*.py' 'backend/utils/cnpj*.py'; do
+            HITS=$(grep -rn 'isdigit()' $pattern 2>/dev/null || true)
+            if [ -n "$HITS" ]; then
+              echo "::error::Found isdigit() in CNPJ context — breaks alphanumeric CNPJ"
+              echo "$HITS"
+              exit 1
+            fi
+          done
+          echo "No isdigit() violations in CNPJ context."
