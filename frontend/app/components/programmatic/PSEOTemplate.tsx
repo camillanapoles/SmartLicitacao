@@ -16,6 +16,7 @@
  * robusta, ecossistema, stakeholders.
  */
 import Link from "next/link";
+import PreviewCTA from "./PreviewCTA";
 
 export type PSEOContext = {
   setor: string;              // "Pavimentação asfáltica"
@@ -194,6 +195,15 @@ export default function PSEOTemplate({ ctx, dataBlock }: Props) {
           </div>
         </div>
       </section>
+
+      {/* Preview CTA secundário (#1009 COPY-PSEO-CTA-010): "Ver 3 editais grátis" com blurred premium */}
+      <PreviewCTA
+        setor={ctx.setorSlug}
+        uf={ctx.ufSigla}
+        setorLabel={ctx.setor}
+        ufLabel={ctx.ufNome ?? ""}
+        totalOpen={total}
+      />
 
       {/* Como o SmartLic encontra editais antes de você (AC: educativo problem/solution aware) */}
       <section className="max-w-5xl mx-auto py-12 px-4">

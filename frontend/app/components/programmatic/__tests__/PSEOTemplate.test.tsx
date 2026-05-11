@@ -150,7 +150,11 @@ describe("PSEOTemplate render", () => {
       screen.getByText(/12 editais de Pavimentação asfáltica em Santa Catarina/)
     ).toBeInTheDocument();
     expect(screen.getByText(/Receber alertas grátis 14 dias/)).toBeInTheDocument();
-    expect(screen.getByText(/Só quero ver os dados/)).toBeInTheDocument();
+    // #1009: novo PreviewCTA também contém "Só quero ver os dados" — usamos o link exato
+    const soQueroDadosLinks = screen.getAllByText(/Só quero ver os dados/);
+    expect(soQueroDadosLinks.length).toBeGreaterThanOrEqual(1);
+    // Link original para /observatorio
+    expect(soQueroDadosLinks[0]).toHaveAttribute("href", expect.stringContaining("/observatorio"));
   });
 
   it("renderiza sticky CTA mobile com total + setor", () => {
