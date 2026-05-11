@@ -3943,8 +3943,9 @@ export interface paths {
          * Top CNPJs de fornecedores com contratos no datalake (para sitemap)
          * @description Retorna os CNPJs de fornecedores com mais contratos em pncp_supplier_contracts.
          *
+         *     SEO-SITEMAP-MV-001: agora usa mv_sitemap_fornecedores (MV pré-agregada).
          *     Usado pelo frontend para gerar /fornecedores/{cnpj} no sitemap.xml.
-         *     Limite: 5.000 CNPJs por volume de contratos (mais contratos = maior valor SEO).
+         *     Limite: 5.000 CNPJs por volume de contratos.
          *     Cache: 24h em memoria sucesso, 5min em falha (negative cache PR #529 pattern).
          */
         get: operations["sitemap_fornecedores_cnpj_v1_sitemap_fornecedores_cnpj_get"];
@@ -11394,17 +11395,22 @@ export interface components {
         };
         /**
          * SitemapHealthResponse
-         * @description Response for GET /health/sitemap endpoint (SEO-SITEMAP-TELEMETRY-001).
+         * @description SEO-SITEMAP-TELEMETRY-001: Health envelope for sitemap materialized views.
+         *
+         *     Returns per-MV status (ok/empty/error) and overall status (ok/degraded).
+         *     HTTP 200 when all MVs are ok; HTTP 503 when any MV is empty or errored.
          */
         SitemapHealthResponse: {
             /** Status */
-            status: string;
+            status?: string | null;
             /** Timestamp */
-            timestamp: string;
+            timestamp?: string | null;
             /** Checks */
-            checks: {
-                [key: string]: unknown;
-            };
+            checks?: {
+                [key: string]: components["schemas"]["SitemapMvCheck"];
+            } | null;
+        } & {
+            [key: string]: unknown;
         };
         /** SitemapItensResponse */
         SitemapItensResponse: {
@@ -11432,6 +11438,20 @@ export interface components {
             total: number;
             /** Updated At */
             updated_at: string;
+        };
+        /**
+         * SitemapMvCheck
+         * @description Per-MV status entry for the sitemap health endpoint.
+         */
+        SitemapMvCheck: {
+            /** Status */
+            status?: string | null;
+            /** Count */
+            count?: number | null;
+            /** Error */
+            error?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** SitemapOrgaosResponse */
         SitemapOrgaosResponse: {

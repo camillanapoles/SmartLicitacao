@@ -221,14 +221,14 @@ def _clear_fornecedores_cache():
 
 
 class TestSitemapFornecedoresCnpj:
-    """Tests for /v1/sitemap/fornecedores-cnpj via paginated scan of pncp_supplier_contracts."""
+    """Tests for /v1/sitemap/fornecedores-cnpj via mv_sitemap_fornecedores (column: cnpj)."""
 
     @patch("supabase_client.get_supabase")
     def test_dedup_same_cnpj_single_row(self, mock_get_sb, client, _clear_fornecedores_cache):
-        """Paginated scan returns CNPJs — response não tem duplicatas."""
+        """MV returns unique CNPJs — response não tem duplicatas."""
         rows = [
-            {"ni_fornecedor": "11111111111111"},
-            {"ni_fornecedor": "22222222222222"},
+            {"cnpj": "11111111111111"},
+            {"cnpj": "22222222222222"},
         ]
         mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
@@ -241,11 +241,11 @@ class TestSitemapFornecedoresCnpj:
 
     @patch("supabase_client.get_supabase")
     def test_data_from_mv_all_included(self, mock_get_sb, client, _clear_fornecedores_cache):
-        """Paginated scan includes all CNPJs from query (pre-agregação)."""
+        """MV includes all CNPJs from query (pre-agregação)."""
         rows = [
-            {"ni_fornecedor": "11111111111111"},
-            {"ni_fornecedor": "22222222222222"},
-            {"ni_fornecedor": "33333333333333"},
+            {"cnpj": "11111111111111"},
+            {"cnpj": "22222222222222"},
+            {"cnpj": "33333333333333"},
         ]
         mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
@@ -258,13 +258,13 @@ class TestSitemapFornecedoresCnpj:
 
     @patch("supabase_client.get_supabase")
     def test_filters_invalid_cnpjs(self, mock_get_sb, client, _clear_fornecedores_cache):
-        """Skips non-14-digit CNPJ values from paginated scan."""
+        """Skips non-14-digit CNPJ values from MV."""
         rows = [
-            {"ni_fornecedor": ""},
-            {"ni_fornecedor": None},
-            {"ni_fornecedor": "123"},
-            {"ni_fornecedor": "ABCDEFGHIJKLMN"},
-            {"ni_fornecedor": "44444444444444"},
+            {"cnpj": ""},
+            {"cnpj": None},
+            {"cnpj": "123"},
+            {"cnpj": "ABCDEFGHIJKLMN"},
+            {"cnpj": "44444444444444"},
         ]
         mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
@@ -277,7 +277,7 @@ class TestSitemapFornecedoresCnpj:
     @patch("supabase_client.get_supabase")
     def test_max_5000_fornecedores(self, mock_get_sb, client, _clear_fornecedores_cache):
         """Respects _MAX_FORNECEDORES_CNPJS cap."""
-        rows = [{"ni_fornecedor": f"{i:014d}"} for i in range(6000)]
+        rows = [{"cnpj": f"{i:014d}"} for i in range(6000)]
         mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/fornecedores-cnpj")
@@ -300,7 +300,7 @@ class TestSitemapFornecedoresCnpj:
     @patch("supabase_client.get_supabase")
     def test_response_schema(self, mock_get_sb, client, _clear_fornecedores_cache):
         """Response has cnpjs, total, updated_at fields."""
-        rows = [{"ni_fornecedor": "66666666666666"}]
+        rows = [{"cnpj": "66666666666666"}]
         mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/fornecedores-cnpj")
