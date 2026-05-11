@@ -90,19 +90,33 @@ class TestSitemapFornecedoresTimeout:
 
 
 class TestSitemapOrgaosTimeout:
-    """sitemap_orgaos: timeout → 503, cache stays empty."""
+    """sitemap_orgaos: timeout → 200 + empty negative cache (SEO-SITEMAP-MV-001).
+
+    The MV-backed endpoint returns empty data with a 5-minute negative cache
+    on timeout instead of 503, preventing ISR cache poisoning across rebuilds.
+    """
 
     @patch("routes.sitemap_orgaos._run_with_budget", side_effect=asyncio.TimeoutError())
-    def test_timeout_returns_503(self, _mock_budget, client):
+    def test_timeout_returns_empty_with_negative_cache(self, _mock_budget, client):
+        """asyncio.TimeoutError returns 200 with empty data and populates negative cache."""
         response = client.get("/v1/sitemap/orgaos")
-        assert response.status_code == 503
-        assert response.json()["detail"] == "sitemap_source_timeout"
+        assert response.status_code == 200
+        data = response.json()
+        assert data["orgaos"] == []
+        assert data["total"] == 0
+        from routes.sitemap_orgaos import _sitemap_cache
+        assert "orgaos" in _sitemap_cache  # negative cache populated
 
     @patch("routes.sitemap_orgaos._run_with_budget", side_effect=asyncio.TimeoutError())
-    def test_timeout_does_not_populate_cache(self, _mock_budget, client):
+    def test_second_request_after_timeout_serves_negative_cache(self, mock_budget, client):
+        """Negative cache serves the second request (does not re-query)."""
         from routes.sitemap_orgaos import _sitemap_cache
         client.get("/v1/sitemap/orgaos")
-        assert "orgaos" not in _sitemap_cache
+        assert "orgaos" in _sitemap_cache
+        client.get("/v1/sitemap/orgaos")
+        # Only the first call should have reached _run_with_budget;
+        # the second is served from negative cache.
+        assert mock_budget.call_count == 1
 
 
 class TestSitemapContratosOrgaoTimeout:

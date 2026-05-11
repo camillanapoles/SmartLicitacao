@@ -31,10 +31,18 @@ def client():
     return TestClient(app)
 
 
-def _mock_mv_data(rows: list[dict]):
-    """Build a mock for MV queries:
-    sb.table("mv_sitemap_<X>").select("cnpj").order("cnpj").range(offset, end).execute()
-    Simula paginação de 1000 por página.
+def _mock_sitemap_supabase(rows: list[dict]):
+    """Build a mock that works with the actual /sitemap/cnpjs and
+    /sitemap/fornecedores-cnpj route code.
+
+    /sitemap/cnpjs: uses sb.rpc("get_sitemap_cnpjs_json", ...) first
+      → RPC returns CNPJ strings extracted from rows["cnpj"]
+
+    /sitemap/fornecedores-cnpj: paginated scan via
+      sb.table("pncp_supplier_contracts").select("ni_fornecedor").eq(...)...execute()
+
+    Both routes also run telemetry probes via sb_execute, which need a
+    chainable mock for sb.table().select().eq().not_.is_().neq().range().limit().
     """
     mock_sb = MagicMock()
     page_size = 1000
@@ -47,13 +55,29 @@ def _mock_mv_data(rows: list[dict]):
         next_offset["value"] += page_size
         return resp
 
-    (
-        mock_sb.table.return_value
-        .select.return_value
-        .order.return_value
-        .range.return_value
-        .execute
-    ).side_effect = execute_paginated
+    # Chainable mock: all intermediate methods return itself,
+    # only .execute is special. This handles the paginated scan
+    # chain AND the telemetry probe chains.
+    chain = MagicMock()
+    chain.execute.side_effect = execute_paginated
+    for _attr in ('select', 'eq', 'neq', 'order', 'range', 'limit'):
+        getattr(chain, _attr).return_value = chain
+    # .not_ is a property access returning a mock, then .is_() on it
+    chain.not_.is_.return_value = chain
+
+    mock_sb.table.return_value = chain
+
+    # For /sitemap/cnpjs: RPC returns CNPJ strings directly.
+    # Only extract from rows if "cnpj" key exists (fornecedores tests use "ni_fornecedor").
+    if not rows:
+        rpc_resp = MagicMock()
+        rpc_resp.data = []
+        mock_sb.rpc.return_value.execute.return_value = rpc_resp
+    elif all("cnpj" in r for r in rows):
+        rpc_resp = MagicMock()
+        rpc_resp.data = [r["cnpj"] for r in rows]
+        mock_sb.rpc.return_value.execute.return_value = rpc_resp
+
     return mock_sb
 
 
@@ -69,7 +93,7 @@ class TestSitemapCnpjs:
             {"cnpj": "22222222000200"},
             {"cnpj": "33333333000300"},
         ]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/cnpjs")
         assert resp.status_code == 200
@@ -81,7 +105,7 @@ class TestSitemapCnpjs:
     @patch("supabase_client.get_supabase")
     def test_empty_mv(self, mock_get_sb, client):
         """Returns empty list when MV has no data and seed is empty."""
-        mock_get_sb.return_value = _mock_mv_data([])
+        mock_get_sb.return_value = _mock_sitemap_supabase([])
 
         resp = client.get("/v1/sitemap/cnpjs")
         assert resp.status_code == 200
@@ -92,7 +116,7 @@ class TestSitemapCnpjs:
     @patch("supabase_client.get_supabase")
     def test_seed_cnpjs_always_included(self, mock_get_sb, client):
         """Seed supplier CNPJs appear in result even when MV is empty."""
-        mock_get_sb.return_value = _mock_mv_data([])
+        mock_get_sb.return_value = _mock_sitemap_supabase([])
 
         resp = client.get("/v1/sitemap/cnpjs")
         assert resp.status_code == 200
@@ -106,7 +130,7 @@ class TestSitemapCnpjs:
     def test_seed_cnpjs_appear_first(self, mock_get_sb, client):
         """Seed supplier CNPJs appear before MV CNPJs in sitemap."""
         rows = [{"cnpj": "99999999000999"}]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/cnpjs")
         data = resp.json()
@@ -124,7 +148,7 @@ class TestSitemapCnpjs:
             {"cnpj": "123"},  # too short
             {"cnpj": "44444444000400"},
         ]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/cnpjs")
         assert resp.status_code == 200
@@ -141,7 +165,7 @@ class TestSitemapCnpjs:
         que a resposta é idêntica, não o número exato de chamadas.
         """
         rows = [{"cnpj": "55555555000500"}]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp1 = client.get("/v1/sitemap/cnpjs")
         assert resp1.status_code == 200
@@ -165,7 +189,7 @@ class TestSitemapCnpjs:
     def test_response_schema(self, mock_get_sb, client):
         """Response has required fields with correct types."""
         rows = [{"cnpj": "66666666000600"}]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/cnpjs")
         data = resp.json()
@@ -177,7 +201,7 @@ class TestSitemapCnpjs:
     def test_max_5000_cnpjs(self, mock_get_sb, client):
         """Respects _MAX_CNPJS limit even when MV has more rows."""
         rows = [{"cnpj": f"{i:014d}"} for i in range(6000)]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/cnpjs")
         data = resp.json()
@@ -197,16 +221,16 @@ def _clear_fornecedores_cache():
 
 
 class TestSitemapFornecedoresCnpj:
-    """Tests for /v1/sitemap/fornecedores-cnpj via mv_sitemap_fornecedores."""
+    """Tests for /v1/sitemap/fornecedores-cnpj via mv_sitemap_fornecedores (column: cnpj)."""
 
     @patch("supabase_client.get_supabase")
     def test_dedup_same_cnpj_single_row(self, mock_get_sb, client, _clear_fornecedores_cache):
-        """MV já retorna CNPJs únicos — response não tem duplicatas."""
+        """MV returns unique CNPJs — response não tem duplicatas."""
         rows = [
             {"cnpj": "11111111111111"},
             {"cnpj": "22222222222222"},
         ]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/fornecedores-cnpj")
         assert resp.status_code == 200
@@ -217,13 +241,13 @@ class TestSitemapFornecedoresCnpj:
 
     @patch("supabase_client.get_supabase")
     def test_data_from_mv_all_included(self, mock_get_sb, client, _clear_fornecedores_cache):
-        """MV retorna todos os CNPJs sem duplicates (pre-agregação)."""
+        """MV includes all CNPJs from query (pre-agregação)."""
         rows = [
             {"cnpj": "11111111111111"},
             {"cnpj": "22222222222222"},
             {"cnpj": "33333333333333"},
         ]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/fornecedores-cnpj")
         assert resp.status_code == 200
@@ -242,7 +266,7 @@ class TestSitemapFornecedoresCnpj:
             {"cnpj": "ABCDEFGHIJKLMN"},
             {"cnpj": "44444444444444"},
         ]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/fornecedores-cnpj")
         assert resp.status_code == 200
@@ -254,7 +278,7 @@ class TestSitemapFornecedoresCnpj:
     def test_max_5000_fornecedores(self, mock_get_sb, client, _clear_fornecedores_cache):
         """Respects _MAX_FORNECEDORES_CNPJS cap."""
         rows = [{"cnpj": f"{i:014d}"} for i in range(6000)]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/fornecedores-cnpj")
         assert resp.status_code == 200
@@ -277,7 +301,7 @@ class TestSitemapFornecedoresCnpj:
     def test_response_schema(self, mock_get_sb, client, _clear_fornecedores_cache):
         """Response has cnpjs, total, updated_at fields."""
         rows = [{"cnpj": "66666666666666"}]
-        mock_get_sb.return_value = _mock_mv_data(rows)
+        mock_get_sb.return_value = _mock_sitemap_supabase(rows)
 
         resp = client.get("/v1/sitemap/fornecedores-cnpj")
         data = resp.json()
