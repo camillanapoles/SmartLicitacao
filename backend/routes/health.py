@@ -13,7 +13,9 @@ import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
+from schemas.health import MvCheckResult, SitemapHealthResponse
 from schemas.parity import (
     BackgroundTasksHealthResponse,
     CacheHealthResponse,
@@ -23,6 +25,7 @@ from schemas.parity import (
     SystemHealthResponse,
     UptimeHistoryResponse,
 )
+from supabase_client import get_supabase, sb_execute
 
 logger = logging.getLogger(__name__)
 
@@ -306,7 +309,7 @@ _SITEMAP_MVS = [
 ]
 
 
-@router.get("/health/sitemap")
+@router.get("/health/sitemap", response_model=SitemapHealthResponse)
 async def sitemap_health():
     """SEO-SITEMAP-TELEMETRY-001: Health check for all sitemap materialized views.
 
@@ -314,7 +317,6 @@ async def sitemap_health():
     Used by Sentry monitors and Railway probes to detect empty sitemap
     responses before they reach GSC.
     """
-    from supabase_client import get_supabase, sb_execute
     sb = get_supabase()
 
     checks: dict = {}
@@ -337,7 +339,6 @@ async def sitemap_health():
             }
 
     all_ok = all(v["status"] == "ok" for v in checks.values())
-    from fastapi.responses import JSONResponse
     return JSONResponse(
         content={
             "status": "ok" if all_ok else "degraded",
