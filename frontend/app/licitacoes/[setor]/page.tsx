@@ -21,6 +21,7 @@ import { FoundersRibbon } from "@/components/banners/FoundersRibbon";
 import { AdvisoryDisclaimer } from "@/components/legal/AdvisoryDisclaimer";
 import { RecentEditaisBlock } from "@/app/components/programmatic/RecentEditaisBlock";
 import { TopSuppliersBlock } from "@/app/components/programmatic/TopSuppliersBlock";
+import { TrackedCTALink } from "@/app/components/seo/TrackedCTALink";
 
 /**
  * STORY-324 AC5: SSG with ISR 6h for sector landing pages.
@@ -229,13 +230,15 @@ export default async function SectorPage({
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Análise de viabilidade com IA, filtros por região e valor, alertas por email.
           </p>
-          <Link
+          <TrackedCTALink
             href={`/signup?ref=licitacoes-${sector.slug}`}
             className="inline-block px-8 py-3 bg-brand-blue text-white font-semibold
                        rounded-lg hover:bg-blue-700 transition-colors text-lg"
+            eventName="pseo_cta_click"
+            eventProps={{ setor, cta_position: "inline_mid", cta_label: "analisar_oportunidades" }}
           >
             Analisar as {stats?.total_open || ""} oportunidades agora
-          </Link>
+          </TrackedCTALink>
           <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
             14 dias grátis, sem cartão. Resultado em 3 minutos.
           </p>
@@ -325,12 +328,14 @@ export default async function SectorPage({
             Filtre por estado, valor e modalidade. Receba análise de viabilidade automática.
             Exporte para Excel. Teste grátis por 14 dias.
           </p>
-          <Link
+          <TrackedCTALink
             href={`/signup?ref=licitacoes-${sector.slug}`}
             className="inline-block px-8 py-4 bg-white text-brand-navy font-bold rounded-xl hover:bg-gray-100 transition-colors text-lg shadow-lg"
+            eventName="pseo_cta_click"
+            eventProps={{ setor, cta_position: "banner_bottom_faq", cta_label: "analisar_oportunidades_setor" }}
           >
             Analisar Oportunidades de {sector.name}
-          </Link>
+          </TrackedCTALink>
           <p className="mt-4 text-white/60 text-sm">14 dias grátis, sem cartão. Resultado em 3 minutos.</p>
         </div>
       </section>
@@ -416,12 +421,14 @@ export default async function SectorPage({
               14 dias grátis, sem cartão. Resultado em 3 minutos.
             </p>
           </div>
-          <Link
+          <TrackedCTALink
             href={`/signup?ref=licitacoes-${sector.slug}`}
             className="px-6 py-3 bg-brand-blue text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+            eventName="pseo_cta_click"
+            eventProps={{ setor, cta_position: "compact_uf_grid", cta_label: "comecar_gratis" }}
           >
             Começar Grátis →
-          </Link>
+          </TrackedCTALink>
         </div>
       </section>
 

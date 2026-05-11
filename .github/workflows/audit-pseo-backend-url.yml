@@ -1,0 +1,29 @@
+name: audit-pseo-backend-url
+on:
+  pull_request:
+    paths:
+      - 'frontend/app/api/**/*.ts'
+
+jobs:
+  check-backend-url-fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check BACKEND_URL has fallback
+        run: |
+          # Find route handlers that assign BACKEND_URL without a fallback chain
+          VIOLATIONS=$(grep -rn "process\.env\.BACKEND_URL[^|]" \
+            frontend/app/api/ \
+            --include="*.ts" \
+            | grep -v "// audit-backend-url-allow" \
+            || true)
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Route handlers use BACKEND_URL without fallback:"
+            echo "$VIOLATIONS"
+            echo ""
+            echo "Fix: const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL;"
+            exit 1
+          fi
+
+          echo "All BACKEND_URL usages have fallback"

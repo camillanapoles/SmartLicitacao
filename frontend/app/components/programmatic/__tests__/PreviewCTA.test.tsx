@@ -279,6 +279,20 @@ describe("PreviewCTA — error state", () => {
       expect(screen.getByText(/Últimos editais de/)).toBeInTheDocument();
     });
   });
+
+  it("mostra CTA de signup como fallback no estado de erro", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
+
+    render(<PreviewCTA {...BASE_PROPS} />);
+
+    fireEvent.click(screen.getByTestId("preview-cta-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("preview-error")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Criar conta grátis/)).toBeInTheDocument();
+  });
 });
 
 describe("PreviewCTA — mobile responsive", () => {

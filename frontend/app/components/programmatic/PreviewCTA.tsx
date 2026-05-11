@@ -308,13 +308,26 @@ export default function PreviewCTA({
             <p className="text-sm text-red-700 dark:text-red-400 mb-3">
               Não foi possível carregar os editais no momento.
             </p>
-            <button
-              type="button"
-              onClick={fetchData}
-              className="px-4 py-2 text-sm font-medium text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-            >
-              Tentar novamente
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={fetchData}
+                className="px-4 py-2 text-sm font-medium text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+              >
+                Tentar novamente
+              </button>
+              <Link
+                href={`/signup?ref=pseo-preview-error-${setor}${uf ? `-${uf.toLowerCase()}` : ""}&utm_medium=preview_error`}
+                className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.mixpanel?.track("pseo_error_fallback_cta_click", { setor, uf: uf ?? null });
+                  }
+                }}
+              >
+                Criar conta grátis →
+              </Link>
+            </div>
           </motion.div>
         )}
 
