@@ -2897,6 +2897,215 @@
         "title": "ClearNewBidsCountResponse",
         "type": "object"
       },
+      "CnaeMappingCreate": {
+        "properties": {
+          "cnae_code": {
+            "maxLength": 4,
+            "minLength": 4,
+            "pattern": "^\\d{4}$",
+            "title": "Cnae Code",
+            "type": "string"
+          },
+          "confidence": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "fallback_setor_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Setor Id"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "setor_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Setor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnae_code",
+          "setor_id"
+        ],
+        "title": "CnaeMappingCreate",
+        "type": "object"
+      },
+      "CnaeMappingListResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CnaeMappingRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "rows"
+        ],
+        "title": "CnaeMappingListResponse",
+        "type": "object"
+      },
+      "CnaeMappingRow": {
+        "properties": {
+          "cnae_code": {
+            "title": "Cnae Code",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "fallback_setor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Setor Id"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "setor_id": {
+            "title": "Setor Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "cnae_code",
+          "setor_id",
+          "confidence"
+        ],
+        "title": "CnaeMappingRow",
+        "type": "object"
+      },
+      "CnaeMappingUpdate": {
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "fallback_setor_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Setor Id"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "setor_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setor Id"
+          }
+        },
+        "title": "CnaeMappingUpdate",
+        "type": "object"
+      },
       "ComparadorBid": {
         "properties": {
           "data_abertura": {
@@ -16851,6 +17060,216 @@
         "summary": "Clear Contracts Checkpoints",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/v1/admin/cnae-mapping": {
+      "get": {
+        "description": "List CNAE mappings, optionally filtered by ``setor``.",
+        "operationId": "list_cnae_mappings_v1_admin_cnae_mapping_get",
+        "parameters": [
+          {
+            "description": "Filter by setor_id",
+            "in": "query",
+            "name": "setor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by setor_id",
+              "title": "Setor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CnaeMappingListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Cnae Mappings",
+        "tags": [
+          "admin",
+          "cnae-mapping"
+        ]
+      },
+      "post": {
+        "description": "Create a new CNAE -> setor mapping.",
+        "operationId": "create_cnae_mapping_v1_admin_cnae_mapping_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CnaeMappingCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CnaeMappingRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Cnae Mapping",
+        "tags": [
+          "admin",
+          "cnae-mapping"
+        ]
+      }
+    },
+    "/v1/admin/cnae-mapping/{cnae_code}": {
+      "delete": {
+        "description": "Soft delete: marks ``notes='deleted'`` so audit trail is preserved.\n\nThe DB lookup in ``utils.cnae_mapping._db_lookup`` skips rows with\n``notes = 'deleted'`` and the LRU cache is invalidated so the next\nrequest falls back to the hardcoded dict (if present there).",
+        "operationId": "delete_cnae_mapping_v1_admin_cnae_mapping__cnae_code__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnae_code",
+            "required": true,
+            "schema": {
+              "title": "Cnae Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CnaeMappingRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Cnae Mapping",
+        "tags": [
+          "admin",
+          "cnae-mapping"
+        ]
+      },
+      "patch": {
+        "description": "Patch an existing mapping. Fields not present in the body are untouched.",
+        "operationId": "update_cnae_mapping_v1_admin_cnae_mapping__cnae_code__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cnae_code",
+            "required": true,
+            "schema": {
+              "title": "Cnae Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CnaeMappingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CnaeMappingRow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Cnae Mapping",
+        "tags": [
+          "admin",
+          "cnae-mapping"
         ]
       }
     },

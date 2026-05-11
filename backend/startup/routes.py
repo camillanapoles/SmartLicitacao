@@ -30,6 +30,7 @@ from routes.health_core import router as health_core_router
 from routes.feedback import router as feedback_router
 from routes.admin_trace import router as admin_trace_router
 from routes.admin_cron import router as admin_cron_router
+from routes.admin_cnae_mapping import router as admin_cnae_mapping_router
 from routes.admin_llm_cost import router as admin_llm_cost_router
 from routes.admin_calibration import router as admin_calibration_router
 from routes.survey import router as survey_router
@@ -144,6 +145,7 @@ def register_routes(app: FastAPI) -> None:
     # Self-prefixed routers
     app.include_router(admin_trace_router)
     app.include_router(admin_cron_router)
+    app.include_router(admin_cnae_mapping_router)
     app.include_router(admin_llm_cost_router)
     app.include_router(admin_calibration_router)
     app.include_router(admin_billing_sync_router)

@@ -3,7 +3,7 @@
 **Priority:** P2
 **Effort:** M (2-3 dias)
 **Squad:** @data-engineer + @dev
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-TD-2026Q2](EPIC-TD-2026Q2/)
 **Sprint:** Sprint 2-3
 **Dependências bloqueadoras:** Nenhuma

@@ -4,17 +4,27 @@ CNAE to SmartLic sector mapping.
 Maps Brazilian CNAE (Classificação Nacional de Atividades Econômicas)
 codes to SmartLic sector IDs used by the search pipeline.
 
+DATA-CNAE-001 (2026-05-11): primary source of truth is now the DB table
+``public.cnae_setor_mapping`` (Supabase). The hardcoded ``CNAE_TO_SETOR``
+dict below is kept as a fallback for resilience (DB down, RLS misconfig,
+boot before migrations applied) and as documentation of the initial seed.
+
 Coverage snapshot (2026-05-07): 59 CNAEs mapped across 9 sectors.
 IBGE CNAE 2.3 has ~1300 active subclasses. Coverage = 59/1300 = ~4.5%.
-Full migration to DB tracked in story DATA-CNAE-001.
 """
 
+from __future__ import annotations
+
+import functools
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# CNAE→sector mappings
-# Format: CNAE 4-digit prefix → sector_id
+# Hardcoded fallback dict — kept in sync with the seed insert in
+# supabase/migrations/20260511120000_cnae_setor_mapping.sql. DB is the
+# source of truth at runtime; this dict only activates when the DB
+# lookup fails (transient error or cnae_code missing).
 CNAE_TO_SETOR: dict[str, str] = {
     # Engenharia / Construção Civil
     "4120": "engenharia",    # Construção de edifícios
@@ -101,6 +111,83 @@ SETOR_NAMES: dict[str, str] = {
 }
 
 
+def _extract_prefix(cnae: str) -> str:
+    """Extract the 4-digit prefix from a CNAE string in any common format.
+
+    "4781", "4781-4/00", "47814" -> "4781". Returns "" if no 4 digits found.
+    """
+    cleaned = (cnae or "").strip().replace(" ", "")
+    prefix = ""
+    for ch in cleaned:
+        if ch.isdigit():
+            prefix += ch
+            if len(prefix) == 4:
+                return prefix
+    return prefix if len(prefix) == 4 else ""
+
+
+def _db_lookup(cnae_prefix: str) -> Optional[str]:
+    """Query Supabase ``cnae_setor_mapping`` for ``cnae_prefix``.
+
+    Returns ``setor_id`` if found, ``None`` if missing, and ``None`` (after
+    logging) on any transient error so the caller can fall back to the
+    hardcoded dict.
+
+    Skips rows whose ``notes = 'deleted'`` (soft-delete convention).
+    """
+    try:
+        from supabase_client import get_supabase  # local import to avoid boot cycles
+        sb = get_supabase()
+        result = (
+            sb.table("cnae_setor_mapping")
+            .select("setor_id, notes")
+            .eq("cnae_code", cnae_prefix)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(result, "data", None) or []
+        if not rows:
+            return None
+        row = rows[0]
+        if (row.get("notes") or "").strip().lower() == "deleted":
+            return None
+        return row.get("setor_id")
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("cnae_db_lookup_failed cnae=%s err=%s", cnae_prefix, exc)
+        return None
+
+
+@functools.lru_cache(maxsize=1024)
+def lookup_cnae_setor(cnae_code: str) -> Optional[str]:
+    """Resolve a CNAE code to a SmartLic sector id.
+
+    Resolution order:
+      1. DB ``public.cnae_setor_mapping`` (primary, runtime-editable).
+      2. Hardcoded ``CNAE_TO_SETOR`` dict (fallback, ships with code).
+      3. ``None`` if both miss — callers may default to "geral".
+
+    Cached via ``functools.lru_cache``; admin CRUD endpoints MUST call
+    :func:`invalidate_cnae_cache` after writes so subsequent lookups
+    re-query the DB.
+    """
+    prefix = _extract_prefix(cnae_code)
+    if not prefix:
+        return None
+    db = _db_lookup(prefix)
+    if db is not None:
+        return db
+    return CNAE_TO_SETOR.get(prefix)
+
+
+def invalidate_cnae_cache() -> None:
+    """Clear the lookup_cnae_setor LRU cache.
+
+    Admin CRUD endpoints (POST/PATCH/DELETE /v1/admin/cnae-mapping) call
+    this after writes so the next request observes the new mapping.
+    """
+    lookup_cnae_setor.cache_clear()
+
+
 def map_cnae_to_setor(cnae: str) -> str:
     """
     Map CNAE code to SmartLic sector ID.
@@ -119,21 +206,12 @@ def map_cnae_to_setor(cnae: str) -> str:
     Returns:
         Sector ID string (e.g., "vestuario", "servicos_prediais", "geral")
     """
-    # Extract 4-digit prefix: handle "4781-4/00", "4781400", "4781" formats
-    cleaned = cnae.strip().replace(" ", "")
-    # Take first 4 digits
-    prefix = ""
-    for ch in cleaned:
-        if ch.isdigit():
-            prefix += ch
-            if len(prefix) == 4:
-                break
-
-    if not prefix or len(prefix) < 4:
+    prefix = _extract_prefix(cnae)
+    if not prefix:
         logger.warning("cnae_not_mapped cnae=%r fallback=geral", cnae)
-        return "geral"  # Default fallback for unknown/unparseable CNAE
+        return "geral"
 
-    result = CNAE_TO_SETOR.get(prefix)
+    result = lookup_cnae_setor(prefix)
     if result is None:
         logger.warning("cnae_not_mapped cnae=%s fallback=geral", prefix)
         return "geral"
