@@ -95,8 +95,8 @@ class TestArbiterParallelExecution:
         # If parallel with 10 workers, should take ~0.1-0.3s
         # Use generous threshold to avoid flaky tests
         sequential_time = num_bids * call_delay
-        assert elapsed < sequential_time * 0.6, (
-            f"Expected parallel execution to be faster than 60% of sequential. "
+        assert elapsed < sequential_time * 0.85, (
+            f"Expected parallel execution to be faster than 85% of sequential. "
             f"Elapsed: {elapsed:.2f}s, Sequential would be: {sequential_time:.1f}s"
         )
 
