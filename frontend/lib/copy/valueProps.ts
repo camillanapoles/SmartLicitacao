@@ -71,14 +71,14 @@ export const hero = {
   // COPY-LANDING-004 (#1003): Founder-led visível — nome + cargo + LinkedIn
   founder: {
     name: "Tiago Sasaki",
-    role: "Engenheiro civil · 10 anos servidor público em pregões",
-    linkedinUrl: "https://www.linkedin.com/in/tiago-sasaki/",
+    role: "7 anos servidor público · gestão e fiscalização de contratos",
+    linkedinUrl: "https://www.linkedin.com/in/tiagosasaki",
     photoUrl: "/images/tiago-sasaki.webp",
   },
 
   // REPO-007: Founding disclaimer (mantido como fallback de cópia)
   disclaimer:
-    "Criado por Tiago Sasaki, engenheiro civil, 10 anos como servidor público em pregões. Plataforma independente, sem vínculo com órgãos governamentais.",
+    "Criado por Tiago Sasaki, 7 anos como servidor público na gestão e fiscalização de contratos públicos. Plataforma independente, sem vínculo com órgãos governamentais.",
 };
 
 // ============================================================================
