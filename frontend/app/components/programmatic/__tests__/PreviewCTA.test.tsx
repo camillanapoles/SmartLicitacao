@@ -144,7 +144,8 @@ describe("PreviewCTA — click reveals preview", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/pseo/recent-editais")
+      expect.stringContaining("/api/pseo/recent-editais"),
+      expect.objectContaining({ signal: expect.anything() })
     );
   });
 
@@ -205,12 +206,14 @@ describe("PreviewCTA — click reveals preview", () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("setor=pavimentacao-asfaltica")
+        expect.stringContaining("setor=pavimentacao-asfaltica"),
+        expect.objectContaining({ signal: expect.anything() })
       );
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("uf=SC")
+      expect.stringContaining("uf=SC"),
+      expect.objectContaining({ signal: expect.anything() })
     );
   });
 });
@@ -327,7 +330,8 @@ describe("PreviewCTA — sem UF (apenas setor)", () => {
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.not.stringContaining("uf=")
+      expect.not.stringContaining("uf="),
+      expect.objectContaining({ signal: expect.anything() })
     );
 
     // remaining: totalOpen=10 - VISIBLE_COUNT=3 = 7
