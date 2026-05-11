@@ -31,11 +31,11 @@ export const hero = {
 
   // COPY-LANDING-004 (#1003): Sub anti-assessor com ancoragem de preço (mensal + Fundadores)
   subheadlines: {
-    antiAssessor: "SmartLic lê o edital, mapeia o concorrente e calcula a chance real. R$197/mês ou R$997 vitalício — não R$3.000 por PDF no WhatsApp.",
+    antiAssessor: "SmartLic lê o edital, mapeia o concorrente e calcula a chance real. R$297/mês (anual) ou R$997 vitalício — não R$3.000 por PDF no WhatsApp.",
     b2gIntelligence: "SmartLic lê o edital, mapeia o concorrente, calcula a chance real. Sua empresa decide go/no-go em minutos — não em três dias de leitura.",
     mechanism: "O SmartLic analisa cada edital contra o perfil da sua empresa. Elimina o que não faz sentido. Entrega só o que tem chance real de retorno — com justificativa objetiva.",
     filter: "Cada edital passa por análise de compatibilidade com seu perfil. Você só vê o que merece investimento de tempo e proposta.",
-    default: "SmartLic lê o edital, mapeia o concorrente e calcula a chance real. R$197/mês ou R$997 vitalício — não R$3.000 por PDF no WhatsApp.",
+    default: "SmartLic lê o edital, mapeia o concorrente e calcula a chance real. R$297/mês (anual) ou R$997 vitalício — não R$3.000 por PDF no WhatsApp.",
   },
 
   // GTM-COPY-001 AC3: Trust badges — practical confidence, not abstract metrics
@@ -71,14 +71,14 @@ export const hero = {
   // COPY-LANDING-004 (#1003): Founder-led visível — nome + cargo + LinkedIn
   founder: {
     name: "Tiago Sasaki",
-    role: "Engenheiro civil · 10 anos servidor público em pregões",
-    linkedinUrl: "https://www.linkedin.com/in/tiago-sasaki/",
+    role: "7 anos servidor público · gestão e fiscalização de contratos",
+    linkedinUrl: "https://www.linkedin.com/in/tiagosasaki",
     photoUrl: "/images/tiago-sasaki.webp",
   },
 
   // REPO-007: Founding disclaimer (mantido como fallback de cópia)
   disclaimer:
-    "Criado por Tiago Sasaki, engenheiro civil, 10 anos como servidor público em pregões. Plataforma independente, sem vínculo com órgãos governamentais.",
+    "Criado por Tiago Sasaki, 7 anos como servidor público na gestão e fiscalização de contratos públicos. Plataforma independente, sem vínculo com órgãos governamentais.",
 };
 
 // ============================================================================

@@ -33,8 +33,8 @@ export default function FundadoresFounderLetter() {
       <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed">
         <p>Olá. Sou o Tiago.</p>
         <p className="mt-4">
-          Sou engenheiro civil. Passei 10 anos como servidor público no setor de obras
-          de uma prefeitura. Desse outro lado do balcão, vi duas coisas todo dia:
+          Passei 7 anos como servidor público atuando na gestão e fiscalização de
+          contratos públicos. Desse outro lado do balcão, vi duas coisas todo dia:
         </p>
         <p className="mt-4">
           <strong>Primeiro:</strong> empresas pequenas e médias perdendo licitações

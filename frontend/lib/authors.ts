@@ -34,11 +34,11 @@ export const AUTHORS: Author[] = [
       'Desenvolvedor Full-Stack (Python, TypeScript)',
     ],
     socialLinks: {
-      linkedin: 'https://www.linkedin.com/in/tiago-sasaki/',
+      linkedin: 'https://www.linkedin.com/in/tiagosasaki',
       github: 'https://github.com/tjsasakifln',
     },
     sameAs: [
-      'https://www.linkedin.com/in/tiago-sasaki/',
+      'https://www.linkedin.com/in/tiagosasaki',
       'https://github.com/tjsasakifln',
     ],
     knowsAbout: [

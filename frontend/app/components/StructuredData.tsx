@@ -41,7 +41,7 @@ export function StructuredData() {
         name: 'CONFENGE Avaliações e Inteligência Artificial LTDA',
       },
       sameAs: [
-        'https://www.linkedin.com/in/tiago-sasaki/',
+        'https://www.linkedin.com/in/tiagosasaki',
         'https://github.com/tjsasakifln',
       ],
     },
