@@ -108,24 +108,30 @@ class TestSitemapHealth:
         assert "error" in data["checks"]["mv_sitemap_cnpjs"]
 
     @patch("routes.health.get_supabase")
-    @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores", "mv_sitemap_municipios"])
+    @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores"])
     def test_all_mvs_checked(self, mock_get_sb, client):
-        """All 4 MVs are present in the checks response."""
+        """All 3 real MVs (cnpjs, orgaos, fornecedores) are present in the checks response.
+
+        mv_sitemap_municipios is intentionally excluded — it was never created
+        by the SEO-SITEMAP-MV-001 migration and would cause a table-not-found
+        error in production.
+        """
         mock_get_sb.return_value = _mock_sb_with_mv_counts({
             "mv_sitemap_cnpjs": 100,
             "mv_sitemap_orgaos": 100,
             "mv_sitemap_fornecedores": 100,
-            "mv_sitemap_municipios": 100,
         })
 
         resp = client.get("/v1/health/sitemap")
         assert resp.status_code == 200
         data = resp.json()
-        for mv in ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores", "mv_sitemap_municipios"]:
+        for mv in ["mv_sitemap_cnpjs", "mv_sitemap_orgaos", "mv_sitemap_fornecedores"]:
             assert mv in data["checks"], f"Missing MV: {mv}"
+        assert "mv_sitemap_municipios" not in data["checks"], (
+            "mv_sitemap_municipios was removed — it was never created in production"
+        )
 
     @patch("routes.health.get_supabase")
-    @patch("routes.health._SITEMAP_MVS", ["mv_sitemap_cnpjs"])
     def test_response_has_timestamp(self, mock_get_sb, client):
         """Response includes ISO timestamp."""
         mock_get_sb.return_value = _mock_sb_with_mv_counts({"mv_sitemap_cnpjs": 5})

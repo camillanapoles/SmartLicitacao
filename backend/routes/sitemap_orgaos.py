@@ -77,7 +77,7 @@ async def sitemap_orgaos(response: Response):
         record_sitemap_count("orgaos", len(cached.get("orgaos", [])))
         return SitemapOrgaosResponse(**cached)
 
-    _fresh_fetch = True
+    _fresh_fetch = False
     try:
         data = await _run_with_budget(
             asyncio.to_thread(_fetch_top_orgaos),
@@ -86,6 +86,7 @@ async def sitemap_orgaos(response: Response):
             source="sitemap_orgaos.sitemap_orgaos",
         )
         _set_cached("orgaos", data, ttl=_CACHE_TTL_SECONDS)
+        _fresh_fetch = True
     except asyncio.TimeoutError:
         logger.error(
             "sitemap_orgaos: budget %.0fs exceeded — returning 503 (not caching)",
@@ -104,6 +105,8 @@ async def sitemap_orgaos(response: Response):
         _set_cached("orgaos", data, ttl=_NEGATIVE_CACHE_TTL_SECONDS)
 
     orgao_list = data.get("orgaos", [])
+    # Alert 2: empty despite data — only probe when fresh fetch succeeded to avoid
+    # double-querying a degraded DB that already caused timeout/error above.
     if _fresh_fetch and len(orgao_list) == 0:
         try:
             from supabase_client import get_supabase, sb_execute
@@ -130,6 +133,33 @@ async def sitemap_orgaos(response: Response):
                     if age_seconds > 93600:
                         sentry_sdk.capture_message('sitemap_source_stale', level='warning',
                             tags={'endpoint': 'orgaos', 'age_hours': round(age_seconds / 3600, 1)})
+        except Exception:
+            pass
+
+    # Alert 3: stale data — only probe when fresh fetch succeeded (not on timeout/error
+    # paths, to avoid extra DB hits when the DB is already degraded).
+    # Requires mv_sitemap_orgaos.last_seen column (added in migration
+    # 20260510150000_sitemap_mv_orgaos_add_last_seen.sql).
+    if _fresh_fetch:
+        try:
+            from supabase_client import get_supabase, sb_execute
+            sb = get_supabase()
+            resp = await sb_execute(
+                sb.table("mv_sitemap_orgaos")
+                .select("last_seen")
+                .order("last_seen", desc=True)
+                .limit(1)
+            )
+            if resp.data and len(resp.data) > 0 and resp.data[0].get("last_seen"):
+                last_refresh = resp.data[0]["last_seen"]
+                if isinstance(last_refresh, str):
+                    last_refresh = datetime.fromisoformat(last_refresh.replace('Z', '+00:00'))
+                if last_refresh.tzinfo is None:
+                    last_refresh = last_refresh.replace(tzinfo=timezone.utc)
+                age_seconds = (datetime.now(timezone.utc) - last_refresh).total_seconds()
+                if age_seconds > 93600:  # 26h
+                    sentry_sdk.capture_message('sitemap_mv_stale', level='warning',
+                        tags={'endpoint': 'orgaos', 'age_hours': round(age_seconds/3600, 1)})
         except Exception:
             pass
 

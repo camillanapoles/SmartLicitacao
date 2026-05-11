@@ -66,9 +66,20 @@ test.describe('SEO Sitemap Crawl', () => {
     // Sample 50 entries randomly
     const sampled = shuffle(allEntries).slice(0, 50);
 
+    // Skip legacy /fornecedores/{categoria}/{uf} URLs — these are old patterns that return 410.
+    // Valid fornecedor URLs are /fornecedores/{cnpj} where cnpj is numeric or alphanumeric (RFB 2026+).
+    const filteredSampled = sampled.filter((entry) => {
+      const match = entry.url.match(/\/fornecedores\/([^/]+)(?:\/([^/]+))?$/);
+      if (match && match[2]) {
+        // Two path segments after /fornecedores/ → old category/UF pattern → skip
+        return false;
+      }
+      return true;
+    });
+
     // HEAD each sampled URL — no body downloaded, fail if status >= 400.
     const failures: { url: string; status: number; source: string }[] = [];
-    for (const { url, source } of sampled) {
+    for (const { url, source } of filteredSampled) {
       // eslint-disable-next-line no-await-in-loop
       const resp = await request.fetch(url, { method: 'HEAD', timeout: 30000 });
       if (resp.status() >= 400) {
@@ -79,7 +90,7 @@ test.describe('SEO Sitemap Crawl', () => {
     expect(
       failures,
       failures.length > 0
-        ? `SEO crawl failed — ${failures.length}/${sampled.length} URLs returned >= 400:\n${failures
+        ? `SEO crawl failed — ${failures.length}/${filteredSampled.length} URLs returned >= 400:\n${failures
             .map((f) => `  ${f.status} ${f.url} (sub-sitemap: ${f.source})`)
             .join('\n')}`
         : undefined,
