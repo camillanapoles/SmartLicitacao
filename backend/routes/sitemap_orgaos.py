@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from metrics import record_sitemap_count
