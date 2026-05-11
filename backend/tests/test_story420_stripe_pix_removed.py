@@ -16,8 +16,28 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import sys
+
 import pytest
 from fastapi import HTTPException
+
+
+@pytest.fixture(autouse=True)
+def _restore_stripe_module():
+    """Restore sys.modules["stripe"] after each test.
+
+    _reload_billing_with_stripe() injects a fake stripe into sys.modules without
+    cleanup. Without this fixture the fake persists and contaminates subsequent
+    test files that call stripe.checkout.Session.create — producing AttributeError
+    because the SimpleNamespace mock lacks .id.
+    """
+    _saved = {k: sys.modules.get(k) for k in ("stripe", "stripe.error")}
+    yield
+    for key, original in _saved.items():
+        if original is None:
+            sys.modules.pop(key, None)
+        else:
+            sys.modules[key] = original
 
 
 class _FakeStripeError(Exception):
