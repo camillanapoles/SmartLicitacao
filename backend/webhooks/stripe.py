@@ -71,6 +71,11 @@ from webhooks.handlers.stripe_product_price import (  # noqa: F401
     handle_price_deleted as _handle_price_deleted,
 )
 
+# REF-MON-002: eager import populates HANDLERS_REGISTRY via @webhook_handler
+# decorators in webhooks.handlers._registry. The dispatcher uses this registry
+# below in place of the legacy if-elif chain.
+from webhooks.handlers import HANDLERS_REGISTRY  # noqa: F401
+
 logger = get_sanitized_logger(__name__)
 router = APIRouter()
 
@@ -271,51 +276,23 @@ async def stripe_webhook(request: Request):
                     )
                     return {"status": "already_processed", "event_id": event.id}
 
-        # SYS-024: Wrap event routing in asyncio.wait_for() to prevent DB hangs
-        # NOTE: References module-level names so @patch('webhooks.stripe._handle_*') works
+        # SYS-024: Wrap event routing in asyncio.wait_for() to prevent DB hangs.
+        #
+        # REF-MON-002: Registry lookup replaces the legacy if-elif chain. The
+        # adapter classes in webhooks/handlers/_registry.py delegate to the
+        # same module-level _handle_* names re-exported above, so test patches
+        # of the form @patch('webhooks.stripe._handle_*') continue to work.
         async def _process_event():
-            """Route event to appropriate handler."""
-            if event.type == "checkout.session.completed":
-                await _handle_checkout_session_completed(sb, event)
-            elif event.type == "checkout.session.async_payment_succeeded":
-                await _handle_async_payment_succeeded(sb, event)
-            elif event.type == "checkout.session.async_payment_failed":
-                await _handle_async_payment_failed(sb, event)
-            elif event.type == "checkout.session.expired":
-                # STORY-BIZ-001: mark founding lead as abandoned when Stripe
-                # session times out (Stripe default is 24h). No-op for non-
-                # founding sessions (metadata filter inside the handler).
-                _handle_founding_checkout_expired_raw(sb, event.data.object)
-            elif event.type == "customer.subscription.created":
-                await _handle_subscription_created(sb, event)
-            elif event.type == "customer.subscription.updated":
-                await _handle_subscription_updated(sb, event)
-            elif event.type == "customer.subscription.deleted":
-                await _handle_subscription_deleted(sb, event)
-            elif event.type == "customer.subscription.trial_will_end":
-                # STORY-CONV-003a AC4: Stripe fires 3d before trial_end.
-                await _handle_subscription_trial_will_end(sb, event)
-            elif event.type == "invoice.payment_succeeded":
-                await _handle_invoice_payment_succeeded(sb, event)
-            elif event.type == "invoice.payment_failed":
-                await _handle_invoice_payment_failed(sb, event)
-            elif event.type == "invoice.payment_action_required":
-                await _handle_payment_action_required(sb, event)
-            # BILL-SYNC-001: Stripe -> DB forward sync for plan_billing_periods.
-            elif event.type == "product.updated":
-                await _handle_product_updated(sb, event)
-            elif event.type == "price.created":
-                await _handle_price_created(sb, event)
-            elif event.type == "price.updated":
-                await _handle_price_updated(sb, event)
-            elif event.type == "price.deleted":
-                await _handle_price_deleted(sb, event)
-            # #630: Intel Report one-time payment failure
-            # NOTE: Stripe Dashboard webhook config must include payment_intent.payment_failed
-            elif event.type == "payment_intent.payment_failed":
-                await _handle_intel_report_payment_failed(sb, event)
-            else:
+            """Route event to appropriate handler via HANDLERS_REGISTRY."""
+            handler = HANDLERS_REGISTRY.get(event.type)
+            if handler is None:
                 logger.info(f"Unhandled event type: {event.type}")
+                return
+            # NOTE: invoke process() directly (not handle()) — the dispatcher
+            # above has already claimed stripe_webhook_events for this
+            # event.id, so calling handle() would double-claim and skip the
+            # processing. handle() is for callers outside this dispatcher.
+            await handler.process(sb, event)
 
         try:
             await asyncio.wait_for(_process_event(), timeout=WEBHOOK_DB_TIMEOUT_S)

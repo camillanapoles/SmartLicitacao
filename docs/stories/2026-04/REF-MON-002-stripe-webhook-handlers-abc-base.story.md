@@ -3,7 +3,7 @@
 **Priority:** P2
 **Effort:** M (3-5 dias)
 **Squad:** @dev + @architect
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-TD-2026Q2](EPIC-TD-2026Q2/)
 **Sprint:** Sprint 3
 **Dependências bloqueadoras:** story-debt-0-webhook-audit Done (DEBT-324 single registration confirmed)
