@@ -43,7 +43,7 @@ describe('HeroSection', () => {
     render(<HeroSection />);
     const sub = screen.getByTestId('hero-subheadline');
     expect(sub).toHaveTextContent(/SmartLic lê o edital, mapeia o concorrente/i);
-    expect(sub).toHaveTextContent(/R\$197\/mês/i);
+    expect(sub).toHaveTextContent(/R\$297\/mês/i);
     expect(sub).toHaveTextContent(/R\$997 vitalício/i);
     expect(sub).toHaveTextContent(/não R\$3\.000 por PDF no WhatsApp/i);
   });

@@ -107,7 +107,7 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             data-testid="hero-subheadline"
           >
             SmartLic lê o edital, mapeia o concorrente e calcula a chance real.
-            R$197/mês ou R$997 vitalício — não R$3.000 por PDF no WhatsApp.
+            R$297/mês (anual) ou R$997 vitalício — não R$3.000 por PDF no WhatsApp.
           </motion.p>
 
           {/* CTA Buttons — AC5: Primary CTA visible above the fold */}
