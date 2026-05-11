@@ -60,9 +60,10 @@ export function generateStaticParams() {
 
 async function fetchPerfil(cnpj: string): Promise<PerfilB2G | null> {
   return fetchWithBudget<PerfilB2G>(`${BACKEND_URL}/v1/empresa/${cnpj}/perfil-b2g`, {
-    timeout: 10000,
+    timeout: 15000,
     retries: 1,
     revalidate: 3600,
+    throwOn5xx: true, // ISR stale-preservation: 5xx re-throws to keep last-good cache
     label: 'cnpj-perfil',
   });
 }
