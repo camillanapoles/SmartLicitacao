@@ -5,7 +5,7 @@ import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import ComparadorClient from './ComparadorClient';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'Comparador de Editais — Compare Licitações Lado a Lado',

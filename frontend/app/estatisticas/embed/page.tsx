@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { buildCanonical, SITE_URL } from '@/lib/seo';
 import EmbedPreviewClient from './EmbedPreviewClient';
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export const metadata: Metadata = {
   title: 'Embed Badge de Estatísticas',

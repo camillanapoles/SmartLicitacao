@@ -8,7 +8,7 @@ import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import MasterclassClient from './MasterclassClient';
 
-export const revalidate = 86400; // ISR 24h
+export const revalidate = 3600; // ISR 24h
 
 export function generateStaticParams() {
   return getAllMasterclassTemas().map((tema) => ({ tema }));

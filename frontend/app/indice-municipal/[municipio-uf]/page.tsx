@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ 'municipio-uf': string }>;
@@ -39,7 +39,7 @@ async function fetchMunicipio(slug: string, periodo: string) {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
   const res = await fetch(
     `${backendUrl}/v1/indice-municipal/${slug}?periodo=${periodo}`,
-    { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) }
+    { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) }
   );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`fetchMunicipio failed: ${res.status}`);
@@ -99,7 +99,7 @@ export default async function MunicipioPage({ params, searchParams }: PageProps)
 
   const data = await fetchMunicipio(slug, periodo);
 
-  if (!data) notFound();
+  if (!data) notFound(); // adr-seo-001-allow: true 404 for non-existent municipio slug
 
   const score = data?.score_total != null ? Number(data.score_total) : null;
   const scoreColor =

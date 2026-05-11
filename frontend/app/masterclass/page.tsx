@@ -5,7 +5,7 @@ import { buildCanonical, SITE_URL } from '@/lib/seo';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
-export const revalidate = 86400; // ISR 24h
+export const revalidate = 3600; // ISR 24h
 
 const PAGE_TITLE = 'Masterclasses Gratuitas sobre Licitações Públicas | SmartLic';
 const PAGE_DESCRIPTION =

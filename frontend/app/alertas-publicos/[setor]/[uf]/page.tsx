@@ -18,7 +18,7 @@ import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 import AdvisoryDisclaimer from '@/components/legal/AdvisoryDisclaimer';
 
 
-export const revalidate = 86400; // 24h ISR — alinhado com blog/contratos; reduz wave de re-validation que satura backend WC=1 (incident 2026-04-29)
+export const revalidate = 3600; // 24h ISR — alinhado com blog/contratos; reduz wave de re-validation que satura backend WC=1 (incident 2026-04-29)
 
 export function generateStaticParams() {
   return generateSectorUfParams();

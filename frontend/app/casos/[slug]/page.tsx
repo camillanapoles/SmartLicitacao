@@ -7,7 +7,7 @@ import BreadcrumbNav from '@/components/seo/BreadcrumbNav';
 
 const baseUrl = process.env.NEXT_PUBLIC_CANONICAL_URL || 'https://smartlic.tech';
 
-export const revalidate = 86400; // ISR 24h
+export const revalidate = 3600; // ISR 24h
 
 export function generateStaticParams() {
   return getAllCaseSlugs().map((slug) => ({ slug }));

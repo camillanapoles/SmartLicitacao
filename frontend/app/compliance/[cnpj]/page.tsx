@@ -8,7 +8,7 @@ import Footer from '@/app/components/Footer';
 
 // Sprint 5 Parte 13: due diligence B2G por CNPJ (CEIS + CNEP)
 // On-demand ISR — sem generateStaticParams, gerado na primeira visita, cacheado 24h
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 type Props = { params: Promise<{ cnpj: string }> };
 
@@ -35,17 +35,20 @@ interface ComplianceProfile {
 
 async function fetchProfile(cnpj: string): Promise<ComplianceProfile | null> {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-  try {
-    const res = await fetch(`${backendUrl}/v1/compliance/${cnpj}/profile`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (res.status === 404 || res.status === 400) return null;
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
+  // SEO-FE-ISR-001 (#1038): no try/catch — let network/timeout errors propagate so
+  // ISR keeps the last-good cached page rather than caching a null-driven EmptyState.
+  const res = await fetch(`${backendUrl}/v1/compliance/${cnpj}/profile`, {
+    next: { revalidate: 3600 }, // 1h ISR
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (res.status >= 500) {
+    // Transient backend error — throw so ISR preserves last-good cache.
+    throw new Error(`compliance_profile_backend_5xx:${res.status}`);
   }
+  // 400/404 → genuine "no data" — render EmptyStateSEO.
+  if (res.status === 404 || res.status === 400) return null;
+  if (!res.ok) return null;
+  return await res.json();
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -58,7 +61,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const profile = await fetchProfile(cnpj);
+  // SEO-FE-ISR-001 (#1038): swallow transient throws in metadata phase.
+  let profile: ComplianceProfile | null = null;
+  try {
+    profile = await fetchProfile(cnpj);
+  } catch {
+    profile = null;
+  }
 
   if (!profile) {
     return {

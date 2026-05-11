@@ -20,7 +20,7 @@ export async function GET(
       `${BACKEND_URL}/v1/empresa/${encodeURIComponent(cnpj)}/perfil-b2g`,
       {
         headers: { "Content-Type": "application/json" },
-        next: { revalidate: 86400 },
+        next: { revalidate: 3600 },
       }
     );
 

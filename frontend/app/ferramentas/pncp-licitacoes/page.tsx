@@ -11,7 +11,7 @@ import Link from "next/link";
 
 // ISR — conteúdo é estático, revalidação diária basta para qualquer ajuste de copy
 // sem deploy. Sem fetch, sem alignment de cache (memory: feedback_isr_fetch_cache_alignment_next16).
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 const CANONICAL_URL = "https://smartlic.tech/ferramentas/pncp-licitacoes";
 const TITLE = "PNCP Licitações 2026 — Busca Automatizada para Empresas | SmartLic";

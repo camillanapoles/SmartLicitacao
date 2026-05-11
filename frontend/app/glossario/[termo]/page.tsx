@@ -8,7 +8,7 @@ import Footer from '@/app/components/Footer';
 import RelatedArticles from '@/components/seo/RelatedArticles';
 import { SECTORS } from '@/lib/sectors';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return GLOSSARY_TERMS.map((t) => ({ termo: t.slug }));

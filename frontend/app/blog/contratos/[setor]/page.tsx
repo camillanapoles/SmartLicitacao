@@ -17,7 +17,7 @@ import {
 } from '@/lib/programmatic';
 import { buildCanonical } from '@/lib/seo';
 
-export const revalidate = 86400; // 24h ISR
+export const revalidate = 3600; // 24h ISR
 
 export function generateStaticParams() {
   return generateSectorParams();

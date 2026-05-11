@@ -59,7 +59,7 @@ function parseSlug(slug: string): { mes: number; ano: number } | null {
  */
 async function fetchRelatorio(mes: number, ano: number) {
   const resp = await fetch(`${BACKEND_URL}/v1/observatorio/relatorio/${mes}/${ano}`, {
-    next: { revalidate: 86400 }, // 24h ISR
+    next: { revalidate: 3600 }, // 1h ISR — SEO-FE-ISR-001 (#1038)
     signal: AbortSignal.timeout(15000),
   });
   if (resp.status >= 500) {
