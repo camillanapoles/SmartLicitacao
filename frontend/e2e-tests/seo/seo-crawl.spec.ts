@@ -16,7 +16,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const PROD_URL = 'https://smartlic.tech';
+const PROD_URL = process.env.FRONTEND_URL ?? 'https://smartlic.tech';
 
 /** Parse <loc> tags from any sitemap XML. */
 function extractUrlsFromSitemap(xml: string): string[] {
