@@ -36,6 +36,7 @@ jest.mock('next/navigation', () => ({
     prefetch: jest.fn(),
     back: jest.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock sonner toast (GTM-FIX-009)

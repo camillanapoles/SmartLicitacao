@@ -361,6 +361,16 @@ class SignupRequest(BaseModel):
         max_length=200,
         description="Optional company name, stored in profiles.company",
     )
+    source: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Attribution source (e.g. 'municipio-page', 'orgao-page')",
+    )
+    ref: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Attribution ref slug (e.g. 'municipios-sao-paulo-sp')",
+    )
 
 
 class SignupResponse(BaseModel):

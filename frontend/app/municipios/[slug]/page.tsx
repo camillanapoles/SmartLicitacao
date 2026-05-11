@@ -8,6 +8,7 @@ import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 import { AdvisoryDisclaimer } from '@/components/legal/AdvisoryDisclaimer';
+import { LeadCapture } from '@/components/LeadCapture';
 
 // Sprint 4 Parte 13: páginas de municípios com licitações abertas
 // ISR 24h — dados do PNCP atualizados diariamente
@@ -365,12 +366,22 @@ export default async function MunicipioSlugPage({ params }: Props) {
               oportunidades relevantes para sua empresa no município e região.
             </p>
             <Link
-              href="/signup"
+              href={`/signup?ref=municipios-${slug}&source=municipio-page`}
               className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
               Teste grátis por 14 dias
             </Link>
           </section>
+
+          {/* Lead magnet — email capture before hard trial gate */}
+          <div className="mt-6">
+            <LeadCapture
+              source="municipio-page"
+              uf={profile.uf}
+              heading={`Receba alertas semanais de editais em ${profile.nome}-${profile.uf}`}
+              description="Novos editais toda semana no seu email. Sem spam — cancele a qualquer momento."
+            />
+          </div>
 
           {/* REPO-015: Consultoria-b2g CTA with municipio pre-fill */}
           <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as Sentry from "@sentry/nextjs";
@@ -14,6 +14,7 @@ import InstitutionalSidebar from "../components/InstitutionalSidebar";
 import { buttonVariants } from "../../components/ui/button";
 import { safeSetItem, safeGetItem } from "../../lib/storage";
 import { signupSchema, type SignupFormData } from "../../lib/schemas/forms";
+import { useSearchParams } from "next/navigation";
 import { currentDeviceType } from "../../lib/device-type";
 
 import { SignupSuccess } from "./components/SignupSuccess";
@@ -26,10 +27,15 @@ import { tagOnboardingStep } from "../../lib/analytics/clarity_onboarding";
 // STORY-323: Partner name type
 type PartnerInfo = { name: string; slug: string } | null;
 
-export default function SignupPage() {
+function SignupPageContent() {
   const { signUpWithEmail, signInWithGoogle, session: authSession, loading: authLoading } = useAuth();
   const { trackEvent } = useAnalytics();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const signupAttribution = useMemo(() => ({
+    source: searchParams.get("source") ?? undefined,
+    ref: searchParams.get("ref") ?? undefined,
+  }), [searchParams]);
 
   // react-hook-form with zod resolver (FE-028)
   const form = useForm<SignupFormData>({
@@ -224,7 +230,13 @@ export default function SignupPage() {
     trackEvent('signup_completed', {
       method: "email",
       rollout_branch: "legacy",
+      ...signupAttribution,
       ...getStoredUTMParams(),
+    });
+    trackEvent('trial_created', {
+      method: "email",
+      rollout_branch: "legacy",
+      ...signupAttribution,
     });
   };
 
@@ -239,6 +251,8 @@ export default function SignupPage() {
         password: data.password,
         full_name: data.fullName,
         stripe_payment_method_id: paymentMethodId,
+        source: signupAttribution.source,
+        ref: signupAttribution.ref,
       }),
     });
     if (!res.ok) {
@@ -250,6 +264,7 @@ export default function SignupPage() {
     trackEvent('signup_completed', {
       method: "email",
       rollout_branch: "card",
+      ...signupAttribution,
       ...getStoredUTMParams(),
     });
     // CONV-003c AC4: capture instrumented funnel event. CNAE is collected
@@ -586,6 +601,35 @@ export default function SignupPage() {
               />
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupSkeleton />}>
+      <SignupPageContent />
+    </Suspense>
+  );
+}
+
+function SignupSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col md:flex-row">
+      <div className="w-full md:w-1/2 bg-surface-1 animate-pulse" />
+      <div className="w-full md:w-1/2 flex items-center justify-center bg-canvas p-4 py-4 md:py-8">
+        <div className="w-full max-w-md p-8 bg-surface-0 rounded-card shadow-lg space-y-4">
+          <div className="h-8 bg-surface-1 rounded animate-pulse w-48 mx-auto" />
+          <div className="h-4 bg-surface-1 rounded animate-pulse w-64 mx-auto" />
+          <div className="space-y-3">
+            <div className="h-10 bg-surface-1 rounded animate-pulse" />
+            <div className="h-10 bg-surface-1 rounded animate-pulse" />
+            <div className="h-10 bg-surface-1 rounded animate-pulse" />
+            <div className="h-10 bg-surface-1 rounded animate-pulse" />
+          </div>
+          <div className="h-12 bg-surface-1 rounded animate-pulse" />
         </div>
       </div>
     </div>

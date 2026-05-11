@@ -13433,6 +13433,32 @@
             "title": "Password",
             "type": "string"
           },
+          "ref": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Attribution ref slug (e.g. 'municipios-sao-paulo-sp')",
+            "title": "Ref"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Attribution source (e.g. 'municipio-page', 'orgao-page')",
+            "title": "Source"
+          },
           "stripe_payment_method_id": {
             "anyOf": [
               {

@@ -222,6 +222,17 @@ async def signup(
             TRIAL_SIGNUP_WITH_CARD.labels(branch="legacy").inc()
         except Exception:  # noqa: BLE001 — metrics must never break signup
             pass
+        try:
+            from analytics_events import track_event
+            track_event("trial_created", {
+                "user_id": user_id,
+                "rollout_branch": "legacy",
+                "source": body.source,
+                "ref": body.ref,
+                "email_domain": email.split("@")[1] if "@" in email else None,
+            })
+        except Exception:  # noqa: BLE001
+            pass
         return SignupResponse(
             user_id=user_id,
             email=email,
@@ -296,6 +307,18 @@ async def signup(
             "stripe_subscription_id": stripe_result["subscription_id"],
         },
     )
+
+    try:
+        from analytics_events import track_event
+        track_event("trial_created", {
+            "user_id": user_id,
+            "rollout_branch": "card",
+            "source": body.source,
+            "ref": body.ref,
+            "email_domain": email.split("@")[1] if "@" in email else None,
+        })
+    except Exception:  # noqa: BLE001
+        pass
 
     trial_end_ts = stripe_result["trial_end_ts"] or _compute_local_trial_end_ts()
 

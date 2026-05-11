@@ -22,6 +22,7 @@ import { AdvisoryDisclaimer } from "@/components/legal/AdvisoryDisclaimer";
 import { RecentEditaisBlock } from "@/app/components/programmatic/RecentEditaisBlock";
 import { TopSuppliersBlock } from "@/app/components/programmatic/TopSuppliersBlock";
 import { TrackedCTALink } from "@/app/components/seo/TrackedCTALink";
+import { LeadCapture } from "@/components/LeadCapture";
 
 /**
  * STORY-324 AC5: SSG with ISR 6h for sector landing pages.
@@ -315,6 +316,16 @@ export default async function SectorPage({
           </div>
         </section>
       )}
+
+      {/* Lead magnet — email capture, lower friction than hard trial CTA */}
+      <div className="max-w-3xl mx-auto px-4 pb-4">
+        <LeadCapture
+          source="licitacoes-setor"
+          setor={setor}
+          heading={`Receba alertas semanais de licitações de ${sector.name}`}
+          description="Novos editais toda semana no seu email, filtrados por setor. Sem spam — cancele a qualquer momento."
+        />
+      </div>
 
       {/* SEO-CAC-ZERO A4: Conversion CTA — after FAQ, high intent moment */}
       <section className="max-w-5xl mx-auto py-8 px-4">

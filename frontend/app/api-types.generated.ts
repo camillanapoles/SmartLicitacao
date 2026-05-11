@@ -399,6 +399,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/cnae-mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Cnae Mappings
+         * @description List CNAE mappings, optionally filtered by ``setor``.
+         */
+        get: operations["list_cnae_mappings_v1_admin_cnae_mapping_get"];
+        put?: never;
+        /**
+         * Create Cnae Mapping
+         * @description Create a new CNAE -> setor mapping.
+         */
+        post: operations["create_cnae_mapping_v1_admin_cnae_mapping_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/cnae-mapping/{cnae_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Cnae Mapping
+         * @description Soft delete: marks ``notes='deleted'`` so audit trail is preserved.
+         *
+         *     The DB lookup in ``utils.cnae_mapping._db_lookup`` skips rows with
+         *     ``notes = 'deleted'`` and the LRU cache is invalidated so the next
+         *     request falls back to the hardcoded dict (if present there).
+         */
+        delete: operations["delete_cnae_mapping_v1_admin_cnae_mapping__cnae_code__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Cnae Mapping
+         * @description Patch an existing mapping. Fields not present in the body are untouched.
+         */
+        patch: operations["update_cnae_mapping_v1_admin_cnae_mapping__cnae_code__patch"];
+        trace?: never;
+    };
     "/v1/admin/config/{key}": {
         parameters: {
             query?: never;
@@ -6832,6 +6884,59 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** CnaeMappingCreate */
+        CnaeMappingCreate: {
+            /** Cnae Code */
+            cnae_code: string;
+            /**
+             * Confidence
+             * @default 1
+             */
+            confidence: number;
+            /** Fallback Setor Id */
+            fallback_setor_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Setor Id */
+            setor_id: string;
+        };
+        /** CnaeMappingListResponse */
+        CnaeMappingListResponse: {
+            /** Count */
+            count: number;
+            /** Rows */
+            rows: components["schemas"]["CnaeMappingRow"][];
+        };
+        /** CnaeMappingRow */
+        CnaeMappingRow: {
+            /** Cnae Code */
+            cnae_code: string;
+            /** Confidence */
+            confidence: number;
+            /** Created At */
+            created_at?: string | null;
+            /** Fallback Setor Id */
+            fallback_setor_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Setor Id */
+            setor_id: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+        };
+        /** CnaeMappingUpdate */
+        CnaeMappingUpdate: {
+            /** Confidence */
+            confidence?: number | null;
+            /** Fallback Setor Id */
+            fallback_setor_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Setor Id */
+            setor_id?: string | null;
+        };
         /** ComparadorBid */
         ComparadorBid: {
             /** Data Abertura */
@@ -11350,6 +11455,16 @@ export interface components {
              */
             password: string;
             /**
+             * Ref
+             * @description Attribution ref slug (e.g. 'municipios-sao-paulo-sp')
+             */
+            ref?: string | null;
+            /**
+             * Source
+             * @description Attribution source (e.g. 'municipio-page', 'orgao-page')
+             */
+            source?: string | null;
+            /**
              * Stripe Payment Method Id
              * @description Stripe PaymentMethod ID (pm_...) from frontend PaymentElement
              */
@@ -13049,6 +13164,137 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminClearCheckpointsResponse"];
+                };
+            };
+        };
+    };
+    list_cnae_mappings_v1_admin_cnae_mapping_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by setor_id */
+                setor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cnae_mapping_v1_admin_cnae_mapping_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CnaeMappingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_cnae_mapping_v1_admin_cnae_mapping__cnae_code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cnae_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_cnae_mapping_v1_admin_cnae_mapping__cnae_code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cnae_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CnaeMappingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CnaeMappingRow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
