@@ -1,18 +1,19 @@
 /**
  * @jest-environment node
  *
- * SEO-SITEMAP-CASCADE-001: Regression tests for 503-aware retry logic.
+ * SEO-SITEMAP-CASCADE-001 / SEO-SITEMAP-MV-001: Regression tests for sitemap fetch behavior.
  *
- * Root cause: backend returned 200+[] on DB timeout → frontend treated as
+ * Root cause (original): backend returned 200+[] on DB timeout → frontend treated as
  * legitimate empty → ISR cached empty sitemap for 1h → Google GSC error.
  *
- * Fix: backend now raises 503 on timeout; frontend retries 503 with exponential
- * backoff (up to 3×) and THROWS on exhaustion so ISR preserves last known-good.
+ * SEO-SITEMAP-MV-001 update: backend queries now <50ms via Materialized Views.
+ * Retry logic removed — 503s were caused by slow live aggregates (30-45s), not
+ * network issues. With MVs, 503 is unexpected; single-attempt + null return is correct.
  *
  * Tests:
- *  - 503 → retry 3× → throw (ISR stale-while-revalidate kicks in)
+ *  - 503 → returns [] immediately (no retry, no throw — MV backend is stable)
  *  - 200+[] → return [] immediately (legitimate empty, no retry)
- *  - 503 × 2 then 200+data → eventual success after backoff
+ *  - 503 on first call → no retry → returns [] (not the old backoff behavior)
  *  - non-503 http_error → return null (callers default to [])
  */
 
@@ -73,28 +74,24 @@ describe('fetchSitemapJsonWithRetry — 503 cascade fix (SEO-SITEMAP-CASCADE-001
     jest.runAllTimers();
   });
 
-  it('503 exhausted after 3 attempts throws error (ISR preserves stale sitemap)', async () => {
-    // Import module BEFORE activating fake timers to avoid dynamic import freeze
+  it('503 returns empty array (MV backend — single attempt, no retry, no throw)', async () => {
     const sitemap = await importFreshFetchHelper();
 
-    // Now set up fetch mock and start the sitemap call
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/health/live')) return makeHealthLiveOk();
       return make503Response();
     });
 
-    // The id:4 sitemap fetches cnpjs first; after 3×503 it should throw
-    const sitemapPromise = sitemap({ id: Promise.resolve('4') });
+    // SEO-SITEMAP-MV-001: retry removed. 503 → null → caller returns [].
+    const result = await sitemap({ id: Promise.resolve('4') });
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(0);
 
-    // Register the rejection handler BEFORE advancing timers to avoid unhandled rejection.
-    // If the handler is registered after runAllTimersAsync(), the promise may already have
-    // rejected by the time the .rejects assertion is attached, causing an UnhandledRejection.
-    const assertion = expect(sitemapPromise).rejects.toThrow('sitemap_cnpjs_503_exhausted');
-
-    // Advance timers for exponential backoff: 1s + 2s between retries
-    await jest.runAllTimersAsync();
-
-    await assertion;
+    // Exactly 1 fetch per endpoint (no retry)
+    const cnpjsCalls = (global.fetch as jest.Mock).mock.calls.filter(([url]: [string]) =>
+      url.includes('/v1/sitemap/cnpjs'),
+    );
+    expect(cnpjsCalls).toHaveLength(1);
   });
 
   it('200+[] returns empty array immediately without retry', async () => {
@@ -125,8 +122,7 @@ describe('fetchSitemapJsonWithRetry — 503 cascade fix (SEO-SITEMAP-CASCADE-001
     expect(cnpjsCalls).toHaveLength(1);
   });
 
-  it('503 then 200+data → eventual success after backoff', async () => {
-    // Import module BEFORE activating fake timers to avoid dynamic import freeze
+  it('503 on first call — no retry, returns [] (not the old backoff behavior)', async () => {
     const sitemap = await importFreshFetchHelper();
 
     let cnpjsCallCount = 0;
@@ -145,15 +141,13 @@ describe('fetchSitemapJsonWithRetry — 503 cascade fix (SEO-SITEMAP-CASCADE-001
       return make200Response({});
     });
 
-    const sitemapPromise = sitemap({ id: Promise.resolve('4') });
-    await jest.runAllTimersAsync();
+    const result = await sitemap({ id: Promise.resolve('4') });
 
-    const result = await sitemapPromise;
-    // Should succeed with the CNPJ data from second attempt
+    // SEO-SITEMAP-MV-001: no retry. 503 on first attempt → no second call → no CNPJ URLs.
     expect(Array.isArray(result)).toBe(true);
+    expect(cnpjsCallCount).toBe(1);
     const cnpjUrls = result.filter((entry: { url: string }) => entry.url.includes('/cnpj/'));
-    expect(cnpjUrls).toHaveLength(1);
-    expect(cnpjUrls[0].url).toContain('11111111000100');
+    expect(cnpjUrls).toHaveLength(0);
   });
 
   it('non-503 http error (404) returns null — callers default to empty array', async () => {
