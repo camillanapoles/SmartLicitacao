@@ -153,6 +153,26 @@ class CacheHealthResponse(_PermissiveBase):
     degradation: Optional[CacheDegradationInfo] = None
 
 
+class SitemapMvCheck(_PermissiveBase):
+    """Per-MV status entry for the sitemap health endpoint."""
+
+    status: Optional[str] = None  # "ok" | "empty" | "error"
+    count: Optional[int] = None
+    error: Optional[str] = None
+
+
+class SitemapHealthResponse(_PermissiveBase):
+    """SEO-SITEMAP-TELEMETRY-001: Health envelope for sitemap materialized views.
+
+    Returns per-MV status (ok/empty/error) and overall status (ok/degraded).
+    HTTP 200 when all MVs are ok; HTTP 503 when any MV is empty or errored.
+    """
+
+    status: Optional[str] = None  # "ok" | "degraded"
+    timestamp: Optional[str] = None
+    checks: Optional[Dict[str, SitemapMvCheck]] = None
+
+
 # ---------------------------------------------------------------------------
 # organizations.py — multi-tenant org responses
 # ---------------------------------------------------------------------------

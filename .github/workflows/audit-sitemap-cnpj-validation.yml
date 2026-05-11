@@ -37,26 +37,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Only scan SQL migration files that are NEW in this PR (avoids
-          # false-positives from legitimate patterns in older migrations).
-          PR_SQL_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'supabase/migrations/*.sql' || true)
-
-          if [ -z "$PR_SQL_FILES" ]; then
-            echo "No new migration files in this PR — skipping SQL scan."
-          else
-            echo "Scanning PR migration files: $PR_SQL_FILES"
-            HITS=$(echo "$PR_SQL_FILES" | xargs grep -n 'length.*>= *11\|len.*>= *11' 2>/dev/null \
-              | grep -i cnpj || true)
-            if [ -n "$HITS" ]; then
-              echo "::error::Found length >= 11 in CNPJ context in PR migrations — use is_valid_cnpj_format()"
-              echo "$HITS"
-              exit 1
-            fi
-          fi
-
-          # Always scan backend sitemap + cnpj utils (they are in the trigger paths)
+          # Collect SQL migrations changed in this PR, excluding rollback scripts
+          # (.down.sql) — those legitimately document the old pattern being removed.
+          CHANGED_MIGRATIONS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            -- 'supabase/migrations/*.sql' 2>/dev/null \
+            | grep -v '\.down\.sql$' || true)
+          SCAN_TARGETS="backend/routes/sitemap*.py $CHANGED_MIGRATIONS"
           HITS=$(grep -rn 'length.*>= *11\|len.*>= *11' \
-            backend/routes/sitemap*.py 2>/dev/null \
+            $SCAN_TARGETS 2>/dev/null \
             | grep -i cnpj || true)
           if [ -n "$HITS" ]; then
             echo "::error::Found length >= 11 in CNPJ context — use is_valid_cnpj_format()"

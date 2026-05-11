@@ -21,6 +21,7 @@ from schemas.parity import (
     CacheHealthResponse,
     IncidentsResponse,
     PublicStatusResponse,
+    SitemapHealthResponse,
     SourcesHealthMapResponse,
     SystemHealthResponse,
     UptimeHistoryResponse,
