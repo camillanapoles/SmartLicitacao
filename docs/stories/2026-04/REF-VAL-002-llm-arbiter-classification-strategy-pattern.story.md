@@ -3,7 +3,7 @@
 **Priority:** P2
 **Effort:** M (3-5 dias)
 **Squad:** @architect + @dev
-**Status:** Ready
+**Status:** InReview
 **Epic:** [EPIC-TD-2026Q2](EPIC-TD-2026Q2/)
 **Sprint:** Sprint 4
 **Dependências bloqueadoras:** Benchmark precision/recall ≥85%/≥70% test suite estável

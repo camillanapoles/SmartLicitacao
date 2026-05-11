@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field, field_validator
 
 from openai import OpenAI
 from metrics import (
-    LLM_CALLS, LLM_DURATION, EVIDENCE_PREFIX_STRIPPED, ARBITER_CACHE_SIZE,
-    ARBITER_CACHE_HITS, ARBITER_CACHE_MISSES, ARBITER_CACHE_EVICTIONS,
-    LLM_FALLBACK_REJECTS_TOTAL,
+    EVIDENCE_PREFIX_STRIPPED,
+    ARBITER_CACHE_SIZE,
+    ARBITER_CACHE_EVICTIONS,
 )
 
 logger = logging.getLogger(__name__)
@@ -384,247 +384,53 @@ def classify_contract_primary_match(
 ) -> dict:
     """Classify if contract is PRIMARILY about sector/terms.
 
+    REF-VAL-002: Thin dispatcher — delegates to a ``ClassificationStrategy``
+    selected by ``prompt_level``. The real work lives in
+    ``llm_arbiter.strategies.*``. Pre-flight guards (LLM disabled / missing
+    context) stay here so behaviour is bit-for-bit equivalent to the legacy
+    monolithic function.
+
     D-02: Returns structured dict with confidence, evidence, and rejection reason.
     """
-    from middleware import search_id_var
-    _search_id = search_id_var.get("-")
-
-    structured_enabled = True
-
     # Lazy import via facade so patch("llm_arbiter.LLM_ENABLED", False) works in tests (AC2)
     import llm_arbiter as _lm
+
     if not _lm.LLM_ENABLED:
         logger.warning(
             "LLM arbiter disabled (LLM_ARBITER_ENABLED=false). "
             "Accepting ambiguous contract by default."
         )
-        return {"is_primary": True, "confidence": 50, "evidence": [],
-                "rejection_reason": None, "needs_more_data": False}
+        return {
+            "is_primary": True,
+            "confidence": 50,
+            "evidence": [],
+            "rejection_reason": None,
+            "needs_more_data": False,
+        }
 
     if not setor_name and not termos_busca:
         logger.error(
             "classify_contract_primary_match called without setor_name or termos_busca"
         )
-        return {"is_primary": True, "confidence": 50, "evidence": [],
-                "rejection_reason": None, "needs_more_data": False}
-
-    objeto_truncated = objeto[:500]
-
-    from llm_arbiter.prompt_builder import (
-        _build_zero_match_prompt,
-        _build_conservative_prompt,
-        _build_standard_sector_prompt,
-    )
-
-    if setor_name:
-        mode = "setor"
-        context = setor_name
-
-        if prompt_level == "zero_match":
-            user_prompt = _build_zero_match_prompt(
-                setor_id=setor_id, setor_name=setor_name,
-                objeto_truncated=objeto_truncated, valor=valor,
-                structured=structured_enabled,
-            )
-        elif prompt_level == "conservative":
-            user_prompt = _build_conservative_prompt(
-                setor_id=setor_id, setor_name=setor_name,
-                objeto_truncated=objeto_truncated, valor=valor,
-                structured=structured_enabled,
-            )
-        else:
-            user_prompt = _build_standard_sector_prompt(
-                setor_name=setor_name, objeto_truncated=objeto_truncated,
-                valor=valor, structured=structured_enabled,
-            )
-    else:
-        mode = "termos"
-        context = ", ".join(termos_busca) if termos_busca else ""
-        from llm_arbiter.prompt_builder import _STRUCTURED_JSON_INSTRUCTION
-        suffix = _STRUCTURED_JSON_INSTRUCTION if structured_enabled else "\nResponda APENAS: SIM ou NAO"
-        user_prompt = f"""Termos buscados: {context}
-Valor: R$ {valor:,.2f}
-Objeto: {objeto_truncated}
-
-Os termos buscados descrevem o OBJETO PRINCIPAL deste contrato (não itens secundários)?{suffix}"""
-
-    prompt_version = "v2" if structured_enabled else "v1"
-    cache_key = hashlib.md5(
-        f"{prompt_version}:{mode}:{context}:{valor}:{objeto_truncated}:{prompt_level}:{setor_id or ''}".encode()
-    ).hexdigest()
-
-    if cache_key in _arbiter_cache:
-        _arbiter_cache.move_to_end(cache_key)
-        ARBITER_CACHE_HITS.labels(level="l1").inc()
-        logger.debug(
-            f"LLM arbiter cache L1 HIT: mode={mode} "
-            f"context={context[:50]}... valor={valor}"
-        )
-        return _arbiter_cache[cache_key]
-
-    redis_cached = _arbiter_cache_get_redis(cache_key)
-    if redis_cached is not None:
-        ARBITER_CACHE_HITS.labels(level="l2").inc()
-        return redis_cached
-
-    ARBITER_CACHE_MISSES.inc()
-
-    # STORY-2.11 (EPIC-TD-2026Q2 P0): Budget cap — se o teto mensal foi atingido,
-    # curto-circuita antes de chamar a OpenAI. Retorna PENDING_REVIEW (gray zone),
-    # evitando hard-reject silencioso em caso de burst de custo.
-    try:
-        from llm_budget import is_budget_exceeded_sync
-
-        if is_budget_exceeded_sync():
-            logger.warning(
-                f"STORY-2.11: LLM monthly budget exceeded — returning PENDING_REVIEW | "
-                f"search={_search_id} mode={mode} prompt_level={prompt_level}"
-            )
-            try:
-                from metrics import LLM_BUDGET_REJECTIONS
-                LLM_BUDGET_REJECTIONS.labels(caller="arbiter").inc()
-            except Exception:
-                pass
-            return {
-                "is_primary": False,
-                "confidence": 0,
-                "evidence": [],
-                "rejection_reason": "llm_budget_exceeded",
-                "needs_more_data": False,
-                "pending_review": True,
-                "_classification_source": "budget_cap",
-            }
-    except Exception:
-        # Nunca bloqueia por erro em budget check
-        pass
-
-    try:
-        if structured_enabled:
-            system_prompt = (
-                "Você é um classificador conservador de licitações públicas. "
-                "Em caso de dúvida, responda NAO. "
-                "Apenas responda SIM se o contrato é CLARAMENTE e PRIMARIAMENTE sobre o setor. "
-                "Responda em formato JSON válido conforme a estrutura solicitada."
-            )
-            effective_max_tokens = LLM_STRUCTURED_MAX_TOKENS
-        else:
-            system_prompt = (
-                "Você é um classificador conservador de licitações. "
-                "Em caso de dúvida, responda NAO. "
-                "Apenas responda SIM se o contrato é CLARAMENTE e PRIMARIAMENTE sobre o setor. "
-                "Responda APENAS 'SIM' ou 'NAO'."
-            )
-            effective_max_tokens = LLM_MAX_TOKENS
-
-        api_kwargs: dict[str, Any] = {
-            "model": LLM_MODEL,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "max_tokens": effective_max_tokens,
-            "temperature": LLM_TEMPERATURE,
-        }
-        if structured_enabled:
-            api_kwargs["response_format"] = {"type": "json_object"}
-
-        _llm_start = _time_module.time()
-        # Lazy import via facade so patch("llm_arbiter._get_client") works in tests (AC2)
-        import llm_arbiter as _lm
-        response = _lm._get_client().chat.completions.create(**api_kwargs)
-        _llm_elapsed = _time_module.time() - _llm_start
-
-        raw_content = response.choices[0].message.content.strip()
-
-        usage = getattr(response, "usage", None)
-        if usage and search_id:
-            _log_token_usage(
-                search_id,
-                input_tokens=getattr(usage, "prompt_tokens", 0),
-                output_tokens=getattr(usage, "completion_tokens", 0),
-            )
-
-        if structured_enabled:
-            classification = _parse_structured_response(raw_content, objeto, search_id)
-            is_primary = classification.classe == "SIM"
-            result = {
-                "is_primary": is_primary,
-                "confidence": classification.confianca,
-                "evidence": classification.evidencias,
-                "rejection_reason": classification.motivo_exclusao,
-                "needs_more_data": classification.precisa_mais_dados,
-            }
-        else:
-            llm_response = raw_content.upper()
-            is_primary = llm_response == "SIM"
-            result = {
-                "is_primary": is_primary,
-                "confidence": 100 if is_primary else 0,
-                "evidence": [],
-                "rejection_reason": None,
-                "needs_more_data": False,
-            }
-
-        _decision = "SIM" if is_primary else "NAO"
-        LLM_DURATION.labels(model=LLM_MODEL, decision=_decision).observe(_llm_elapsed)
-        LLM_CALLS.labels(model=LLM_MODEL, decision=_decision, zone=prompt_level).inc()
-
-        _arbiter_cache_set(cache_key, result)
-        _arbiter_cache_set_redis(cache_key, result)
-
-        logger.info(
-            f"LLM arbiter decision: {_decision} conf={result['confidence']}% | "
-            f"search={_search_id} mode={mode} prompt_level={prompt_level} structured={structured_enabled} "
-            f"context={context[:50]}... valor=R${valor:,.2f}"
-        )
-
-        return result
-
-    except Exception as e:
-        LLM_CALLS.labels(model=LLM_MODEL, decision="ERROR", zone=prompt_level).inc()
-
-        from config import LLM_FALLBACK_PENDING_ENABLED
-        _gray_zone_levels = {"zero_match", "standard", "conservative"}
-        if LLM_FALLBACK_PENDING_ENABLED and prompt_level in _gray_zone_levels:
-            logger.warning(
-                f"LLM arbiter FAILED (PENDING_REVIEW fallback): {e} | "
-                f"search={_search_id} mode={mode} prompt_level={prompt_level} "
-                f"context={context[:50]}... valor={valor:,.2f}"
-            )
-            from metrics import LLM_FALLBACK_PENDING
-            _sector_label = context[:50] if mode == "setor" else "termos"
-            _reason = type(e).__name__
-            LLM_FALLBACK_PENDING.labels(sector=_sector_label, reason=_reason).inc()
-            _pending_confidence = 40 if prompt_level in {"standard", "conservative"} else 0
-            result = {
-                "is_primary": False,
-                "confidence": _pending_confidence,
-                "evidence": [],
-                "rejection_reason": "LLM unavailable",
-                "needs_more_data": False,
-                "pending_review": True,
-                "_classification_source": "llm_fallback_pending",
-            }
-            return result
-
-        logger.error(
-            f"LLM arbiter FAILED (defaulting to REJECT): {e} | "
-            f"search={_search_id} mode={mode} context={context[:50]}... valor={valor:,.2f}"
-        )
-        try:
-            _setor_label = setor_id or "unknown"
-            _reason = type(e).__name__
-            LLM_FALLBACK_REJECTS_TOTAL.labels(setor=_setor_label, reason=_reason).inc()
-        except Exception:
-            pass
-        result = {
-            "is_primary": False,
-            "confidence": 0,
+        return {
+            "is_primary": True,
+            "confidence": 50,
             "evidence": [],
-            "rejection_reason": "LLM unavailable",
+            "rejection_reason": None,
             "needs_more_data": False,
         }
-        return result
+
+    from llm_arbiter.strategies import get_strategy
+
+    strategy = get_strategy(prompt_level)
+    return strategy.classify(
+        objeto=objeto,
+        valor=valor,
+        setor_name=setor_name,
+        termos_busca=termos_busca,
+        setor_id=setor_id,
+        search_id=search_id,
+    )
 
 
 # ============================================================================
