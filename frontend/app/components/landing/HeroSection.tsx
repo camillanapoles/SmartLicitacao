@@ -8,6 +8,7 @@ import { GradientButton } from '@/app/components/ui/GradientButton';
 import { useScrollAnimation } from '@/lib/animations';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { hero } from '@/lib/copy/valueProps';
+import { trackCTAClick } from '@/lib/analytics-events';
 import HeroFounderStrip from './HeroFounderStrip';
 import HeroTrustSignals from './HeroTrustSignals';
 

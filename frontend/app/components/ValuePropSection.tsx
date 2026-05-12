@@ -96,7 +96,7 @@ export default function ValuePropSection() {
                     </p>
 
                     {/* Proof Point (if exists) */}
-                    {prop.proof && (
+                    {'proof' in prop && prop.proof && (
                       <p className="text-xs text-ink-muted mt-4 italic">
                         {prop.proof}
                       </p>
