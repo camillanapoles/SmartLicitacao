@@ -15,6 +15,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     tracesSampleRate: 0.1,
+    sampleRate: 0.15,
     environment: process.env.NEXT_PUBLIC_ENVIRONMENT || process.env.NODE_ENV,
 
     // GTM-STAB-006 AC6 + STORY-422 (EPIC-INCIDENT-2026-04-10):
