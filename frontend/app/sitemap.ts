@@ -10,6 +10,7 @@ import { getAllAuthorSlugs } from '@/lib/authors';
 import { getAllQuestionSlugs } from '@/lib/questions';
 import { getAllMasterclassTemas } from '@/lib/masterclasses';
 import { getBackendUrl } from '@/lib/backend-url';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 // SEO-P0-003 (#989): drop URLs flagged as duplicate by the uniqueness audit
 // from the sitemap entirely. Auto-generated allowlist in lib/seo/noindex-slugs.ts.
 import { filterNoindexedSitemap } from '@/lib/seo/noindex';
@@ -45,7 +46,7 @@ async function fetchSitemapJson<T>(
   let urlCount = 0;
   let fetchResult: FetchSitemapResult<T> = { kind: 'http_error', status: 0 };
   try {
-    const resp = await fetch(url, {
+    const resp = await ssgLimitedFetch(url, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(5000),
     });
@@ -939,9 +940,9 @@ export default async function sitemap(props: { id: Promise<string> }): Promise<M
       {
         const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
         try {
-          const probe = await fetch(`${backendUrl}/health/live`, {
+          const probe = await ssgLimitedFetch(`${backendUrl}/health/live`, {
             signal: AbortSignal.timeout(3000),
-            cache: 'no-store',
+            next: { revalidate: 60 }, // SEN-FE-001: align with sitemap revalidate=3600; short TTL for health probe
           });
           if (!probe.ok) {
             const err = new Error(`sitemap/4 probe HTTP ${probe.status}`);

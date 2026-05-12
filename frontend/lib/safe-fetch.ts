@@ -14,6 +14,7 @@
  *     quebra SSG; usar `next: { revalidate: N }`.
  */
 import * as Sentry from '@sentry/nextjs';
+import { ssgFetchLimiter } from '@/lib/concurrency';
 
 export type SafeFetchOutcome =
   | 'success'
@@ -51,10 +52,15 @@ export async function safeFetch(
   let statusCode = 0;
 
   try {
-    const resp = await fetch(url, {
-      signal: AbortSignal.timeout(timeout),
-      ...init,
-    });
+    // SSG build-time concurrency gate: max 6 parallel backend requests
+    // previne o cascade timeout quando "next build" renderiza 4146+ páginas
+    // simultaneamente (feedback_build_hammers_backend_cascade).
+    const resp = await ssgFetchLimiter.run(() =>
+      fetch(url, {
+        signal: AbortSignal.timeout(timeout),
+        ...init,
+      }),
+    );
     statusCode = resp.status;
     if (!resp.ok) {
       outcome = 'http_error';

@@ -1,0 +1,196 @@
+name: "Audit ISR/fetch cache alignment (SEN-FE-001)"
+
+# Prevents SEN-FE-001 recidiva: pages/routes that declare `export const revalidate = N`
+# MUST NOT use `cache: 'no-store'` on server-side fetches, because that forces
+# Next.js to convert SSG -> dynamic at runtime, degrading ISR and breaking SEO.
+#
+# The fix: use `next: { revalidate: N }` instead of `cache: 'no-store'`, aligned
+# with the page's revalidate value.
+#
+# Exempt:
+#   - API routes (`/api/`) — always dynamic by nature
+#   - `"use client"` files — browser-side fetches don't affect SSG/ISR
+#   - Comment-only occurrences (lines starting with //, /*, *)
+#
+# Trigger: PRs touching frontend/app/ (page/route files)
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/app/**'
+      - 'frontend/lib/**'
+      - 'frontend/components/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: audit-isr-cache-alignment-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit cache:no-store + revalidate misalignment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Scan for cache:no-store + revalidate misalignment
+        id: scan
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Collect violations: files with both `revalidate` and `cache.*no-store`
+          # in non-API, non-client-component frontend source files.
+          : > /tmp/sen_fe_001_violations.txt
+
+          # Find all .ts/.tsx files under frontend/app/ that have `revalidate`
+          # (indicating ISR) anywhere in the file.
+          # Exclude: node_modules, .next, /api/, .test., .spec., e2e-tests
+          REVALIDATE_FILES=$(mktemp)
+          grep -rl "revalidate" \
+            --include="*.ts" --include="*.tsx" \
+            frontend/app/ \
+            --exclude-dir=node_modules \
+            --exclude-dir=.next \
+            --exclude="*.test.*" \
+            --exclude="*.spec.*" \
+            --exclude="*.e2e.*" \
+            2>/dev/null \
+            | grep -v "/api/" \
+            | sort -u > "$REVALIDATE_FILES" || true
+
+          if [ ! -s "$REVALIDATE_FILES" ]; then
+            echo "No ISR files found. Nothing to audit."
+            echo "violations_found=false" >> "$GITHUB_OUTPUT"
+            echo "violation_count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # For each file with revalidate, check if it also has cache.*no-store
+          # in non-comment code. Strip inline JS comments (// to EOL, /* */ blocks)
+          # before grepping so comment-only mentions are ignored.
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            # Skip "use client" files (browser-side fetches don't affect ISR)
+            if grep -q '"use client"' "$file" 2>/dev/null; then
+              continue
+            fi
+
+            # Strip JS comments (//, /* */, and multi-line /** ... */ continuations),
+            # then grep for remaining cache.*no-store (actual code, not comment refs).
+            stripped_content=$(sed 's|//.*$||g' "$file" \
+              | sed '/^\s*\/\*/,/\*\//d' \
+              | grep -v '^\s*\*' \
+              || true)
+            if echo "$stripped_content" | grep -q "cache.*no-store" 2>/dev/null; then
+              # Find the actual line(s) in the original file for annotation
+              grep -Hn "cache.*no-store" "$file" >> /tmp/sen_fe_001_violations.txt
+            fi
+          done < "$REVALIDATE_FILES"
+
+          rm -f "$REVALIDATE_FILES"
+
+          if [ ! -s /tmp/sen_fe_001_violations.txt ]; then
+            echo "No cache:no-store + revalidate misalignment found."
+            echo "violations_found=false" >> "$GITHUB_OUTPUT"
+            echo "violation_count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          COUNT=$(wc -l < /tmp/sen_fe_001_violations.txt | tr -d ' ')
+          echo "violations_found=true" >> "$GITHUB_OUTPUT"
+          echo "violation_count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          echo ""
+          echo "::error::Found $COUNT file(s) with cache:'no-store' + revalidate misalignment (SEN-FE-001)."
+          echo "Violations:"
+          cat /tmp/sen_fe_001_violations.txt
+
+          # Annotate each violation in the GitHub UI
+          while IFS= read -r v; do
+            [ -z "$v" ] && continue
+            file="${v%%:*}"
+            rest="${v#*:}"
+            lineno="${rest%%:*}"
+            echo "::error file=${file},line=${lineno}::cache:'no-store' combined with revalidate breaks ISR (SEN-FE-001). Use next:{revalidate:N} instead."
+          done < /tmp/sen_fe_001_violations.txt
+
+      - name: Post / update sticky PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        env:
+          VIOLATIONS_FOUND: ${{ steps.scan.outputs.violations_found }}
+          VIOLATION_COUNT: ${{ steps.scan.outputs.violation_count }}
+        with:
+          script: |
+            const fs = require('fs');
+            const violationsFound = process.env.VIOLATIONS_FOUND === 'true';
+            const count = process.env.VIOLATION_COUNT || '0';
+            const marker = '<!-- audit-isr-cache-alignment-sticky -->';
+
+            let body;
+            if (violationsFound) {
+              let detail = '';
+              try {
+                detail = fs.readFileSync('/tmp/sen_fe_001_violations.txt', 'utf8').trim();
+              } catch (_) {
+                detail = '(violation list unavailable)';
+              }
+              body =
+                marker + '\n' +
+                '## ISR cache alignment audit — FAIL (' + count + ' violation' + (count === '1' ? '' : 's') + ')\n\n' +
+                'One or more ISR (revalidated) pages use `cache: \'no-store\'` on server-side fetches, ' +
+                'forcing Next.js to convert static pages to dynamic at runtime.\n\n' +
+                '### Violations\n\n' +
+                '```\n' + detail + '\n```\n\n' +
+                '### How to fix\n\n' +
+                'Replace `cache: \'no-store\'` with `next: { revalidate: N }` where N matches the page\'s ' +
+                '`export const revalidate = N` value.\n\n' +
+                '### Rule\n\n' +
+                '- **ISR pages** (with `export const revalidate`) must use `next: { revalidate }` — never `cache: \'no-store\'`.\n' +
+                '- **API routes** (`/api/`) are exempt (always dynamic).\n' +
+                '- **Client components** (`"use client"`) are exempt (browser-side fetches).\n\n' +
+                '> _Prevents SEN-FE-001 recidiva — ISR/fetch cache misalignment._';
+            } else {
+              body =
+                marker + '\n' +
+                '## ISR cache alignment audit — PASS\n\n' +
+                'No `cache: \'no-store\'` + `revalidate` misalignment found. All ISR pages use aligned fetch caching.\n';
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(
+              c => c.user && c.user.type === 'Bot' && c.body && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail if violations
+        if: steps.scan.outputs.violations_found == 'true'
+        run: |
+          echo "Failing gate due to ${{ steps.scan.outputs.violation_count }} cache:no-store + revalidate misalignment(s)."
+          exit 1

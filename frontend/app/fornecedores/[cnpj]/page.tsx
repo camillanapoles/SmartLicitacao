@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
@@ -61,7 +62,7 @@ async function fetchProfile(cnpj: string): Promise<FornecedorProfile | null> {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
   // SEO-FE-ISR-001 (#1038): no try/catch — let network/timeout errors propagate so
   // ISR keeps the last-good cached page rather than caching a null-driven EmptyState.
-  const res = await fetch(`${backendUrl}/v1/fornecedores/${cnpj}/profile`, {
+  const res = await ssgLimitedFetch(`${backendUrl}/v1/fornecedores/${cnpj}/profile`, {
     next: { revalidate: 3600 }, // 1h ISR
     signal: AbortSignal.timeout(15_000),
   });
@@ -77,8 +78,8 @@ async function fetchProfile(cnpj: string): Promise<FornecedorProfile | null> {
 export async function generateStaticParams() {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
   try {
-    const res = await fetch(`${backendUrl}/v1/sitemap/fornecedores-cnpj`, {
-      cache: 'no-store',
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/sitemap/fornecedores-cnpj`, {
+      next: { revalidate: 3600 }, // SEN-FE-001: align with page revalidate=3600; never mix cache:'no-store' + revalidate
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return [];
