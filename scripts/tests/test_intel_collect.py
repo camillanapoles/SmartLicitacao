@@ -84,7 +84,17 @@ assemble_output = _ic.assemble_output
 _detect_delta = _ic._detect_delta
 _find_previous_run = _ic._find_previous_run
 _parse_numero_controle_pncp = _ic._parse_numero_controle_pncp
-EXCLUSION_PATTERNS = _ic.EXCLUSION_PATTERNS
+# EXCLUSION_PATTERNS refactored to sector-specific _EXCLUSION_PATTERNS_CACHE.
+# Collect all unique exclusion patterns across all 20 sectors for testing.
+_EXCLUSION_SECTOR_IDS: set[str] = {
+    "vestuario", "alimentos", "informatica", "mobiliario", "papelaria",
+    "engenharia", "software_desenvolvimento", "software_licencas",
+    "servicos_prediais", "produtos_limpeza", "medicamentos",
+    "equipamentos_medicos", "insumos_hospitalares", "vigilancia",
+    "transporte_servicos", "frota_veicular", "manutencao_predial",
+    "engenharia_rodoviaria", "materiais_eletricos", "materiais_hidraulicos",
+}
+_ALL_EXCLUSION_PATTERNS: list[re.Pattern] = _ic._get_exclusion_patterns_for_sector(_EXCLUSION_SECTOR_IDS)
 MODALIDADES_BUSCA = _ic.MODALIDADES_BUSCA
 _today = _ic._today
 _date_compact = _ic._date_compact
@@ -443,23 +453,42 @@ class TestObjectHeuristicClassifier:
     """Test classify_by_object_heuristic."""
 
     def test_strong_compatible_construcao(self):
-        result = classify_by_object_heuristic("Construcao de edificio escolar", "Construcao de edificios")
+        """Construction is compatible ONLY with engenharia sector context."""
+        result = classify_by_object_heuristic(
+            "Construcao de edificio escolar", "Construcao de edificios",
+            sector_keys={"engenharia"},
+        )
         assert result == "COMPATIVEL"
 
     def test_strong_compatible_pavimentacao(self):
-        result = classify_by_object_heuristic("Pavimentacao asfaltica em CBUQ de vias urbanas", "")
+        """Pavement is compatible with engenharia sector context."""
+        result = classify_by_object_heuristic(
+            "Pavimentacao asfaltica em CBUQ de vias urbanas", "",
+            sector_keys={"engenharia"},
+        )
         assert result == "COMPATIVEL"
 
     def test_strong_compatible_reforma(self):
-        result = classify_by_object_heuristic("Reforma e ampliacao da escola municipal", "")
+        """Reforma is compatible with engenharia sector context."""
+        result = classify_by_object_heuristic(
+            "Reforma e ampliacao da escola municipal", "",
+            sector_keys={"engenharia"},
+        )
         assert result == "COMPATIVEL"
 
     def test_strong_incompatible_juridica(self):
-        result = classify_by_object_heuristic("Contratacao de consultoria juridica especializada", "")
-        assert result == "INCOMPATIVEL"
+        """Juridica is not classified by any sector pattern — defaults to NEEDS_REVIEW."""
+        result = classify_by_object_heuristic(
+            "Contratacao de consultoria juridica especializada", "",
+        )
+        assert result == "NEEDS_REVIEW"
 
     def test_strong_incompatible_transporte(self):
-        result = classify_by_object_heuristic("Contratacao de transporte escolar para alunos", "")
+        """Transporte escolar is incompatible with engenharia."""
+        result = classify_by_object_heuristic(
+            "Contratacao de transporte escolar para alunos", "",
+            sector_keys={"engenharia"},
+        )
         assert result == "INCOMPATIVEL"
 
     def test_ambiguous_needs_review(self):
@@ -467,7 +496,11 @@ class TestObjectHeuristicClassifier:
         assert result == "NEEDS_REVIEW"
 
     def test_weak_compatible_manutencao(self):
-        result = classify_by_object_heuristic("Servicos de engenharia e manutencao predial", "")
+        """Manutencao predial is compatible with engenharia sector context."""
+        result = classify_by_object_heuristic(
+            "Servicos de engenharia e manutencao predial", "",
+            sector_keys={"engenharia"},
+        )
         assert result == "COMPATIVEL"
 
 
@@ -476,32 +509,32 @@ class TestObjectHeuristicClassifier:
 # ============================================================
 
 class TestExclusionPatterns:
-    """Test the global EXCLUSION_PATTERNS list."""
+    """Test the exclusion patterns loaded via _get_exclusion_patterns_for_sector."""
 
     def test_exclusion_patterns_compiled(self):
         """All patterns should be compiled successfully."""
-        assert len(EXCLUSION_PATTERNS) > 0
-        for name, pattern in EXCLUSION_PATTERNS:
-            assert isinstance(name, str)
+        assert len(_ALL_EXCLUSION_PATTERNS) > 0
+        for pattern in _ALL_EXCLUSION_PATTERNS:
             assert hasattr(pattern, "search")
 
     def test_medical_exclusion(self):
-        """Medical terms should match the medical_health pattern."""
+        """Medical terms should match an exclusion pattern."""
         text = "aquisicao de medicamentos hospitalares"
-        matched = any(pat.search(text) for _, pat in EXCLUSION_PATTERNS)
+        matched = any(pat.search(text) for pat in _ALL_EXCLUSION_PATTERNS)
         assert matched
 
     def test_it_software_exclusion(self):
-        """IT/software terms should match the it_software_telecom pattern."""
+        """IT/software terms should match an exclusion pattern."""
         text = "contratacao de software de gestao e tecnologia da informacao"
-        matched = any(pat.search(text) for _, pat in EXCLUSION_PATTERNS)
+        matched = any(pat.search(text) for pat in _ALL_EXCLUSION_PATTERNS)
         assert matched
 
-    def test_construction_not_excluded(self):
-        """Construction terms should NOT match any exclusion pattern."""
+    def test_construction_matches_sector_exclusions(self):
+        """Construction terms DO match sector-specific exclusion patterns
+        (partial exclusion with -30% penalty) for non-construction sectors."""
         text = "construcao de escola municipal com reforma e ampliacao"
-        matched = any(pat.search(text) for _, pat in EXCLUSION_PATTERNS)
-        assert not matched
+        matched = any(pat.search(text) for pat in _ALL_EXCLUSION_PATTERNS)
+        assert matched
 
 
 # ============================================================
