@@ -44,7 +44,10 @@ jobs:
             NR > 2 {
               local = $1; gsub(/^[ \t]+|[ \t]+$/, "", local)
               remote = $2; gsub(/^[ \t]+|[ \t]+$/, "", remote)
-              if (local != "" && remote == "") print local
+              if (local == "") next
+              # Skip .down.sql rollback scripts — Supabase CLI 2.x lists them as separate migrations
+              if (local ~ /\.down/) next
+              if (remote == "") print local
             }
           ')
 

@@ -60,6 +60,8 @@ jobs:
               local = $1; gsub(/^[ \t]+|[ \t]+$/, "", local)
               remote = $2; gsub(/^[ \t]+|[ \t]+$/, "", remote)
               if (local == "") next
+              # Skip .down.sql rollback scripts — Supabase CLI 2.x lists them as separate migrations
+              if (local ~ /\.down/) next
               # Filter out stderr leakage (e.g. "Connecting to remote database...",
               # "Skipping migration README.md...") that lack pipe separators —
               # real migration rows always have a 14-digit timestamp in Local.
