@@ -133,7 +133,14 @@ export default async function MunicipioSlugPage({ params }: Props) {
   // Validação básica de formato: apenas letras minúsculas, números e hífens
   if (!/^[a-z0-9-]+$/.test(slug)) notFound(); // adr-seo-001-allow: slug fails basic format check — not a valid municipio identifier
 
-  const profile = await fetchProfile(slug);
+  let profile: MunicipioProfile | null;
+  try {
+    profile = await fetchProfile(slug);
+  } catch {
+    // Transient fetch failure (timeout/5xx) during SSG build or ISR revalidation —
+    // render EmptyStateSEO so the build succeeds and ISR retries on next request.
+    profile = null;
+  }
   // ADR-SEO-001: data absence → EmptyStateSEO (not notFound) to prevent ISR-cached 404s
   if (!profile) {
     return (
