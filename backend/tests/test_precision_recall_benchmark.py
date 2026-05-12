@@ -880,10 +880,10 @@ class TestVestuario:
         assert not check_match("vestuario", "Confecção de prótese dentária")[0]
 
     @pytest.mark.xfail(
+        strict=True,
         reason="STORY-BTS-006 deferred: benchmark_ground_truth.json regen pendente @data-engineer. "
         "'EPI de proteção individual' requer match de contexto multi-keyword que o sistema atual "
         "não acerta sem tuning — deferido por não ser regressão prod (é gap de precision benchmark).",
-        strict=False,
     )
     def test_epi_protecao_approved(self):
         """AC-VES-3: EPI de proteção individual → APPROVED (context: proteção)"""
