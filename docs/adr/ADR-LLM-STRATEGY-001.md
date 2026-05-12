@@ -73,7 +73,7 @@ The remaining ~5% of bids fall through to PENDING_REVIEW (manual classification)
 
 ### Class hierarchy
 
-```
+```text
 ClassificationStrategy (ABC)          # _base.py
 ├── KeywordStrategy                    # keyword.py — no LLM, pure keyword match
 ├── LLMStandardStrategy               # llm_standard.py — standard GPT-4.1-nano prompt
