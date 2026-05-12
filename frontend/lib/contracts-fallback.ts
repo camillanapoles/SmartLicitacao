@@ -11,6 +11,7 @@
  */
 
 import { formatBRL, getUfPrep, SECTOR_SLUG_TO_BACKEND_ID } from './programmatic';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 
 // ---------------------------------------------------------------------------
 // Shared entry types (mirror the backend ContratosSetor* models)
@@ -84,7 +85,7 @@ export async function fetchContratosSetorUfStats(
 
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
-    const res = await fetch(
+    const res = await ssgLimitedFetch(
       `${backendUrl}/v1/blog/stats/contratos/${sectorId}/uf/${uf.toUpperCase()}`,
       { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
     );
@@ -102,7 +103,7 @@ export async function fetchContratosCidadeStats(
   if (!backendUrl) return null;
 
   try {
-    const res = await fetch(
+    const res = await ssgLimitedFetch(
       `${backendUrl}/v1/blog/stats/contratos/cidade/${encodeURIComponent(cidadeSlug)}`,
       { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
     );
@@ -122,7 +123,7 @@ export async function fetchContratosCidadeSetorStats(
 
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
-    const res = await fetch(
+    const res = await ssgLimitedFetch(
       `${backendUrl}/v1/blog/stats/contratos/cidade/${encodeURIComponent(cidadeSlug)}/setor/${sectorId}`,
       { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
     );

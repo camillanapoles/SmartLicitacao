@@ -8,6 +8,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
 
 export const revalidate = 3600;
@@ -37,7 +38,7 @@ function deslugify(slug: string): string {
 
 async function fetchMunicipio(slug: string, periodo: string) {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-  const res = await fetch(
+  const res = await ssgLimitedFetch(
     `${backendUrl}/v1/indice-municipal/${slug}?periodo=${periodo}`,
     { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) }
   );

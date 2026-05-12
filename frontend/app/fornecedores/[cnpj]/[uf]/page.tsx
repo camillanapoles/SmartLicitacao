@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { generateSectorUfParams, getSectorFromSlug, getUfPrep, ALL_UFS, UF_NAMES } from '@/lib/programmatic';
 import { formatBRL } from '@/lib/sectors';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
@@ -41,7 +42,7 @@ interface FornecedoresStats {
 async function fetchFornecedoresStats(setor: string, uf: string): Promise<FornecedoresStats | null> {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
   try {
-    const res = await fetch(`${backendUrl}/v1/fornecedores/${setor}/${uf}/stats`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/fornecedores/${setor}/${uf}/stats`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(10000),
     });

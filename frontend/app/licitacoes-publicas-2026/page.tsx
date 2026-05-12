@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { SECTORS } from '@/lib/sectors';
 import { buildCanonical, SITE_URL } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 
@@ -79,7 +80,7 @@ async function fetchPublicStats(): Promise<PublicStats> {
   };
 
   try {
-    const res = await fetch(`${BACKEND_URL}/v1/stats/public`, {
+    const res = await ssgLimitedFetch(`${BACKEND_URL}/v1/stats/public`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(8000),
     });
@@ -107,7 +108,7 @@ async function fetchPublicStats(): Promise<PublicStats> {
  */
 async function fetchRecentEditais(): Promise<RecentEdital[]> {
   try {
-    const res = await fetch(`${BACKEND_URL}/v1/blog/daily/latest`, {
+    const res = await ssgLimitedFetch(`${BACKEND_URL}/v1/blog/daily/latest`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(8000),
     });

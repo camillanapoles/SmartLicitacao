@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import { buildCanonical } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import { LeadCapture } from '@/components/LeadCapture';
 import TrackingLink from '@/components/TrackingLink';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
@@ -52,7 +53,7 @@ export function generateStaticParams() {
 
 async function fetchOrgaoContratosStats(cnpj: string): Promise<OrgaoContratosStats | null> {
   try {
-    const resp = await fetch(`${BACKEND_URL}/v1/contratos/orgao/${cnpj}/stats`, {
+    const resp = await ssgLimitedFetch(`${BACKEND_URL}/v1/contratos/orgao/${cnpj}/stats`, {
       next: { revalidate: 14400 }, // ISR-aligned com revalidate da page (4h) — mantém SSG/ISR estático e evita static→dynamic shift
       signal: AbortSignal.timeout(10000),
     });

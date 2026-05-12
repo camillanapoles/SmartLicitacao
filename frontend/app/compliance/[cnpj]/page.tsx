@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
@@ -37,7 +38,7 @@ async function fetchProfile(cnpj: string): Promise<ComplianceProfile | null> {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
   // SEO-FE-ISR-001 (#1038): no try/catch — let network/timeout errors propagate so
   // ISR keeps the last-good cached page rather than caching a null-driven EmptyState.
-  const res = await fetch(`${backendUrl}/v1/compliance/${cnpj}/profile`, {
+  const res = await ssgLimitedFetch(`${backendUrl}/v1/compliance/${cnpj}/profile`, {
     next: { revalidate: 3600 }, // 1h ISR
     signal: AbortSignal.timeout(15_000),
   });

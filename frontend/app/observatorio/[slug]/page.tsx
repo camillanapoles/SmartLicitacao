@@ -18,6 +18,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import * as Sentry from '@sentry/nextjs';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import ObservatorioRelatorioClient from './ObservatorioRelatorioClient';
 import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
@@ -58,7 +59,7 @@ function parseSlug(slug: string): { mes: number; ano: number } | null {
  * service_role queries.
  */
 async function fetchRelatorio(mes: number, ano: number) {
-  const resp = await fetch(`${BACKEND_URL}/v1/observatorio/relatorio/${mes}/${ano}`, {
+  const resp = await ssgLimitedFetch(`${BACKEND_URL}/v1/observatorio/relatorio/${mes}/${ano}`, {
     next: { revalidate: 3600 }, // 1h ISR — SEO-FE-ISR-001 (#1038)
     signal: AbortSignal.timeout(15000),
   });

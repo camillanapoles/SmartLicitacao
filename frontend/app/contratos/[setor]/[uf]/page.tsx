@@ -11,6 +11,7 @@ import {
 } from '@/lib/programmatic';
 import { formatBRL } from '@/lib/sectors';
 import { buildCanonical, getFreshnessLabel } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
@@ -41,7 +42,7 @@ interface ContratosStats {
 async function fetchContratosStats(setor: string, uf: string): Promise<ContratosStats | null> {
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
   try {
-    const res = await fetch(`${backendUrl}/v1/contratos/${setor}/${uf}/stats`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/contratos/${setor}/${uf}/stats`, {
       next: { revalidate: 14400 },
       signal: AbortSignal.timeout(10000),
     });

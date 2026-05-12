@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { buildCanonical, SITE_URL } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import { getAuthorBySlug, DEFAULT_AUTHOR_SLUG } from '@/lib/authors';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
@@ -62,7 +63,7 @@ async function fetchDailyData(date: string): Promise<DailyData | null> {
 
   const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
   try {
-    const res = await fetch(`${BACKEND_URL}/v1/blog/daily/${date}`, {
+    const res = await ssgLimitedFetch(`${BACKEND_URL}/v1/blog/daily/${date}`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(10000),
     });

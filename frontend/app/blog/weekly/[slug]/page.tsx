@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import EmptyStateSEO from '@/components/seo/EmptyStateSEO';
 import { buildCanonical, SITE_URL } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import { getAuthorBySlug, DEFAULT_AUTHOR_SLUG } from '@/lib/authors';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
@@ -62,7 +63,7 @@ async function fetchWeeklyData(slug: string): Promise<WeeklyData | null> {
 
   const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
   try {
-    const res = await fetch(
+    const res = await ssgLimitedFetch(
       `${BACKEND_URL}/v1/blog/weekly/${year}/${week}`,
       { next: { revalidate: 3600 }, signal: AbortSignal.timeout(10000) }
     );

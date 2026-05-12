@@ -5,6 +5,7 @@
  */
 
 import { Metadata } from 'next';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
@@ -51,7 +52,7 @@ export default async function ObservatorioEmbedPage({
   };
   let relatorio: ObservatorioRelatorio | null = null;
   try {
-    const resp = await fetch(`${BACKEND_URL}/v1/observatorio/relatorio/${mes}/${ano}`, {
+    const resp = await ssgLimitedFetch(`${BACKEND_URL}/v1/observatorio/relatorio/${mes}/${ano}`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(10000),
     });
