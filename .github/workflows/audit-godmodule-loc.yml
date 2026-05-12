@@ -162,8 +162,8 @@ jobs:
           echo "has_failures=${HAS_FAILURES}" >> "$GITHUB_OUTPUT"
           echo "has_warnings=${HAS_WARNINGS}" >> "$GITHUB_OUTPUT"
 
-          FAILURES_JSON=$(printf '%s\n' "${FAILURES[@]+"${FAILURES[@]}"}" | jq -Rs 'split("\n") | map(select(length > 0))')
-          WARNINGS_JSON=$(printf '%s\n' "${WARNINGS[@]+"${WARNINGS[@]}"}" | jq -Rs 'split("\n") | map(select(length > 0))')
+          FAILURES_JSON=$(printf '%s\n' "${FAILURES[@]+"${FAILURES[@]}"}" | jq -Rsc 'split("\n") | map(select(length > 0))')
+          WARNINGS_JSON=$(printf '%s\n' "${WARNINGS[@]+"${WARNINGS[@]}"}" | jq -Rsc 'split("\n") | map(select(length > 0))')
           echo "failures_json<<EOF" >> "$GITHUB_OUTPUT"
           echo "${FAILURES_JSON}" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
