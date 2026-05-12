@@ -155,7 +155,7 @@
 Coverage empírica do schema `public` via `pg_tables` ⨝ `pg_policies` (export Management API):
 
 - **Última auditoria:** 2026-05-09 — `_reversa_sdd/rls-coverage-2026-05-09.md`
-- **Tables totais (`public`):** 65
+- **Tables totais (`public`):** 60
 - **Compliant (RLS on + ≥1 policy):** 59 (98.3%)
 - **Documented exempt (`-- rls-exempt:`):** 0
 - **Gap:** 1 (`auth_attempts` — RLS on, 0 policies; service-role-only por intent, mas precisa policy explícita ou marker `-- rls-exempt:` para passar o gate)

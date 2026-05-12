@@ -135,7 +135,7 @@ Vide `_reversa_sdd/data-master.md §11.5` para colunas completas. Destaques:
 | Coluna | Tipo | Uso |
 |--------|------|-----|
 | `checkout_status` | `text` | `pending \| completed \| abandoned \| refunded` |
-| `offer_version` | `text | `offer_version=v2_lifetime` (cohort tracking) |
+| `offer_version` | `text` | `offer_version=v2_lifetime` (cohort tracking) |
 | `stripe_payment_intent_id` | `text UNIQUE` | idempotency |
 | `welcome_sent_at` | `timestamptz` | idempotency gate welcome email |
 | `invite_sent_at` | `timestamptz` | idempotency gate auto-invite |

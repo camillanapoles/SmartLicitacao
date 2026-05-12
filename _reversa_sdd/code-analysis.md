@@ -2756,7 +2756,7 @@ class SourceBulkhead:
 
 1. **DB-first lookup:** `SELECT setor_id FROM cnae_setor_mapping WHERE cnae_code = $1` → cache resultado. Se DB unreachable ou cnae_code não encontrado, fallback hardcoded `CNAE_TO_SETOR` dict.
 2. **Cache invalidation:** admin CRUD endpoints chamam `invalidate_cnae_cache()` (limpa `@functools.lru_cache`). Broadcast entre pods Railway não implementado (1 worker apenas).
-3. **58 IBGE CNAE 2.3 subclasses mapeadas** (coverage ~4.5% de ~1300 ativas). Expansão via admin CRUD.
+3. **59 IBGE CNAE 2.3 subclasses mapeadas** (coverage ~4.5% de ~1300 ativas). Expansão via admin CRUD.
 
 ### Estruturas de dados
 
@@ -2829,7 +2829,7 @@ Nenhuma específica. Erros capturados por logging.
 2. **Handler layer (best-effort):** `WebhookHandler._claim_idempotency()` faz upsert na mesma tabela com `ignore_duplicates=True`. Falha → proceed (fail-open). Útil para handlers invocados fora do dispatcher (reconciliation) ou handlers com idempotency key customizada.
 3. **Template method:** `handle()` → claim idempotency → `process()` (business logic). Subclasses implementam apenas `process()`.
 4. **Backward compatibility:** Adapter classes em `_registry.py` delegam via `_resolve()` às funções existentes em `webhooks.stripe`. Test patches de `webhooks.stripe._handle_*` continuam funcionando.
-5. **12 eventos Stripe registrados:** checkout (4), subscription (4), invoice (3), product/price (4), payment_intent (1) — alguns compartilham handler.
+5. **16 eventos Stripe registrados:** checkout (4), subscription (4), invoice (3), product/price (4), payment_intent (1) — alguns compartilham handler.
 
 ### Estruturas de dados
 

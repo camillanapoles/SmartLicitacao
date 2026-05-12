@@ -46,7 +46,7 @@ sequenceDiagram
     D->>D: mark status=completed
 ```
 
-## 3. Handler Registry (12 event types)
+## 3. Handler Registry (16 event types)
 
 ```mermaid
 flowchart LR
