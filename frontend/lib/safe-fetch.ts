@@ -57,8 +57,8 @@ export async function safeFetch(
     // simultaneamente (feedback_build_hammers_backend_cascade).
     const resp = await ssgFetchLimiter.run(() =>
       fetch(url, {
-        signal: AbortSignal.timeout(timeout),
         ...init,
+        signal: AbortSignal.timeout(timeout),
       }),
     );
     statusCode = resp.status;

@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import { AnalysisViewTracker } from './AnalysisViewTracker';
 import ShareButtons from '@/components/share/ShareButtons';
 import SchemaMarkup from '@/components/blog/SchemaMarkup';
@@ -36,7 +37,7 @@ interface SharedAnalysis {
 
 async function fetchAnalysis(hash: string): Promise<SharedAnalysis | null> {
   try {
-    const res = await fetch(`${backendUrl}/v1/share/analise/${hash}`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/share/analise/${hash}`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(10000),
     });

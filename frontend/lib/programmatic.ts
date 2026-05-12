@@ -6,6 +6,7 @@
  */
 
 import { SECTORS, type SectorMeta } from './sectors';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 
 // SEO-478: Slugs cujo ID no backend difere do padrão slug.replace(/-/g, '_').
 // Preserva URLs existentes sem quebrar o mapeamento para IDs do backend.
@@ -184,7 +185,7 @@ export async function fetchSectorBlogStats(sectorSlug: string): Promise<SectorBl
 
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
-    const res = await fetch(`${backendUrl}/v1/blog/stats/setor/${sectorId}`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/setor/${sectorId}`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(10000),
     });
@@ -207,7 +208,7 @@ export async function fetchSectorUfBlogStats(
 
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
-    const res = await fetch(`${backendUrl}/v1/blog/stats/setor/${sectorId}/uf/${uf.toUpperCase()}`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/setor/${sectorId}/uf/${uf.toUpperCase()}`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(10000),
     });
@@ -227,7 +228,7 @@ export async function fetchPanoramaStats(sectorSlug: string): Promise<PanoramaSt
 
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
-    const res = await fetch(`${backendUrl}/v1/blog/stats/panorama/${sectorId}`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/panorama/${sectorId}`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(10000),
     });
@@ -578,7 +579,7 @@ export async function fetchAlertasPublicos(
 
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
-    const res = await fetch(`${backendUrl}/v1/alertas/${sectorId}/uf/${uf.toUpperCase()}`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/alertas/${sectorId}/uf/${uf.toUpperCase()}`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(10000),
     });
@@ -833,7 +834,7 @@ export async function fetchContratosSetorStats(sectorSlug: string): Promise<Cont
 
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
-    const res = await fetch(`${backendUrl}/v1/blog/stats/contratos/${sectorId}`, {
+    const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/contratos/${sectorId}`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(10000),
     });

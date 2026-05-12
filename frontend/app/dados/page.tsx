@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { buildCanonical, SITE_URL, getFreshnessLabel } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import ContentPageLayout from '@/app/components/ContentPageLayout';
 import DadosClient, { DadosData } from './DadosClient';
 
@@ -30,7 +31,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
 async function fetchDados(): Promise<DadosData | null> {
   try {
-    const res = await fetch(`${BACKEND_URL}/v1/dados/agregados`, {
+    const res = await ssgLimitedFetch(`${BACKEND_URL}/v1/dados/agregados`, {
       next: { revalidate: 21600 },
       signal: AbortSignal.timeout(10000),
     });

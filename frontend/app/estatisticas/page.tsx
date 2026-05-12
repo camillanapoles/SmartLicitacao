@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { buildCanonical, SITE_URL, getFreshnessLabel } from '@/lib/seo';
+import { ssgLimitedFetch } from '@/lib/concurrency';
 import ContentPageLayout from '../components/ContentPageLayout';
 import EstatisticasClient from './EstatisticasClient';
 
@@ -125,7 +126,7 @@ async function fetchStats(): Promise<StatsResponse> {
     (typeof window === 'undefined' ? 'http://localhost:8000' : '');
 
   try {
-    const resp = await fetch(`${baseUrl}/v1/stats/public`, {
+    const resp = await ssgLimitedFetch(`${baseUrl}/v1/stats/public`, {
       next: { revalidate: 21600 },
       signal: AbortSignal.timeout(8000),
     });

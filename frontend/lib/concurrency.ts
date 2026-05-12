@@ -101,8 +101,8 @@ export async function ssgLimitedFetch(
 ): Promise<Response> {
   return ssgFetchLimiter.run<Response>(async () => {
     const options: RequestInit & { next?: { revalidate?: number } } = {
-      signal: init?.signal ?? AbortSignal.timeout(30_000),
       ...init,
+      signal: init?.signal ?? AbortSignal.timeout(30_000),
     };
     return fetch(url, options);
   });
