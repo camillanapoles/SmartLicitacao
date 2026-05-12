@@ -639,6 +639,13 @@ SUPABASE_RETRY_TOTAL = _create_counter(
     labelnames=["outcome"],  # success, failure
 )
 
+# SEN-BE-004 AC5: HTTP/2 transport error retries in sb_execute
+SUPABASE_CONNECTION_RESET_TOTAL = _create_counter(
+    "smartlic_supabase_connection_reset_total",
+    "Supabase sb_execute HTTP/2 connection reset retries by operation",
+    labelnames=["operation"],  # retry, failure
+)
+
 # STORY-291 AC6: Supabase circuit breaker state gauge (0=closed, 1=open, 2=half_open)
 SUPABASE_CB_STATE = _create_gauge(
     "smartlic_supabase_cb_state",

@@ -18,8 +18,10 @@ explicit timeouts, pool utilization metrics, ConnectionError retry.
 """
 
 import asyncio
-import os
+import httpx
 import logging
+import os
+import random
 import threading
 import time
 from collections import deque
@@ -45,7 +47,11 @@ _POOL_MAX_KEEPALIVE = int(os.getenv("SUPABASE_POOL_MAX_KEEPALIVE", "10"))
 _POOL_TIMEOUT = float(os.getenv("SUPABASE_POOL_TIMEOUT", "30.0"))
 _POOL_CONNECT_TIMEOUT = 10.0
 _POOL_HIGH_WATER_RATIO = 0.8  # Log warning when pool > 80% utilization
-_RETRY_DELAY_S = 1.0  # AC5: delay between retries
+_RETRY_DELAY_S = 1.0  # AC5: delay between retries (legacy — kept for backward compat)
+
+# SEN-BE-004 AC3: Retry with exponential jitter for HTTP/2 transport errors
+_RETRY_TRANSPORT_MAX_ATTEMPTS = int(os.getenv("SUPABASE_RETRY_TRANSPORT_MAX_ATTEMPTS", "3"))
+_RETRY_BASE_DELAY_S = float(os.getenv("SUPABASE_RETRY_BASE_DELAY", "0.5"))
 
 # Thread-safe active connection counter (for high-water logging)
 _pool_active_lock = threading.Lock()
@@ -103,6 +109,18 @@ def _configure_httpx_pool(client):
 
     New pool: max_connections=50, max_keepalive_connections=20.
     Timeout: 30s total, 10s connect (instead of httpx default 5s).
+
+    SEN-BE-004 AC2: HTTP/2 audit findings:
+    - http2=True: HTTP/2 multiplexing enabled (default). Provides connection reuse
+      but may cause ConnectionTerminated/RemoteProtocolError when Supabase
+      closes streams unilaterally. Decision: KEEP http2=True — the retry loop
+      in sb_execute handles transient HTTP/2 errors transparently.
+    - max_keepalive_connections=10: From env (SUPABASE_POOL_MAX_KEEPALIVE).
+      Default httpx value is 20; intentionally lower to avoid saturating the
+      Supabase pool. Decision: KEEP current value per anti-requirement.
+    - keepalive_expiry: NOT explicitly set (uses httpx default 5.0s).
+      Decision: KEEP default — active queries are not affected by idle
+      keepalive expiry. The retry loop handles mid-query resets.
     """
     try:
         import httpx
@@ -654,6 +672,8 @@ async def sb_execute(query, *, category: str = "read"):
     fall back to the legacy CB.
 
     CRIT-046: Pool utilization metrics (AC1/AC2) + ConnectionError retry (AC5).
+    SEN-BE-004: Transport error retry with exponential jitter for HTTP/2
+    ConnectionTerminated / RemoteProtocolError (AC3).
 
     SYS-023: Works with both admin and user-scoped clients. The circuit
     breaker and metrics apply regardless of which client type is used.
@@ -671,7 +691,10 @@ async def sb_execute(query, *, category: str = "read"):
             category="write",
         )
     """
-    from metrics import SUPABASE_EXECUTE_DURATION, SUPABASE_POOL_ACTIVE, SUPABASE_RETRY_TOTAL
+    from metrics import (
+        SUPABASE_EXECUTE_DURATION, SUPABASE_POOL_ACTIVE, SUPABASE_RETRY_TOTAL,
+        SUPABASE_CONNECTION_RESET_TOTAL, SUPABASE_CB_INTERNAL_ERRORS,
+    )
     start = time.monotonic()
 
     category_cb = get_cb(category)
@@ -768,57 +791,73 @@ async def sb_execute(query, *, category: str = "read"):
             detail="Database query timed out (SQLSTATE 57014). Please retry.",
         ) from exc
 
+    # SEN-BE-004 AC3: Retry with exponential jitter for HTTP/2 transport errors.
+    # Catches ConnectionError (Python built-in) for socket-level issues and
+    # httpx.RemoteProtocolError for HTTP/2 ConnectionTerminated / Server disconnected.
+    # Max 3 total attempts, exponential backoff with random jitter.
+    did_retry = False
     try:
-        result = await asyncio.to_thread(query.execute)
-        SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
-        _record_success_all()
-        return result
-    except ConnectionError as e:
-        # AC5: Retry once with delay for ConnectionError
-        logger.warning("CRIT-046: ConnectionError in sb_execute, retrying in %.1fs: %s", _RETRY_DELAY_S, e)
-        SUPABASE_RETRY_TOTAL.labels(outcome="attempt").inc()
-        await asyncio.sleep(_RETRY_DELAY_S)
-        try:
-            result = await asyncio.to_thread(query.execute)
-            SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
-            _record_success_all()
-            SUPABASE_RETRY_TOTAL.labels(outcome="success").inc()
-            return result
-        except Exception as retry_exc:
-            # SEN-BE-001b: 57014 on retry path also surfaces as 504.
-            if _is_query_timeout(retry_exc):
-                SUPABASE_RETRY_TOTAL.labels(outcome="failure").inc()
-                _handle_query_timeout(retry_exc)
-            SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
-            _record_failure_all(retry_exc)
-            SUPABASE_RETRY_TOTAL.labels(outcome="failure").inc()
-            raise
-    except RuntimeError as e:
-        # STORY-427 AC3: CB internal error (e.g. deque mutated during iteration).
-        # Must NOT propagate as 500 to caller — log, emit metric, and treat as
-        # a transient failure so the endpoint can apply its own fallback logic.
-        SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
-        logger.error(
-            "STORY-427: RuntimeError in sb_execute (CB internal — not a Supabase outage): %s",
-            e,
-            exc_info=True,
-        )
-        try:
-            from metrics import SUPABASE_CB_INTERNAL_ERRORS
-            SUPABASE_CB_INTERNAL_ERRORS.labels(cb_name=category).inc()
-        except Exception:
-            pass
-        raise CircuitBreakerOpenError(
-            f"Circuit breaker internal error ({category}): {e}"
-        ) from e
-    except Exception as e:
-        # SEN-BE-001b AC4: distinguish SQLSTATE 57014 (statement_timeout) so
-        # the caller surfaces 504 (gateway timeout) instead of a generic 500.
-        if _is_query_timeout(e):
-            _handle_query_timeout(e)
-        SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
-        _record_failure_all(e)
-        raise
+        for attempt in range(_RETRY_TRANSPORT_MAX_ATTEMPTS):
+            try:
+                result = await asyncio.to_thread(query.execute)
+                SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
+                _record_success_all()
+                if did_retry:
+                    SUPABASE_RETRY_TOTAL.labels(outcome="success").inc()
+                return result
+            except (ConnectionError, httpx.RemoteProtocolError) as e:
+                # 57014 can sometimes manifest as a transport error — surface as 504
+                if _is_query_timeout(e):
+                    _handle_query_timeout(e)
+
+                if attempt < _RETRY_TRANSPORT_MAX_ATTEMPTS - 1:
+                    did_retry = True
+                    delay = _RETRY_BASE_DELAY_S * (2 ** attempt) + random.uniform(0, _RETRY_BASE_DELAY_S)
+                    logger.warning(
+                        "SEN-BE-004: Transport error in sb_execute (attempt %d/%d), "
+                        "retrying in %.2fs: %s",
+                        attempt + 1, _RETRY_TRANSPORT_MAX_ATTEMPTS, delay, e,
+                    )
+                    SUPABASE_RETRY_TOTAL.labels(outcome="attempt").inc()
+                    SUPABASE_CONNECTION_RESET_TOTAL.labels(operation="retry").inc()
+                    await asyncio.sleep(delay)
+                    # continue — pool stays incremented during retries
+                else:
+                    # All retries exhausted
+                    logger.error(
+                        "SEN-BE-004: Transport error in sb_execute after %d attempts: %s",
+                        _RETRY_TRANSPORT_MAX_ATTEMPTS, e,
+                    )
+                    SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
+                    _record_failure_all(e)
+                    SUPABASE_RETRY_TOTAL.labels(outcome="failure").inc()
+                    SUPABASE_CONNECTION_RESET_TOTAL.labels(operation="failure").inc()
+                    raise
+            except RuntimeError as e:
+                # STORY-427 AC3: CB internal error (e.g. deque mutated during iteration).
+                # Must NOT propagate as 500 to caller — log, emit metric, and treat as
+                # a transient failure so the endpoint can apply its own fallback logic.
+                SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
+                logger.error(
+                    "STORY-427: RuntimeError in sb_execute (CB internal — not a Supabase outage): %s",
+                    e,
+                    exc_info=True,
+                )
+                try:
+                    SUPABASE_CB_INTERNAL_ERRORS.labels(cb_name=category).inc()
+                except Exception:
+                    pass
+                raise CircuitBreakerOpenError(
+                    f"Circuit breaker internal error ({category}): {e}"
+                ) from e
+            except Exception as e:
+                # SEN-BE-001b AC4: distinguish SQLSTATE 57014 (statement_timeout) so
+                # the caller surfaces 504 (gateway timeout) instead of a generic 500.
+                if _is_query_timeout(e):
+                    _handle_query_timeout(e)
+                SUPABASE_EXECUTE_DURATION.observe(time.monotonic() - start)
+                _record_failure_all(e)
+                raise
     finally:
         SUPABASE_POOL_ACTIVE.dec()
         with _pool_active_lock:
