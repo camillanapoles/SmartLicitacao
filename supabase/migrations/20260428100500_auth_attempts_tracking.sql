@@ -10,6 +10,9 @@
 -- warning `auth.bruteforce.mfa_forced`.
 --
 -- RLS: service-role only (matches mfa_recovery_attempts pattern from STORY-317).
+-- Fix migration: supabase/migrations/20260512173300_auth_attempts_rls_policy.sql adds
+-- explicit service_role ALL policy to close the audit gap.
+-- rls-exempt: auth_attempts — service-role only table, no anon/authenticated access needed.
 
 BEGIN;
 
