@@ -237,7 +237,7 @@ Para qualquer mudança em código:
 
 | ADR | Status | Última revisão |
 |-----|--------|----------------|
-| All 13 ADRs | ✅ Current | 2026-05-09 |
+| All 14 ADRs | ✅ Current | 2026-05-09 |
 | ADR-LLM-HARNESS-001 | ✅ Current | 2026-05-12 (shipped #1121) |
 | ADR-SEO-001 | ✅ Current | 2026-05-11 (shipped #1046) |
 

@@ -163,18 +163,18 @@ Apenas utilitários para scripts de tooling raiz (sync-setores, validations).
 
 | Package | Versão Anterior | Versão Atual | PR |
 |---------|----------------|--------------|-----|
-| `arq` | ≥0.26 | **≥0.28.0** | #1083 |
-| `opentelemetry-api` | ≥1.25 | **≥1.41.1** | #1082 |
-| `opentelemetry-instrumentation-httpx` | ≥0.46b0 | **≥0.62b1** | #1081 |
-| `resend` | ≥2.0.0 | **≥2.30.0** | #1080 |
-| `pyyaml` | ≥6.0 | **≥6.0.3** | #1085 |
-| `pyjwt` | ≥2.12.0 | **≥2.12.1** | #1084 |
-| `mixpanel` | ≥4.10.0 | **≥4.11.1** | #1086 |
-| `hypothesis` (dev) | ≥6.152.4 | **≥6.152.5** | #1088 |
-| `python-multipart` | ≥0.0.27 | **≥0.0.28** | #1089 |
+| `arq` | ≥0.26 | **0.28.0** | #1083 |
+| `opentelemetry-api` | ≥1.25 | **1.41.1** | #1082 |
+| `opentelemetry-instrumentation-httpx` | ≥0.46b0 | **0.62b1** | #1081 |
+| `resend` | ≥2.0.0 | **2.30.0** | #1080 |
+| `pyyaml` | ≥6.0 | **6.0.3** | #1085 |
+| `pyjwt` | ≥2.12.0 | **2.12.1** | #1084 |
+| `mixpanel` | ≥4.10.0 | **4.11.1** | #1086 |
+| `hypothesis` (dev) | ≥6.152.4 | **6.152.5** | #1088 |
+| `python-multipart` | ≥0.0.27 | **0.0.28** | #1089 |
 | `actions/checkout` | v4 | **v6** | #1092 |
 | `actions/setup-python` | v5 | **v6** | #1093 |
 | `actions/setup-node` | v4 | **v6** | #1090 |
 | `supabase/setup-cli` | v1 | **v2** | #1091 |
 | `dependabot/fetch-metadata` | v1 | **v3** | #1094 |
-| `tailwind-merge` (frontend) | — | **bump** | #1079 |
+| `tailwind-merge` (frontend) | — | **3.6.0** | #1079 |

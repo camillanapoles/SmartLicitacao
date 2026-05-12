@@ -594,7 +594,7 @@ Se reorder de merge ocorrer (#957 antes de #955 ou rebase forçado), os blocos f
 | G5 (HMAC enforcement) | RESOLVED (#954) | **RESOLVED** | `_verify_svix_signature` em `routes/trial_emails.py:89-135` |
 | CRIT-084 AC2 | Aberto | **RESOLVED** (#802 — uvicorn graceful-shutdown 120s) | Verificado em produção |
 | POOL-LEAK-001 | Deferred Sprint 3 | **PARCIAL** — semaphore mitigation (#578) mas root fix deferred | RES-BE-017 Sprint 3 |
-| SMARTLIC-FE-F | Quiescente | **RESOLVIDO** — 0 events desde 2026-04-23; aceito como quiescente | Sentry 14d query |
+| SMARTLIC-FE-F | Quiescente | **QUIESCENTE** — 0 events desde 2026-04-23; aceito como quiescente (sem fix aplicado) | Sentry 14d query |
 | REPO Phase 0 | Parcial | **EM PROGRESSO** — ~11/22 issues shipped; backend stories pendentes | PRs REPO-* merged |
 | CONV-CTA-002 | Gated 7-14d | **ABERTO** — aguardando sinal CONV-CTA-001 | — |
 | G8 (CNAE prod state) | Parcial | **RESOLVIDO** — DATA-CNAE-001 shipped (#1108) | Migration + admin CRUD live |
