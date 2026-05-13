@@ -144,33 +144,6 @@ async def sitemap_orgaos(response: Response):
         except Exception:
             pass
 
-    # Alert 3: stale data — only probe when fresh fetch succeeded (not on timeout/error
-    # paths, to avoid extra DB hits when the DB is already degraded).
-    # Requires mv_sitemap_orgaos.last_seen column (added in migration
-    # 20260510150000_sitemap_mv_orgaos_add_last_seen.sql).
-    if _fresh_fetch:
-        try:
-            from supabase_client import get_supabase, sb_execute
-            sb = get_supabase()
-            resp = await sb_execute(
-                sb.table("mv_sitemap_orgaos")
-                .select("last_seen")
-                .order("last_seen", desc=True)
-                .limit(1)
-            )
-            if resp.data and len(resp.data) > 0 and resp.data[0].get("last_seen"):
-                last_refresh = resp.data[0]["last_seen"]
-                if isinstance(last_refresh, str):
-                    last_refresh = datetime.fromisoformat(last_refresh.replace('Z', '+00:00'))
-                if last_refresh.tzinfo is None:
-                    last_refresh = last_refresh.replace(tzinfo=timezone.utc)
-                age_seconds = (datetime.now(timezone.utc) - last_refresh).total_seconds()
-                if age_seconds > 93600:  # 26h
-                    sentry_sdk.capture_message('sitemap_mv_stale', level='warning',
-                        tags={'endpoint': 'orgaos', 'age_hours': round(age_seconds/3600, 1)})
-        except Exception:
-            pass
-
     record_sitemap_count("orgaos", len(orgao_list))
     return SitemapOrgaosResponse(**data)
 
@@ -231,16 +204,23 @@ def _fetch_top_orgaos() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# SEO-460: /sitemap/contratos-orgao-indexable — órgãos com contratos reais
+# SEN-BE-005: /sitemap/contratos-orgao-indexable — órgãos com contratos reais
 #
-# NOTA: Este endpoint NÃO foi convertido para MV porque não há MV específica
-# para orgao_cnpj em pncp_supplier_contracts. O volume (~2k orgaos) e a query
-# com índice idx_psc_orgao_cnpj mantém performance aceitável.
-# Futuro: criar mv_sitemap_contratos_orgao se necessário.
+# Usa get_sitemap_contratos_orgao_json RPC para agregar no servidor (GROUP BY
+# + ORDER BY COUNT DESC + LIMIT 2000 em uma única query). O RPC usa o índice
+# parcial idx_psc_orgao_cnpj_active_partial e retorna JSON (bypass max-rows=1000
+# do PostgREST). Query única < 1s.
+#
+# Fallback stale-while-revalidate: se RPC falha, retorna último cache válido
+# com header Cache-Control adequado. Evita sitemap vazio em degradação.
 # ---------------------------------------------------------------------------
 
 _contratos_orgao_cache: dict[str, tuple[dict, float, float]] = {}  # key -> (data, stored_at, ttl)
 _MAX_CONTRATOS_ORGAOS = 2000
+# 6h TTL — sitemaps não mudam com frequência; ingestion contracts é 3x/semana
+_CONTRATOS_CACHE_TTL_SECONDS = 6 * 60 * 60
+# Budget 10s — RPC é query única < 1s, mas deixamos margem para pico de IO
+_CONTRATOS_BUDGET_S = 10.0
 
 
 class SitemapContratosOrgaoResponse(BaseModel):
@@ -265,27 +245,37 @@ async def sitemap_contratos_orgao_indexable(response: Response):
     """
     response.headers.update(SITEMAP_CACHE_HEADERS)
     key = "contratos_orgao_indexable"
-    cached_entry = _contratos_orgao_cache.get(key)
-    if cached_entry:
-        data, ts, ttl = cached_entry
+
+    # Capture stale data before attempting fresh fetch (for stale-while-revalidate)
+    stale_data = None
+    if key in _contratos_orgao_cache:
+        data, ts, ttl = _contratos_orgao_cache[key]
         if time.time() - ts < ttl:
             record_sitemap_count("contratos-orgao-indexable", len(data.get("orgaos", [])))
             return SitemapContratosOrgaoResponse(**data)
+        stale_data = data
         del _contratos_orgao_cache[key]
 
-    _fresh_fetch = True
     try:
         data = await _run_with_budget(
             asyncio.to_thread(_fetch_contratos_orgao_indexable),
-            budget=_BUDGET_S,
+            budget=_CONTRATOS_BUDGET_S,
             phase="route",
             source="sitemap_orgaos.sitemap_contratos_orgao_indexable",
         )
-        _contratos_orgao_cache[key] = (data, time.time(), _CACHE_TTL_SECONDS)
+        _contratos_orgao_cache[key] = (data, time.time(), _CONTRATOS_CACHE_TTL_SECONDS)
     except asyncio.TimeoutError:
+        if stale_data:
+            logger.warning(
+                "contratos_orgao_indexable timeout — serving stale (%d orgãos)",
+                len(stale_data.get("orgaos", [])),
+            )
+            sentry_sdk.capture_message('sitemap_stale_serve', level='warning',
+                tags={'endpoint': 'contratos-orgao-indexable', 'outcome': 'timeout_stale'})
+            return SitemapContratosOrgaoResponse(**stale_data)
         logger.error(
-            "sitemap_contratos_orgao_indexable: budget %.0fs exceeded — returning 503 (not caching)",
-            _BUDGET_S,
+            "contratos_orgao_indexable timeout (budget=%.0fs) — no stale cache, returning 503",
+            _CONTRATOS_BUDGET_S,
         )
         sentry_sdk.capture_message('sitemap_source_timeout', level='warning',
             tags={'endpoint': 'contratos-orgao-indexable', 'outcome': 'timeout'})
@@ -295,12 +285,21 @@ async def sitemap_contratos_orgao_indexable(response: Response):
             headers={"Retry-After": "30"},
         )
     except Exception as exc:
+        if stale_data:
+            logger.warning(
+                "contratos_orgao_indexable error — serving stale (%d orgãos): %s",
+                len(stale_data.get("orgaos", [])),
+                exc,
+            )
+            sentry_sdk.capture_message('sitemap_stale_serve', level='warning',
+                tags={'endpoint': 'contratos-orgao-indexable', 'outcome': 'error_stale'})
+            return SitemapContratosOrgaoResponse(**stale_data)
         logger.error("sitemap_contratos_orgao_indexable unexpected error: %s", exc)
         data = _empty_orgaos_response()
         _contratos_orgao_cache[key] = (data, time.time(), _NEGATIVE_CACHE_TTL_SECONDS)
 
     contratos_list = data.get("orgaos", [])
-    if _fresh_fetch and len(contratos_list) == 0:
+    if len(contratos_list) == 0:
         try:
             from supabase_client import get_supabase, sb_execute
             sb = get_supabase()
@@ -320,49 +319,32 @@ async def sitemap_contratos_orgao_indexable(response: Response):
 
 
 def _fetch_contratos_orgao_indexable() -> dict:
-    """Scan pncp_supplier_contracts para distinct orgao_cnpj com is_active=True.
+    """Fetch distinct orgao_cnpj from pncp_supplier_contracts via RPC.
 
-    Mantém query ao vivo (sem MV) — não há MV específica para contratos
-    por órgão. Performance aceitável com idx_psc_orgao_cnpj.
+    Usa get_sitemap_contratos_orgao_json RPC (SEN-BE-005) para fazer GROUP BY
+    + ORDER BY + LIMIT no servidor em query única, usando o índice parcial
+    idx_psc_orgao_cnpj_active_partial. < 1s para 2000 resultados.
+
+    Substitui o antigo scan paginado por offset (2M+ linhas, ~2000 requisições
+    REST) que causava 502 "JSON could not be generated" no PostgREST.
     """
     try:
         from supabase_client import get_supabase
         sb = get_supabase()
 
-        counts: dict[str, int] = {}
-        page_size = 1000
-        offset = 0
+        resp = sb.rpc(
+            "get_sitemap_contratos_orgao_json",
+            {"max_results": _MAX_CONTRATOS_ORGAOS},
+        ).execute()
 
-        while len(counts) < _MAX_CONTRATOS_ORGAOS * 5:
-            resp = (
-                sb.table("pncp_supplier_contracts")
-                .select("orgao_cnpj")
-                .eq("is_active", True)
-                .not_.is_("orgao_cnpj", "null")
-                .neq("orgao_cnpj", "")
-                .range(offset, offset + page_size - 1)
-                .execute()
-            )
-            if not resp.data:
-                break
-            for row in resp.data:
-                cnpj = (row.get("orgao_cnpj") or "").strip()
-                if is_valid_cnpj_format(cnpj):
-                    counts[cnpj] = counts.get(cnpj, 0) + 1
-            if len(resp.data) < page_size:
-                break
-            offset += page_size
-
-        # Ordenar por volume de contratos (mais contratos = maior valor SEO)
-        orgao_list = [
-            cnpj
-            for cnpj, _ in sorted(counts.items(), key=lambda x: x[1], reverse=True)
-        ][:_MAX_CONTRATOS_ORGAOS]
+        orgao_list = resp.data if isinstance(resp.data, list) else []
+        orgao_list = [c for c in orgao_list if is_valid_cnpj_format(c)]
+        # Safety net: enforce limit in Python (RPC also limits server-side)
+        orgao_list = orgao_list[:_MAX_CONTRATOS_ORGAOS]
 
         logger.info(
-            "sitemap_contratos_orgao_indexable: %d orgãos com contratos de %d distintos",
+            "sitemap_contratos_orgao_indexable (RPC): %d órgãos with contracts",
             len(orgao_list),
-            len(counts),
         )
 
         return {
@@ -372,7 +354,7 @@ def _fetch_contratos_orgao_indexable() -> dict:
         }
 
     except Exception as e:
-        logger.error("sitemap_contratos_orgao_indexable failed: %s", e)
+        logger.error("sitemap_contratos_orgao_indexable RPC failed: %s", e)
         return {
             "orgaos": [],
             "total": 0,

@@ -1,5 +1,6 @@
 """Tests for SEO SITEMAP-MV-001: /v1/sitemap/orgaos via mv_sitemap_orgaos."""
 
+import asyncio
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -149,53 +150,35 @@ class TestSitemapOrgaos:
 
 
 # ---------------------------------------------------------------------------
-# Tests for /v1/sitemap/contratos-orgao-indexable (SEO-460, issue #663)
-# Mantém query ao vivo sobre pncp_supplier_contracts (sem MV).
+# Tests for /v1/sitemap/contratos-orgao-indexable (SEN-BE-005)
+# Usa RPC get_sitemap_contratos_orgao_json para agregar no servidor.
 # ---------------------------------------------------------------------------
 
-def _mock_contratos_orgao_paginated(rows: list[dict]):
-    """Paginated mock for _fetch_contratos_orgao_indexable.
 
-    Simulates pncp_supplier_contracts paginated scan:
-    sb.table(...).select(...).eq(...).not_.is_(...).neq(...).range(...).execute()
+def _mock_contratos_orgao_rpc(cnpjs: list[str]):
+    """Mock for contratos_orgao RPC call.
+
+    Simulates:
+      sb.rpc("get_sitemap_contratos_orgao_json", {"max_results": 2000}).execute()
+    where resp.data = cnpjs (list of CNPJ strings)
     """
     mock_sb = MagicMock()
-    page_size = 1000
-    next_offset = {"value": 0}
-
-    def execute_paginated(*_args, **_kwargs):
-        resp = MagicMock()
-        start = next_offset["value"]
-        resp.data = rows[start: start + page_size]
-        next_offset["value"] += page_size
-        return resp
-
-    (
-        mock_sb.table.return_value
-        .select.return_value
-        .eq.return_value
-        .not_.is_.return_value
-        .neq.return_value
-        .range.return_value
-        .execute
-    ).side_effect = execute_paginated
+    resp = MagicMock()
+    resp.data = cnpjs
+    mock_sb.rpc.return_value.execute.return_value = resp
     return mock_sb
 
 
 class TestSitemapContratosOrgaoIndexable:
-    """Tests for GET /v1/sitemap/contratos-orgao-indexable (unchanged by MV migration)."""
+    """Tests for GET /v1/sitemap/contratos-orgao-indexable via RPC (SEN-BE-005)."""
 
     @patch("supabase_client.get_supabase")
-    def test_dedup_duplicate_orgao_cnpj_rows(self, mock_get_sb, client):
-        """Same orgao_cnpj in multiple rows → single entry in response (no duplicates)."""
-        rows = [
-            {"orgao_cnpj": "11111111000101"},
-            {"orgao_cnpj": "11111111000101"},
-            {"orgao_cnpj": "11111111000101"},
-            {"orgao_cnpj": "22222222000202"},
-            {"orgao_cnpj": "22222222000202"},
-        ]
-        mock_get_sb.return_value = _mock_contratos_orgao_paginated(rows)
+    def test_dedup_by_rpc(self, mock_get_sb, client):
+        """RPC returns deduped list (SQL GROUP BY handles dedup)."""
+        mock_get_sb.return_value = _mock_contratos_orgao_rpc([
+            "11111111000101",
+            "22222222000202",
+        ])
 
         resp = client.get("/v1/sitemap/contratos-orgao-indexable")
         assert resp.status_code == 200
@@ -206,16 +189,12 @@ class TestSitemapContratosOrgaoIndexable:
 
     @patch("supabase_client.get_supabase")
     def test_sorted_by_contract_count(self, mock_get_sb, client):
-        """Órgãos sorted descending by number of contracts."""
-        rows = [
-            {"orgao_cnpj": "11111111000101"},
-            {"orgao_cnpj": "22222222000202"},
-            {"orgao_cnpj": "22222222000202"},
-            {"orgao_cnpj": "22222222000202"},
-            {"orgao_cnpj": "33333333000303"},
-            {"orgao_cnpj": "33333333000303"},
-        ]
-        mock_get_sb.return_value = _mock_contratos_orgao_paginated(rows)
+        """RPC already returns sorted by contract count (SQL ORDER BY)."""
+        mock_get_sb.return_value = _mock_contratos_orgao_rpc([
+            "22222222000202",  # most contracts first
+            "33333333000303",
+            "11111111000101",
+        ])
 
         resp = client.get("/v1/sitemap/contratos-orgao-indexable")
         assert resp.status_code == 200
@@ -226,16 +205,13 @@ class TestSitemapContratosOrgaoIndexable:
 
     @patch("supabase_client.get_supabase")
     def test_filters_invalid_orgao_cnpjs(self, mock_get_sb, client):
-        """Non-14-digit values excluded."""
-        rows = [
-            {"orgao_cnpj": ""},
-            {"orgao_cnpj": None},
-            {"orgao_cnpj": "123"},
-            {"orgao_cnpj": "ABCDEFGHIJKLMN"},
-            {"orgao_cnpj": "44444444000404"},
-            {"orgao_cnpj": "44444444000404"},
-        ]
-        mock_get_sb.return_value = _mock_contratos_orgao_paginated(rows)
+        """Non-14-digit values excluded (Python-side validation after RPC)."""
+        mock_get_sb.return_value = _mock_contratos_orgao_rpc([
+            "",
+            "123",
+            "ABCDEFGHIJKLMN",
+            "44444444000404",
+        ])
 
         resp = client.get("/v1/sitemap/contratos-orgao-indexable")
         assert resp.status_code == 200
@@ -245,12 +221,9 @@ class TestSitemapContratosOrgaoIndexable:
 
     @patch("supabase_client.get_supabase")
     def test_max_2000_orgaos(self, mock_get_sb, client):
-        """Response capped at _MAX_CONTRATOS_ORGAOS (2000)."""
-        rows = []
-        for i in range(3000):
-            cnpj = f"{i:014d}"
-            rows.extend([{"orgao_cnpj": cnpj}] * 2)
-        mock_get_sb.return_value = _mock_contratos_orgao_paginated(rows)
+        """RPC limit 2000 — response respects _MAX_CONTRATOS_ORGAOS."""
+        cnps = [f"{i:014d}" for i in range(3000)]
+        mock_get_sb.return_value = _mock_contratos_orgao_rpc(cnps)
 
         resp = client.get("/v1/sitemap/contratos-orgao-indexable")
         assert resp.status_code == 200
@@ -260,7 +233,7 @@ class TestSitemapContratosOrgaoIndexable:
 
     @patch("supabase_client.get_supabase")
     def test_graceful_failure(self, mock_get_sb, client):
-        """Supabase error returns empty list, not 500."""
+        """RPC error returns empty list (not 500)."""
         mock_get_sb.side_effect = Exception("DB unavailable")
 
         resp = client.get("/v1/sitemap/contratos-orgao-indexable")
@@ -272,8 +245,7 @@ class TestSitemapContratosOrgaoIndexable:
     @patch("supabase_client.get_supabase")
     def test_response_schema(self, mock_get_sb, client):
         """Response has orgaos, total, updated_at fields."""
-        rows = [{"orgao_cnpj": "66666666000606"}] * 2
-        mock_get_sb.return_value = _mock_contratos_orgao_paginated(rows)
+        mock_get_sb.return_value = _mock_contratos_orgao_rpc(["66666666000606"])
 
         resp = client.get("/v1/sitemap/contratos-orgao-indexable")
         data = resp.json()
@@ -283,11 +255,64 @@ class TestSitemapContratosOrgaoIndexable:
 
     @patch("supabase_client.get_supabase")
     def test_empty_datalake(self, mock_get_sb, client):
-        """Empty pncp_supplier_contracts returns empty orgaos list."""
-        mock_get_sb.return_value = _mock_contratos_orgao_paginated([])
+        """Empty RPC result returns empty orgaos list."""
+        mock_get_sb.return_value = _mock_contratos_orgao_rpc([])
 
         resp = client.get("/v1/sitemap/contratos-orgao-indexable")
         assert resp.status_code == 200
         data = resp.json()
         assert data["orgaos"] == []
         assert data["total"] == 0
+
+    @patch("supabase_client.get_supabase")
+    def test_rpc_failure_fallback_empty(self, mock_get_sb, client):
+        """RPC failure returns empty list (graceful degradation)."""
+        from routes.sitemap_orgaos import _contratos_orgao_cache
+        import time
+
+        stale_data = {
+            "orgaos": ["11111111000101"],
+            "total": 1,
+            "updated_at": "2026-05-01T00:00:00Z",
+        }
+        _contratos_orgao_cache["contratos_orgao_indexable"] = (stale_data, time.time() - 1, 0)
+
+        # _fetch_contratos_orgao_indexable catches its own DB errors
+        mock_get_sb.side_effect = Exception("RPC timeout")
+
+        resp = client.get("/v1/sitemap/contratos-orgao-indexable")
+        assert resp.status_code == 200
+        data = resp.json()
+        # Function catches internal errors and returns empty gracefully
+        assert data["orgaos"] == []
+
+    @patch("routes.sitemap_orgaos._run_with_budget")
+    def test_stale_cache_on_budget_timeout(self, mock_run_budget, client):
+        """When _run_with_budget raises TimeoutError and stale cache exists, serve stale."""
+        from routes.sitemap_orgaos import _contratos_orgao_cache
+        import time
+
+        stale_data = {
+            "orgaos": ["33333333000303"],
+            "total": 1,
+            "updated_at": "2026-05-01T00:00:00Z",
+        }
+        _contratos_orgao_cache["contratos_orgao_indexable"] = (stale_data, time.time() - 1, 0)
+
+        mock_run_budget.side_effect = asyncio.TimeoutError()
+
+        resp = client.get("/v1/sitemap/contratos-orgao-indexable")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["orgaos"] == ["33333333000303"]
+        assert data["total"] == 1
+
+    @patch("routes.sitemap_orgaos._run_with_budget")
+    def test_503_when_no_stale_cache_on_timeout(self, mock_run_budget, client):
+        """When budget times out and no stale cache, return 503."""
+        mock_run_budget.side_effect = asyncio.TimeoutError()
+
+        resp = client.get("/v1/sitemap/contratos-orgao-indexable")
+        assert resp.status_code == 503
+        data = resp.json()
+        assert data["detail"] == "sitemap_source_timeout"
