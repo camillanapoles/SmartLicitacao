@@ -37,6 +37,8 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from supabase_client import sb_execute
+
 logger = logging.getLogger(__name__)
 
 
@@ -112,9 +114,9 @@ def _list_all_stripe_prices(stripe_module: Any) -> list[dict]:
     return prices
 
 
-def _start_run(sb, dry_run: bool) -> str:
+async def _start_run(sb, dry_run: bool) -> str:
     """Insert a 'running' row, return its id."""
-    result = (
+    result = await sb_execute(
         sb.table("billing_reconciliation_runs")
         .insert(
             {
@@ -122,8 +124,8 @@ def _start_run(sb, dry_run: bool) -> str:
                 "dry_run": dry_run,
                 "started_at": datetime.now(timezone.utc).isoformat(),
             }
-        )
-        .execute()
+        ),
+        category="write",
     )
     rows = result.data or []
     if not rows:
@@ -132,7 +134,7 @@ def _start_run(sb, dry_run: bool) -> str:
     return str(rows[0]["id"])
 
 
-def _finish_run(
+async def _finish_run(
     sb,
     run_id: str,
     *,
@@ -146,18 +148,21 @@ def _finish_run(
 ) -> None:
     if not run_id:
         return
-    sb.table("billing_reconciliation_runs").update(
-        {
-            "status": status,
-            "finished_at": datetime.now(timezone.utc).isoformat(),
-            "rows_checked": rows_checked,
-            "drifts_detected": drifts_detected,
-            "drifts_fixed": drifts_fixed,
-            "drifts_manual": drifts_manual,
-            "drift_report": drift_report,
-            "error_message": error_message,
-        }
-    ).eq("id", run_id).execute()
+    await sb_execute(
+        sb.table("billing_reconciliation_runs").update(
+            {
+                "status": status,
+                "finished_at": datetime.now(timezone.utc).isoformat(),
+                "rows_checked": rows_checked,
+                "drifts_detected": drifts_detected,
+                "drifts_fixed": drifts_fixed,
+                "drifts_manual": drifts_manual,
+                "drift_report": drift_report,
+                "error_message": error_message,
+            }
+        ).eq("id", run_id),
+        category="write",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -246,17 +251,18 @@ async def reconcile_stripe_prices(*, dry_run: bool | None = None) -> dict:
         from supabase_client import get_supabase
 
         sb = get_supabase()
-        run_id = _start_run(sb, dry_run)
+        run_id = await _start_run(sb, dry_run)
 
         # Fetch DB state.
         db_rows = (
-            sb.table("plan_billing_periods")
-            .select(
-                "id, plan_id, billing_period, price_cents, "
-                "stripe_price_id, stripe_product_id, "
-                "last_forward_synced_at, last_reverse_synced_at, is_archived"
+            await sb_execute(
+                sb.table("plan_billing_periods")
+                .select(
+                    "id, plan_id, billing_period, price_cents, "
+                    "stripe_price_id, stripe_product_id, "
+                    "last_forward_synced_at, last_reverse_synced_at, is_archived"
+                )
             )
-            .execute()
         ).data or []
 
         # Fetch Stripe state (handles auto-pagination).
@@ -294,19 +300,25 @@ async def reconcile_stripe_prices(*, dry_run: bool | None = None) -> dict:
             if drift["auto_fixable"] and not dry_run:
                 try:
                     if drift["type"] == "db_missing_in_stripe":
-                        sb.table("plan_billing_periods").update(
-                            {
-                                "is_archived": True,
-                                "last_forward_synced_at": datetime.now(timezone.utc).isoformat(),
-                            }
-                        ).eq("id", row["id"]).execute()
+                        await sb_execute(
+                            sb.table("plan_billing_periods").update(
+                                {
+                                    "is_archived": True,
+                                    "last_forward_synced_at": datetime.now(timezone.utc).isoformat(),
+                                }
+                            ).eq("id", row["id"]),
+                            category="write",
+                        )
                     elif drift["type"] == "archived_mismatch" and stripe_price is not None:
-                        sb.table("plan_billing_periods").update(
-                            {
-                                "is_archived": not bool(stripe_price.get("active")),
-                                "last_forward_synced_at": datetime.now(timezone.utc).isoformat(),
-                            }
-                        ).eq("id", row["id"]).execute()
+                        await sb_execute(
+                            sb.table("plan_billing_periods").update(
+                                {
+                                    "is_archived": not bool(stripe_price.get("active")),
+                                    "last_forward_synced_at": datetime.now(timezone.utc).isoformat(),
+                                }
+                            ).eq("id", row["id"]),
+                            category="write",
+                        )
                     fixed += 1
                 except Exception as e:
                     logger.error(
@@ -364,7 +376,7 @@ async def reconcile_stripe_prices(*, dry_run: bool | None = None) -> dict:
                 "BILL-SYNC-001: reconciliation clean rows_checked=%d", len(db_rows)
             )
 
-        _finish_run(
+        await _finish_run(
             sb,
             run_id,
             status="completed",
@@ -389,7 +401,7 @@ async def reconcile_stripe_prices(*, dry_run: bool | None = None) -> dict:
         logger.error("BILL-SYNC-001: reconciliation error: %s", e, exc_info=True)
         if sb is not None and run_id:
             try:
-                _finish_run(
+                await _finish_run(
                     sb,
                     run_id,
                     status="failed",

@@ -12,6 +12,8 @@ import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 
+from supabase_client import sb_execute
+
 logger = logging.getLogger(__name__)
 
 # Run once per day; loop sleeps until 06:00 UTC each day
@@ -123,10 +125,15 @@ def _sync_rebuild() -> dict:
         batch_size = 500
         for i in range(0, len(rows_to_upsert), batch_size):
             batch = rows_to_upsert[i:i + batch_size]
-            sb.table("seo_coverage_manifest").upsert(
-                batch,
-                on_conflict="entity_type,slug",
-            ).execute()
+            asyncio.run(
+                sb_execute(
+                    sb.table("seo_coverage_manifest").upsert(
+                        batch,
+                        on_conflict="entity_type,slug",
+                    ),
+                    category="write",
+                )
+            )
             upserted += len(batch)
 
         logger.info(
@@ -172,7 +179,7 @@ def _aggregate_cnpj_counts(sb) -> dict[str, int]:
 
     try:
         # First try the materialized view if available
-        resp = sb.table("mv_sitemap_cnpjs").select("cnpj,bid_count").execute()
+        resp = asyncio.run(sb_execute(sb.table("mv_sitemap_cnpjs").select("cnpj,bid_count")))
         if resp.data:
             for row in resp.data:
                 cnpj = (row.get("cnpj") or "").strip()
@@ -191,14 +198,13 @@ def _aggregate_cnpj_counts(sb) -> dict[str, int]:
 
     # Fallback: paginated scan of pncp_raw_bids
     while True:
-        resp = (
+        resp = asyncio.run(sb_execute(
             sb.table("pncp_raw_bids")
             .select("orgao_cnpj")
             .neq("orgao_cnpj", "")
             .not_.is_("orgao_cnpj", "null")
             .range(offset, offset + page_size - 1)
-            .execute()
-        )
+        ))
         if not resp.data:
             break
         for row in resp.data:
@@ -223,14 +229,13 @@ def _aggregate_fornecedor_counts(sb) -> dict[str, int]:
     offset = 0
 
     while True:
-        resp = (
+        resp = asyncio.run(sb_execute(
             sb.table("pncp_supplier_contracts")
             .select("ni_fornecedor")
             .neq("ni_fornecedor", "")
             .not_.is_("ni_fornecedor", "null")
             .range(offset, offset + page_size - 1)
-            .execute()
-        )
+        ))
         if not resp.data:
             break
         for row in resp.data:
@@ -253,7 +258,7 @@ def _aggregate_municipio_counts(sb) -> dict[str, int]:
     counts: dict[str, int] = {}
 
     try:
-        resp = sb.table("mv_sitemap_municipios").select("slug,bid_count").execute()
+        resp = asyncio.run(sb_execute(sb.table("mv_sitemap_municipios").select("slug,bid_count")))
         if resp.data:
             for row in resp.data:
                 slug = (row.get("slug") or "").strip()
@@ -298,13 +303,12 @@ def _apply_historical_empty(sb, rows: list[dict]) -> list[dict]:
             page_size = 500
             for i in range(0, len(slugs), page_size):
                 batch = slugs[i:i + page_size]
-                resp = (
+                resp = asyncio.run(sb_execute(
                     sb.table("seo_coverage_manifest")
                     .select("entity_type,slug,coverage_status")
                     .eq("entity_type", etype)
                     .in_("slug", batch)
-                    .execute()
-                )
+                ))
                 for row in (resp.data or []):
                     existing_statuses[(row["entity_type"], row["slug"])] = row["coverage_status"]
     except Exception as exc:
@@ -335,15 +339,18 @@ def _record_cron_run(result: dict) -> None:
         from supabase_client import get_supabase
 
         sb = get_supabase()
-        sb.table("cron_job_health").upsert(
-            {
-                "job_name": _JOB_NAME,
-                "last_run_at": datetime.now(timezone.utc).isoformat(),
-                "last_status": result.get("status", "unknown"),
-                "last_result": str(result),
-            },
-            on_conflict="job_name",
-        ).execute()
+        asyncio.run(sb_execute(
+            sb.table("cron_job_health").upsert(
+                {
+                    "job_name": _JOB_NAME,
+                    "last_run_at": datetime.now(timezone.utc).isoformat(),
+                    "last_status": result.get("status", "unknown"),
+                    "last_result": str(result),
+                },
+                on_conflict="job_name",
+            ),
+            category="write",
+        ))
     except Exception as exc:
         # cron_job_health may not exist yet — don't fail the job
         logger.warning("%s: cron_job_health upsert failed (non-fatal): %s", _JOB_NAME, exc)

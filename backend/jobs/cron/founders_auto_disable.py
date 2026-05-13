@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone
 
 import sentry_sdk
+from supabase_client import sb_execute
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,9 @@ async def founders_auto_disable_check(ctx: dict) -> None:
     sb = get_supabase()
 
     try:
-        result = sb.table("founding_policy").select("deadline_at, active").eq("id", 1).single().execute()
+        result = await sb_execute(
+            sb.table("founding_policy").select("deadline_at, active").eq("id", 1).single()
+        )
         if not result.data:
             return
 
@@ -42,10 +45,13 @@ async def founders_auto_disable_check(ctx: dict) -> None:
 
         if now_utc > cutoff_aware:
             logger.warning("founders_auto_disable: deadline passed, disabling offer")
-            sb.table("founding_policy").update({
-                "active": False,
-                "paused_reason": "auto_disabled: deadline passed"
-            }).eq("id", 1).execute()
+            await sb_execute(
+                sb.table("founding_policy").update({
+                    "active": False,
+                    "paused_reason": "auto_disabled: deadline passed"
+                }).eq("id", 1),
+                category="write",
+            )
 
             sentry_sdk.capture_message(
                 "founders_auto_disabled: offer auto-disabled after deadline",

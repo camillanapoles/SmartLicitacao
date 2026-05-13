@@ -16,6 +16,8 @@ import time
 from datetime import date, timedelta
 from typing import Any, Optional
 
+from supabase_client import sb_execute
+
 logger = logging.getLogger(__name__)
 
 GSC_SYNC_ENABLED = os.getenv("GSC_SYNC_ENABLED", "true").lower() in ("true", "1", "yes")
@@ -121,15 +123,15 @@ def _rows_to_upsert_records(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return records
 
 
-def _upsert_batch(supabase: Any, records: list[dict[str, Any]]) -> int:
+async def _upsert_batch(supabase: Any, records: list[dict[str, Any]]) -> int:
     """Upsert a batch of records by (date, query, page, country, device). Returns upserted count."""
     if not records:
         return 0
     try:
-        resp = (
+        resp = await sb_execute(
             supabase.table("gsc_metrics")
-            .upsert(records, on_conflict="date,query,page,country,device")
-            .execute()
+            .upsert(records, on_conflict="date,query,page,country,device"),
+            category="write",
         )
         return len(resp.data) if resp.data else len(records)
     except Exception as exc:
@@ -198,7 +200,7 @@ async def gsc_sync_job(ctx: dict[str, Any]) -> dict[str, Any]:
     total_upserted = 0
     BATCH = 500
     for i in range(0, len(records), BATCH):
-        total_upserted += _upsert_batch(supabase, records[i : i + BATCH])
+        total_upserted += await _upsert_batch(supabase, records[i : i + BATCH])
 
     result["rows_upserted"] = total_upserted
     result["duration_s"] = round(time.monotonic() - started_at, 2)

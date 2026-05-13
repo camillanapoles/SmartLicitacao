@@ -8,6 +8,8 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
+from supabase_client import sb_execute
+
 logger = logging.getLogger(__name__)
 
 INTEL_REPORT_BUCKET = "intel-reports"
@@ -28,8 +30,8 @@ def _sentry_breadcrumb(message: str, **data: Any) -> None:
         pass
 
 
-async def _execute_supabase(query: Any) -> Any:
-    return await asyncio.to_thread(lambda: query.execute())
+async def _execute_supabase(query: Any, category: str = "read") -> Any:
+    return await sb_execute(query, category=category)
 
 
 def _first_row(result: Any) -> dict | None:
@@ -92,7 +94,8 @@ async def _update_intel_report_purchase(
         await _execute_supabase(
             db.table("intel_report_purchases")
             .update(payload)
-            .eq("id", purchase_id)
+            .eq("id", purchase_id),
+            category="write",
         )
     except Exception as exc:
         if "updated_at" not in str(exc):
@@ -101,7 +104,8 @@ async def _update_intel_report_purchase(
         await _execute_supabase(
             db.table("intel_report_purchases")
             .update(fallback_payload)
-            .eq("id", purchase_id)
+            .eq("id", purchase_id),
+            category="write",
         )
 
 
@@ -110,7 +114,8 @@ async def _generate_cnpj_report_pdf(db: Any, entity_key: str) -> bytes:
         db.rpc(
             "cnpj_supplier_intel",
             {"p_cnpj": entity_key, "p_window_months": 36},
-        )
+        ),
+        category="rpc",
     )
     payload = getattr(result, "data", None)
     if not payload:
