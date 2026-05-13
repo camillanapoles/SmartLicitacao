@@ -145,7 +145,7 @@ export async function generateMetadata({
   );
   if (total === 0 && totalContracts === 0) {
     return {
-      title: `Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} | SmartLic`,
+      title: `Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
       description: `Licitações de ${sector.name.toLowerCase()} ${getUfPrep(ufUpper)} ${ufName}.`,
       robots: { index: false, follow: false },
       alternates: { canonical: canonicalUrl },

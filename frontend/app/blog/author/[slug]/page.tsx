@@ -22,7 +22,7 @@ export async function generateMetadata({
   const author = getAuthorBySlug(slug);
   if (!author) return {};
 
-  const title = `${author.name} — ${author.role} | SmartLic`;
+  const title = `${author.name} — ${author.role}`;
   const description = author.shortBio;
 
   return {

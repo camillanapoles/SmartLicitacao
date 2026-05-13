@@ -48,7 +48,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { cidade } = await params;
   const city = getCityBySlug(cidade);
-  if (!city) return { title: 'Cidade não encontrada | SmartLic' };
+  if (!city) return { title: 'Cidade não encontrada' };
 
   // AC1: fetch bids + contracts in parallel
   const [stats, contractsMeta] = await Promise.all([
@@ -66,7 +66,7 @@ export async function generateMetadata({
 
   const title = `Licitações em ${city.name}/${city.uf}${
     total > 0 ? ` — ${total} editais abertos ${year}` : ` — Editais ${year}`
-  } | SmartLic`;
+  }`;
 
   // AC7: enrich description with contract count when available
   let description =
