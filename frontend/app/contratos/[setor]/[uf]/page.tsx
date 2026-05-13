@@ -15,6 +15,7 @@ import { ssgLimitedFetch } from '@/lib/concurrency';
 import LandingNavbar from '@/app/components/landing/LandingNavbar';
 import Footer from '@/app/components/Footer';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
+import { SeoOpportunityBanner } from '@/app/components/seo/SeoOpportunityBanner';
 
 export const revalidate = 14400; // 4h ISR (reduzido de 24h para melhorar freshness dos dados)
 
@@ -481,6 +482,13 @@ export default async function ContratosSetorUfPage({ params }: Props) {
           <p className="text-xs text-gray-400 mt-8">{data?.aviso_legal || 'Dados das fontes oficiais. Atualização diária.'}</p>
         </div>
       </main>
+      <div className="max-w-5xl mx-auto px-4">
+        <SeoOpportunityBanner
+          sector={setor}
+          sectorName={sector.name}
+          uf={ufUpper}
+        />
+      </div>
       <Footer />
     </>
   );

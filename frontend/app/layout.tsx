@@ -19,6 +19,7 @@ import { StructuredData } from "./components/StructuredData";
 import { GoogleAnalytics } from "./components/GoogleAnalytics";
 import { ClarityAnalytics } from "./components/ClarityAnalytics";
 import { WebVitalsReporter } from "./components/WebVitalsReporter";
+import { ExitIntentPopup } from "./components/ExitIntentPopup";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -228,6 +229,7 @@ export default function RootLayout({
                     mobileOffset={{ bottom: 80 }}
                   />
                   <CookieConsentBanner />
+                  <ExitIntentPopup />
                 </BackendStatusProvider>
               </NProgressProvider>
             </ThemeProvider>

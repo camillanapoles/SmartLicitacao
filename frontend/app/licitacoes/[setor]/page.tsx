@@ -22,6 +22,7 @@ import { AdvisoryDisclaimer } from "@/components/legal/AdvisoryDisclaimer";
 import { RecentEditaisBlock } from "@/app/components/programmatic/RecentEditaisBlock";
 import { TopSuppliersBlock } from "@/app/components/programmatic/TopSuppliersBlock";
 import { TrackedCTALink } from "@/app/components/seo/TrackedCTALink";
+import { SeoOpportunityBanner } from "@/app/components/seo/SeoOpportunityBanner";
 import { LeadCapture } from "@/components/LeadCapture";
 
 /**
@@ -316,6 +317,14 @@ export default async function SectorPage({
           </div>
         </section>
       )}
+
+      {/* COPY-COP-006: SEO programmatic banner */}
+      <div className="max-w-5xl mx-auto px-4">
+        <SeoOpportunityBanner
+          sector={setor}
+          sectorName={sector.name}
+        />
+      </div>
 
       {/* Lead magnet — email capture, lower friction than hard trial CTA */}
       <div className="max-w-3xl mx-auto px-4 pb-4">

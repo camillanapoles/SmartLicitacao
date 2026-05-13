@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { footer } from '@/lib/copy/valueProps';
 import { StatusFooterBadge, ManageCookiesButton } from '@/app/components/FooterClientIslands';
+import { FooterNewsletterForm } from '@/app/components/FooterNewsletterForm';
 
 /**
  * STORY-174 AC6: Footer - Refined Layout with Animations
@@ -29,6 +30,12 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Main Footer Grid */}
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 mb-8">
+          {/* COPY-COP-006: Newsletter form */}
+          <div className="sm:col-span-2 md:col-span-3 lg:col-span-2">
+            <h3 className="font-bold text-lg mb-4 text-ink">Newsletter</h3>
+            <FooterNewsletterForm />
+          </div>
+
           {/* Sobre */}
           <div>
             <h3 className="font-bold text-lg mb-4 text-ink">Sobre</h3>
