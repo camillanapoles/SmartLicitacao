@@ -14,6 +14,7 @@ from auth import require_auth
 from cache import redis_cache
 from log_sanitizer import mask_user_id
 from quota import get_plan_from_profile, SUBSCRIPTION_GRACE_DAYS
+from supabase_client import sb_execute
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class UserFeaturesResponse(BaseModel):
     cached_at: Optional[str] = None  # ISO 8601 timestamp
 
 
-def fetch_features_from_db(user_id: str) -> UserFeaturesResponse:
+async def fetch_features_from_db(user_id: str) -> UserFeaturesResponse:
     """Fetch user features from Supabase (cache miss).
 
     Args:
@@ -60,14 +61,13 @@ def fetch_features_from_db(user_id: str) -> UserFeaturesResponse:
 
     # --- Layer 1: Active subscription ---
     try:
-        sub_result = (
+        sub_result = await sb_execute(
             sb.table("user_subscriptions")
             .select("plan_id, billing_period, expires_at")
             .eq("user_id", user_id)
             .eq("is_active", True)
             .order("created_at", desc=True)
             .limit(1)
-            .execute()
         )
 
         if sub_result.data and len(sub_result.data) > 0:
@@ -85,14 +85,13 @@ def fetch_features_from_db(user_id: str) -> UserFeaturesResponse:
     if not plan_id:
         try:
             grace_cutoff = (datetime.now(timezone.utc) - timedelta(days=SUBSCRIPTION_GRACE_DAYS)).isoformat()
-            grace_result = (
+            grace_result = await sb_execute(
                 sb.table("user_subscriptions")
                 .select("plan_id, billing_period, expires_at")
                 .eq("user_id", user_id)
                 .gte("expires_at", grace_cutoff)
                 .order("expires_at", desc=True)
                 .limit(1)
-                .execute()
             )
 
             if grace_result.data and len(grace_result.data) > 0:
@@ -126,13 +125,12 @@ def fetch_features_from_db(user_id: str) -> UserFeaturesResponse:
 
     # Get features for this plan + billing_period
     try:
-        features_result = (
+        features_result = await sb_execute(
             sb.table("plan_features")
             .select("feature_key, enabled, metadata")
             .eq("plan_id", plan_id)
             .eq("billing_period", billing_period)
             .eq("enabled", True)
-            .execute()
         )
 
         features = [
@@ -192,7 +190,7 @@ async def get_my_features(user: dict = Depends(require_auth)):
 
     # Cache miss - fetch from database
     logger.debug(f"Cache MISS for user {mask_user_id(user_id)}, querying database")
-    response = fetch_features_from_db(user_id)
+    response = await fetch_features_from_db(user_id)
 
     # Add cached_at timestamp
     response.cached_at = datetime.now(timezone.utc).isoformat()
