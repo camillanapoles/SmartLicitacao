@@ -24,6 +24,7 @@ import { TopSuppliersBlock } from "@/app/components/programmatic/TopSuppliersBlo
 import { TrackedCTALink } from "@/app/components/seo/TrackedCTALink";
 import { SeoOpportunityBanner } from "@/app/components/seo/SeoOpportunityBanner";
 import { LeadCapture } from "@/components/LeadCapture";
+import SeoBannerCta from "@/app/components/landing/SeoBannerCta";
 
 /**
  * STORY-324 AC5: SSG with ISR 6h for sector landing pages.
@@ -335,6 +336,9 @@ export default async function SectorPage({
           description="Novos editais toda semana no seu email, filtrados por setor. Sem spam — cancele a qualquer momento."
         />
       </div>
+
+      {/* COPY-COP-006 (#1127): SEO banner CTA for non-authenticated visitors */}
+      <SeoBannerCta setor={setor} />
 
       {/* SEO-CAC-ZERO A4: Conversion CTA — after FAQ, high intent moment */}
       <section className="max-w-5xl mx-auto py-8 px-4">

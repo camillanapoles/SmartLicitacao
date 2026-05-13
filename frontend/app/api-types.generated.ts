@@ -3684,6 +3684,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/lead-magnet/{magnet_type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lead Magnet
+         * @description Return a placeholder PDF for the requested lead magnet type.
+         *
+         *     This is a minimal/stub implementation — the real LLM-generated content
+         *     will replace the placeholder text in a future story.
+         */
+        get: operations["get_lead_magnet_v1_lead_magnet__magnet_type__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -17379,6 +17402,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeadCaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lead_magnet_v1_lead_magnet__magnet_type__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                magnet_type: "guia-pratico" | "checklist-5-sinais";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "application/pdf": unknown;
                 };
             };
             /** @description Validation Error */

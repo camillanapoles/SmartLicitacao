@@ -14,6 +14,7 @@ import FinalCTA from './components/landing/FinalCTA';
 import OpportunityPreview from './components/landing/OpportunityPreview';
 import { TrendingEditais } from './components/landing/TrendingEditais';
 import Footer from './components/Footer';
+import NewsletterFooter from './components/landing/NewsletterFooter';
 import { HomeFaqStructuredData } from './components/HomeFaqStructuredData';
 import { ExitIntentPopup } from './components/ExitIntentPopup';
 
@@ -40,6 +41,7 @@ export default function LandingPage() {
         </section>
       </main>
 
+      <NewsletterFooter />
       <Footer />
       <ExitIntentPopup />
     </>

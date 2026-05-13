@@ -41,6 +41,11 @@ OldLeadCaptureSource = Literal[
     "report",
     "intel",
     "diagnostico",
+    "newsletter_footer",
+    "lead_magnet_guia",
+    "lead_magnet_checklist",
+    "seo_banner",
+    "licitacoes_setor",
 ]
 
 # New sources (COPY-COP-006 — stored in ``lead_captures``)

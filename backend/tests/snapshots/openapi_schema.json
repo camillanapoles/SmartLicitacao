@@ -23480,6 +23480,52 @@
         ]
       }
     },
+    "/v1/lead-magnet/{magnet_type}": {
+      "get": {
+        "description": "Return a placeholder PDF for the requested lead magnet type.\n\nThis is a minimal/stub implementation \u2014 the real LLM-generated content\nwill replace the placeholder text in a future story.",
+        "operationId": "get_lead_magnet_v1_lead_magnet__magnet_type__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "magnet_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "guia-pratico",
+                "checklist-5-sinais"
+              ],
+              "title": "Magnet Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "application/pdf": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Lead Magnet",
+        "tags": [
+          "lead-magnet"
+        ]
+      }
+    },
     "/v1/me": {
       "delete": {
         "description": "Delete entire user account and all associated data (LGPD Art. 18 VI).\n\nUses admin client (get_db) because it needs db.auth.admin.delete_user()\nand must delete across multiple tables regardless of RLS.\n\nStrategy:\n1. Cancel active Stripe subscription (external side-effect, must be first)\n2. Delete from profiles (CASCADE propagates to most child tables)\n3. Delete from remaining tables that reference auth.users directly\n4. Delete auth user via Supabase admin API\n5. Log anonymized audit entry\n\nIf auth user deletion fails (step 4), we do NOT roll back the profile\ndeletion \u2014 the user's data is already gone and a dangling auth entry\nis preferable to leaving personal data behind (LGPD Art. 18 VI).",
