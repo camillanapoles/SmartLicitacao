@@ -24,7 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from auth import require_auth
 from pipeline.budget import _run_with_budget
-from supabase_client import get_supabase
+from supabase_client import get_supabase, sb_execute
 
 logger = logging.getLogger(__name__)
 
@@ -137,16 +137,13 @@ async def submit_export_time_saved_survey(
 
     sb = get_supabase()
 
-    def _sync_insert():
-        return (
-            sb.table("export_time_saved_survey")
-            .insert(payload)
-            .execute()
-        )
-
     try:
         result = await _run_with_budget(
-            asyncio.to_thread(_sync_insert),
+            sb_execute(
+                sb.table("export_time_saved_survey")
+                .insert(payload),
+                category="write",
+            ),
             budget=3.0,
             phase="route",
             source="survey.submit_export_time_saved_survey",

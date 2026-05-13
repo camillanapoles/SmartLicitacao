@@ -10,7 +10,6 @@ This endpoint provides comprehensive plan information including:
 Data source: `plans` table in database (via SYS-M04 infrastructure)
 """
 
-import asyncio
 import logging
 from typing import List, Dict, Any
 
@@ -21,6 +20,7 @@ from pydantic import BaseModel
 
 from database import get_db
 from public_rate_limit import rate_limit_public
+from supabase_client import sb_execute
 
 logger = logging.getLogger(__name__)
 
@@ -80,19 +80,15 @@ async def get_plans_with_capabilities(db: Any = Depends(get_db)) -> PlansRespons
 
     try:
         # Fetch all active plans from database
-        def _sync_query():
-            return (
+        result = await _run_with_budget(
+            sb_execute(
                 db.table("plans")
                 .select(
                     "id, name, description, price_brl, duration_days, max_searches, is_active"
                 )
                 .eq("is_active", True)
                 .order("price_brl")
-                .execute()
-            )
-
-        result = await _run_with_budget(
-            asyncio.to_thread(_sync_query),
+            ),
             budget=5.0,
             phase="route",
             source="plans.get_plans_with_capabilities",

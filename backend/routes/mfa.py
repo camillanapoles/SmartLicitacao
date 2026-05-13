@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 from auth import require_auth
 from authorization import check_user_roles
 from log_sanitizer import mask_ip_address, mask_user_id
+from supabase_client import sb_execute
 from rate_limiter import require_rate_limit
 from schemas.user import (
     MFAEnrollResponse,
@@ -129,13 +130,12 @@ async def _check_brute_force(user_id: str) -> int:
     sb = await _get_supabase()
     one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
 
-    result = await asyncio.to_thread(
+    result = await sb_execute(
         sb.table("mfa_recovery_attempts")
         .select("id")
         .eq("user_id", user_id)
         .eq("success", False)
         .gte("attempted_at", one_hour_ago)
-        .execute
     )
 
     failed_count = len(result.data) if result.data else 0
@@ -153,11 +153,12 @@ async def _check_brute_force(user_id: str) -> int:
 async def _record_attempt(user_id: str, success: bool) -> None:
     """Record a recovery code attempt for brute force tracking."""
     sb = await _get_supabase()
-    await asyncio.to_thread(
+    await sb_execute(
         sb.table("mfa_recovery_attempts").insert({
             "user_id": user_id,
             "success": success,
-        }).execute
+        }),
+        category="write",
     )
 
 
@@ -204,11 +205,10 @@ async def get_mfa_status(user: dict = Depends(require_auth)):
     factors = []
     try:
         sb = await _get_supabase()
-        result = await asyncio.to_thread(
+        result = await sb_execute(
             sb.table("mfa_factors")
             .select("id, factor_type, friendly_name, status, created_at")
             .eq("user_id", user_id)
-            .execute
         )
 
         if result.data:
@@ -295,8 +295,9 @@ async def generate_recovery_codes(user: dict = Depends(require_auth)):
     sb = await _get_supabase()
 
     # Delete any existing codes for this user (fresh set on each enrollment)
-    await asyncio.to_thread(
-        sb.table("mfa_recovery_codes").delete().eq("user_id", user_id).execute
+    await sb_execute(
+        sb.table("mfa_recovery_codes").delete().eq("user_id", user_id),
+        category="write",
     )
 
     # Generate and store codes
@@ -309,8 +310,9 @@ async def generate_recovery_codes(user: dict = Depends(require_auth)):
             "code_hash": _hash_code(code),
         })
 
-    await asyncio.to_thread(
-        sb.table("mfa_recovery_codes").insert(rows).execute
+    await sb_execute(
+        sb.table("mfa_recovery_codes").insert(rows),
+        category="write",
     )
 
     logger.info(f"Generated {len(plaintext_codes)} recovery codes for user {user_id[:8]}...")
@@ -336,12 +338,11 @@ async def verify_recovery_code(
     sb = await _get_supabase()
 
     # Get unused codes for this user
-    result = await asyncio.to_thread(
+    result = await sb_execute(
         sb.table("mfa_recovery_codes")
         .select("id, code_hash")
         .eq("user_id", user_id)
         .is_("used_at", "null")
-        .execute
     )
 
     stored_codes = result.data or []
@@ -350,10 +351,11 @@ async def verify_recovery_code(
     for stored in stored_codes:
         if _verify_code(body.code, stored["code_hash"]):
             # Mark as used
-            await asyncio.to_thread(
+            await sb_execute(
                 sb.table("mfa_recovery_codes").update({
                     "used_at": datetime.now(timezone.utc).isoformat(),
-                }).eq("id", stored["id"]).execute
+                }).eq("id", stored["id"]),
+                category="write",
             )
 
             # Record successful attempt
@@ -375,14 +377,13 @@ async def verify_recovery_code(
     # No match — record failed attempt
     await _record_attempt(user_id, success=False)
 
-    _fail_query = (
+    _fail_result = await sb_execute(
         sb.table("mfa_recovery_attempts")
         .select("id")
         .eq("user_id", user_id)
         .eq("success", False)
         .gte("attempted_at", (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat())
     )
-    _fail_result = await asyncio.to_thread(_fail_query.execute)
     failed_count = len(_fail_result.data or [])
 
     remaining_attempts = MAX_FAILED_ATTEMPTS_PER_HOUR - failed_count
@@ -486,14 +487,16 @@ async def _persist_backup_codes(user_id: str) -> list[str]:
     """
     sb = await _get_supabase()
 
-    await asyncio.to_thread(
-        sb.table("mfa_recovery_codes").delete().eq("user_id", user_id).execute
+    await sb_execute(
+        sb.table("mfa_recovery_codes").delete().eq("user_id", user_id),
+        category="write",
     )
 
     plaintext_codes = _generate_recovery_codes()
     rows = [{"user_id": user_id, "code_hash": _hash_code(code)} for code in plaintext_codes]
-    await asyncio.to_thread(
-        sb.table("mfa_recovery_codes").insert(rows).execute
+    await sb_execute(
+        sb.table("mfa_recovery_codes").insert(rows),
+        category="write",
     )
 
     return plaintext_codes
@@ -659,13 +662,12 @@ async def verify_totp(
     # Find the user's most recent unverified factor (the one they just enrolled).
     sb = await _get_supabase()
     try:
-        result = await asyncio.to_thread(
+        result = await sb_execute(
             sb.table("mfa_factors")
             .select("id, status, created_at")
             .eq("user_id", user_id)
             .eq("factor_type", "totp")
             .order("created_at", desc=True)
-            .execute
         )
     except Exception as e:  # noqa: BLE001
         logger.warning(
@@ -756,16 +758,18 @@ async def regenerate_recovery_codes(user: dict = Depends(require_auth)):
     sb = await _get_supabase()
 
     # Delete all existing codes
-    await asyncio.to_thread(
-        sb.table("mfa_recovery_codes").delete().eq("user_id", user_id).execute
+    await sb_execute(
+        sb.table("mfa_recovery_codes").delete().eq("user_id", user_id),
+        category="write",
     )
 
     # Generate fresh codes
     plaintext_codes = _generate_recovery_codes()
 
     rows = [{"user_id": user_id, "code_hash": _hash_code(code)} for code in plaintext_codes]
-    await asyncio.to_thread(
-        sb.table("mfa_recovery_codes").insert(rows).execute
+    await sb_execute(
+        sb.table("mfa_recovery_codes").insert(rows),
+        category="write",
     )
 
     logger.info(f"Regenerated recovery codes for user {user_id[:8]}...")

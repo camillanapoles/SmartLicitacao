@@ -12,13 +12,12 @@ radar, report, intel, diagnostico) continue to be stored in the original
 ``leads`` table.
 """
 
-import asyncio
 import logging
 import re
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from rate_limiter import require_rate_limit
@@ -139,7 +138,7 @@ class LeadCaptureResponse(BaseModel):
 
 async def _store_in_legacy_leads(req: LeadCaptureRequest) -> None:
     """Upsert a row into the original ``leads`` table (old sources only)."""
-    from supabase_client import get_supabase
+    from supabase_client import get_supabase, sb_execute
 
     sb = get_supabase()
     lead_row = {
@@ -159,12 +158,12 @@ async def _store_in_legacy_leads(req: LeadCaptureRequest) -> None:
         "referer_path": req.referer_path,
     }
 
-    def _sync_upsert():
-        return sb.table("leads").upsert(lead_row, on_conflict="email,source").execute()
-
     try:
         await _run_with_budget(
-            asyncio.to_thread(_sync_upsert),
+            sb_execute(
+                sb.table("leads").upsert(lead_row, on_conflict="email,source"),
+                category="write",
+            ),
             budget=5.0,
             phase="route",
             source="lead_capture.legacy_upsert",
@@ -185,7 +184,7 @@ async def _store_in_lead_captures(
 
     Returns the new row id on success, ``None`` on failure (fail-open).
     """
-    from supabase_client import get_supabase
+    from supabase_client import get_supabase, sb_execute
 
     sb = get_supabase()
     row = {
@@ -207,12 +206,12 @@ async def _store_in_lead_captures(
         },
     }
 
-    def _sync_insert():
-        return sb.table("lead_captures").insert(row).execute()
-
     try:
         result = await _run_with_budget(
-            asyncio.to_thread(_sync_insert),
+            sb_execute(
+                sb.table("lead_captures").insert(row),
+                category="write",
+            ),
             budget=5.0,
             phase="route",
             source="lead_capture.insert",

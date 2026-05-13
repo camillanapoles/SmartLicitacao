@@ -155,12 +155,11 @@ async def get_profile(user: dict = Depends(require_auth), db=Depends(get_db)):
     # ISSUE-070: Fetch real Stripe renewal date from profiles
     subscription_end_date_val = None
     try:
-        profile_row = await asyncio.to_thread(
-            lambda: db.table("profiles")
+        profile_row = await sb_execute(
+            db.table("profiles")
                 .select("subscription_end_date")
                 .eq("id", user["id"])
                 .single()
-                .execute()
         )
         if isinstance(profile_row.data, dict) and profile_row.data.get("subscription_end_date"):
             val = profile_row.data["subscription_end_date"]
@@ -309,12 +308,11 @@ async def get_recommended_plan(
 
     cnae_primary: str | None = None
     try:
-        profile_row = await asyncio.to_thread(
-            lambda: db.table("profiles")
+        profile_row = await sb_execute(
+            db.table("profiles")
                 .select("cnae_primary")
                 .eq("id", user_id)
                 .limit(1)
-                .execute()
         )
         if profile_row.data:
             cnae_primary = (profile_row.data[0] or {}).get("cnae_primary")

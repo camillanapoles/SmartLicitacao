@@ -6,6 +6,7 @@ STORY-224 Track 4 (AC26): Feature flags route coverage with Redis caching.
 import json
 from unittest.mock import Mock, patch, AsyncMock
 
+import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -150,8 +151,9 @@ class TestGetMyFeatures:
 
 class TestFetchFeaturesFromDB:
 
+    @pytest.mark.asyncio
     @patch("supabase_client.get_supabase")
-    def test_active_subscription_primary_source(self, mock_get_sb):
+    async def test_active_subscription_primary_source(self, mock_get_sb):
         """Layer 1: Active subscription found — use its plan_id."""
         sb = _mock_sb()
         sub_data = [{"plan_id": "maquina", "billing_period": "annual", "expires_at": None}]
@@ -166,15 +168,16 @@ class TestFetchFeaturesFromDB:
         mock_get_sb.return_value = sb
 
         from routes.features import fetch_features_from_db
-        result = fetch_features_from_db("user-123-uuid")
+        result = await fetch_features_from_db("user-123-uuid")
 
         assert result.plan_id == "maquina"
         assert result.billing_period == "annual"
         assert len(result.features) == 2
 
+    @pytest.mark.asyncio
     @patch("routes.features.get_plan_from_profile", return_value=None)
     @patch("supabase_client.get_supabase")
-    def test_grace_period_fallback(self, mock_get_sb, mock_profile):
+    async def test_grace_period_fallback(self, mock_get_sb, mock_profile):
         """Layer 2: No active sub, but recently-expired sub within grace period."""
         sb = _mock_sb()
         # First query: no active subscription
@@ -189,13 +192,14 @@ class TestFetchFeaturesFromDB:
         mock_get_sb.return_value = sb
 
         from routes.features import fetch_features_from_db
-        result = fetch_features_from_db("user-123-uuid")
+        result = await fetch_features_from_db("user-123-uuid")
 
         assert result.plan_id == "consultor_agil"
 
+    @pytest.mark.asyncio
     @patch("routes.features.get_plan_from_profile", return_value="maquina")
     @patch("supabase_client.get_supabase")
-    def test_profile_fallback(self, mock_get_sb, mock_profile):
+    async def test_profile_fallback(self, mock_get_sb, mock_profile):
         """Layer 3: No active or grace sub — fall back to profiles.plan_type."""
         sb = _mock_sb()
         features_data = [{"feature_key": "excel_export", "enabled": True, "metadata": None}]
@@ -207,14 +211,15 @@ class TestFetchFeaturesFromDB:
         mock_get_sb.return_value = sb
 
         from routes.features import fetch_features_from_db
-        result = fetch_features_from_db("user-123-uuid")
+        result = await fetch_features_from_db("user-123-uuid")
 
         assert result.plan_id == "maquina"
         assert result.billing_period == "monthly"  # Default for profile fallback
 
+    @pytest.mark.asyncio
     @patch("routes.features.get_plan_from_profile", return_value=None)
     @patch("supabase_client.get_supabase")
-    def test_free_trial_last_resort(self, mock_get_sb, mock_profile):
+    async def test_free_trial_last_resort(self, mock_get_sb, mock_profile):
         """Layer 4: Nothing found — defaults to free_trial."""
         sb = _mock_sb()
         features_data = []
@@ -226,15 +231,16 @@ class TestFetchFeaturesFromDB:
         mock_get_sb.return_value = sb
 
         from routes.features import fetch_features_from_db
-        result = fetch_features_from_db("user-123-uuid")
+        result = await fetch_features_from_db("user-123-uuid")
 
         assert result.plan_id == "free_trial"
         assert result.billing_period == "monthly"
         assert result.features == []
 
+    @pytest.mark.asyncio
     @patch("routes.features.get_plan_from_profile", return_value="free_trial")
     @patch("supabase_client.get_supabase")
-    def test_profile_free_trial_skipped_to_layer4(self, mock_get_sb, mock_profile):
+    async def test_profile_free_trial_skipped_to_layer4(self, mock_get_sb, mock_profile):
         """Layer 3 returns 'free_trial' — skip it and fall through to Layer 4."""
         sb = _mock_sb()
         sb.execute.side_effect = [
@@ -245,13 +251,14 @@ class TestFetchFeaturesFromDB:
         mock_get_sb.return_value = sb
 
         from routes.features import fetch_features_from_db
-        result = fetch_features_from_db("user-123-uuid")
+        result = await fetch_features_from_db("user-123-uuid")
 
         assert result.plan_id == "free_trial"
 
+    @pytest.mark.asyncio
     @patch("routes.features.get_plan_from_profile", return_value=None)
     @patch("supabase_client.get_supabase")
-    def test_plan_features_query_failure_returns_empty(self, mock_get_sb, mock_profile):
+    async def test_plan_features_query_failure_returns_empty(self, mock_get_sb, mock_profile):
         """If plan_features query fails, return empty features (fail safe)."""
         sb = _mock_sb()
         sub_data = [{"plan_id": "consultor_agil", "billing_period": "monthly", "expires_at": None}]
@@ -262,7 +269,7 @@ class TestFetchFeaturesFromDB:
         mock_get_sb.return_value = sb
 
         from routes.features import fetch_features_from_db
-        result = fetch_features_from_db("user-123-uuid")
+        result = await fetch_features_from_db("user-123-uuid")
 
         assert result.plan_id == "consultor_agil"
         assert result.features == []

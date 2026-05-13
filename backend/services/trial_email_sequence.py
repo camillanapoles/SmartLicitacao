@@ -42,6 +42,10 @@ def _get_founders_seats_remaining() -> int | None:
     falls back to None — the email templates render generic "vagas limitadas" copy
     in that case (no broken email, no over-promising on numbers).
 
+    _check_availability was migrated to sb_execute() (#1182) and is now async.
+    We bridge sync→async via a single-use thread so callers (render path) stay
+    synchronous.
+
     Returns:
         seats_remaining as int when feature flag enabled and RPC succeeds,
         None on any failure (templates use fallback copy).
@@ -55,7 +59,14 @@ def _get_founders_seats_remaining() -> int | None:
         from supabase_client import get_supabase
         from routes.founding import _check_availability
 
-        snapshot = _check_availability(get_supabase())
+        import asyncio
+        import concurrent.futures
+
+        coro = _check_availability(get_supabase())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(asyncio.run, coro)
+            snapshot = future.result(timeout=15)
+
         if not snapshot.get("available"):
             return None
         seats = int(snapshot.get("seats_remaining") or 0)
