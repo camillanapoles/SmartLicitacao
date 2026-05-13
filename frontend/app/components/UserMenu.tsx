@@ -8,11 +8,9 @@ import Link from "next/link";
 interface UserMenuProps {
   /** Slot for inline badges (QuotaBadge, PlanBadge) shown inside the dropdown */
   statusSlot?: ReactNode;
-  /** Callback to restart onboarding tour */
-  onRestartTour?: () => void;
 }
 
-export function UserMenu({ statusSlot, onRestartTour }: UserMenuProps) {
+export function UserMenu({ statusSlot }: UserMenuProps) {
   const { user, session, loading, signOut, isAdmin } = useAuth();
   const { resetUser } = useAnalytics();
   const [open, setOpen] = useState(false);
@@ -113,14 +111,6 @@ export function UserMenu({ statusSlot, onRestartTour }: UserMenuProps) {
               className="block px-4 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface-1)]">
               Admin
             </Link>
-          )}
-          {onRestartTour && (
-            <button
-              onClick={() => { onRestartTour(); setOpen(false); }}
-              className="block w-full text-left px-4 py-2.5 text-sm text-[var(--ink-secondary)] hover:bg-[var(--surface-1)]"
-            >
-              Ver tutorial novamente
-            </button>
           )}
           <div className="border-t border-[var(--border)] mt-1 pt-1">
             <button

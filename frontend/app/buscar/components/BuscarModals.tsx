@@ -3,7 +3,6 @@
 import { Dialog } from "../../components/Dialog";
 import { UpgradeModal } from "../../components/UpgradeModal";
 import { TrialConversionScreen } from "../../components/TrialConversionScreen";
-import { OnboardingTourButton } from "../../../components/OnboardingTourButton";
 import { PaymentRecoveryModal } from "../../../components/billing/PaymentRecoveryModal";
 import PdfOptionsModal from "../../../components/reports/PdfOptionsModal";
 import { Button } from "../../../components/ui/button";
@@ -42,10 +41,6 @@ interface BuscarModalsProps {
   trialValueLoading: boolean;
   onCloseTrialConversion: () => void;
 
-  // Tour
-  restartSearchTour: () => void;
-  restartResultsTour: () => void;
-
   // Payment Recovery
   showPaymentRecovery: boolean;
   graceDaysRemaining: number;
@@ -74,8 +69,6 @@ export function BuscarModals({
   trialValue,
   trialValueLoading,
   onCloseTrialConversion,
-  restartSearchTour,
-  restartResultsTour,
   showPaymentRecovery,
   graceDaysRemaining,
   onClosePaymentRecovery,
@@ -168,13 +161,6 @@ export function BuscarModals({
           loading={trialValueLoading}
         />
       )}
-
-      <OnboardingTourButton
-        availableTours={{
-          search: restartSearchTour,
-          results: restartResultsTour,
-        }}
-      />
 
       {showPaymentRecovery && (
         <PaymentRecoveryModal

@@ -28,9 +28,6 @@ import { TrialValueTracker } from "../../components/billing/TrialValueTracker";
 import { Button } from "../../components/ui/button";
 import { APP_NAME } from "../../lib/config";
 import { TrialExitSurveyModal } from "../../components/TrialExitSurveyModal";
-import { GuidedTour } from "./components/GuidedTour";
-import { Tour } from "../../components/tour/Tour";
-import { SEARCH_TOUR_STEPS, RESULTS_TOUR_STEPS } from "./constants/tour-steps";
 import { ReferralToast, shouldShowReferralToast } from "./components/ReferralToast";
 import { RestoredResultsBanner } from "./components/RestoredResultsBanner";
 import { clearNewBidsBadge } from "../../components/NewBidsNotificationBadge";
@@ -174,7 +171,6 @@ function HomePageContent() {
             <SavedSearchesDropdown onLoadSearch={orch.search.handleLoadSearch} onAnalyticsEvent={orch.trackEvent} />
             <ThemeToggle />
             <UserMenu
-              onRestartTour={!orch.shouldShowOnboarding ? orch.restartTour : undefined}
               statusSlot={
                 <>
                   <QuotaBadge />
@@ -347,28 +343,6 @@ function HomePageContent() {
         </div>
       </footer>
 
-      {/* STORY-442/4.2: Guided tour interativo (A11y) */}
-      <GuidedTour />
-
-      {/* STORY-4.2: Onboarding, search e results tours (migrados de Shepherd.js → Tour A11y) */}
-      {orch.onboardingTourElement}
-      <Tour
-        tourId="search"
-        steps={SEARCH_TOUR_STEPS}
-        active={orch.searchTourActive}
-        storageKey="onboarding_search_tour_completed"
-        onComplete={orch.handleSearchTourComplete}
-        onSkip={orch.handleSearchTourSkip}
-      />
-      <Tour
-        tourId="results"
-        steps={RESULTS_TOUR_STEPS}
-        active={orch.resultsTourActive}
-        storageKey="onboarding_results_tour_completed"
-        onComplete={orch.handleResultsTourComplete}
-        onSkip={orch.handleResultsTourSkip}
-      />
-
       {/* STORY-449: Referral toast — shown once after ≥3 results */}
       {showReferralToast && (
         <ReferralToast
@@ -406,8 +380,6 @@ function HomePageContent() {
           orch.setShowTrialConversion(false);
           orch.router.push("/planos");
         }}
-        restartSearchTour={orch.restartSearchTour}
-        restartResultsTour={orch.restartResultsTour}
         showPaymentRecovery={orch.showPaymentRecovery}
         graceDaysRemaining={orch.graceDaysRemaining}
         onClosePaymentRecovery={() => orch.setShowPaymentRecovery(false)}

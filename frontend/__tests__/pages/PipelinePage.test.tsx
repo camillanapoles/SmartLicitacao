@@ -70,11 +70,6 @@ jest.mock('../../hooks/useAnalytics', () => ({
 }));
 
 
-// OnboardingTourButton — no-op render
-jest.mock('../../components/OnboardingTourButton', () => ({
-  OnboardingTourButton: () => null,
-}));
-
 // TrialUpsellCTA — no-op render
 jest.mock('../../components/billing/TrialUpsellCTA', () => ({
   TrialUpsellCTA: () => null,

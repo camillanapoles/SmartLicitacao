@@ -21,8 +21,6 @@ interface UseSearchComputedPropsParams {
   handleShowUpgradeModal: (plan?: string, source?: string) => void;
   handleLoadLastSearch: () => void;
   handleRetryWithUfs: (ufs: string[]) => void;
-  startResultsTour: () => void;
-  isResultsTourCompleted: () => boolean;
   setPdfModalOpen: (open: boolean) => void;
   setPartialDismissed: (dismissed: boolean) => void;
   trackEvent: (name: string, data: Record<string, unknown>) => void;
@@ -49,8 +47,6 @@ export function useSearchComputedProps(
     handleShowUpgradeModal,
     handleLoadLastSearch,
     handleRetryWithUfs,
-    startResultsTour,
-    isResultsTourCompleted,
     setPdfModalOpen,
     setPartialDismissed,
     trackEvent,
@@ -136,11 +132,6 @@ export function useSearchComputedProps(
           });
         }
       : undefined,
-    onStartResultsTour: () => {
-      startResultsTour();
-      trackEvent("onboarding_tour_started", { tour: "results" });
-    },
-
     // Group 5: SearchDisplayState
     error: search.error,
     quotaError: search.quotaError,
@@ -170,7 +161,6 @@ export function useSearchComputedProps(
     // Group 7: SearchFeedbackState
     searchId: search.searchId || undefined,
     setorId: filters.setorId,
-    isResultsTourCompleted,
   }), [
     search.result, search.rawCount, search.filterSummary, search.pendingReviewUpdate,
     search.zeroMatchProgress, search.loading, search.loadingStep, search.statesProcessed,
@@ -187,8 +177,7 @@ export function useSearchComputedProps(
     filters.ufsSelecionadas, filters.sectorName, filters.searchMode, filters.termosArray,
     filters.ordenacao, filters.setOrdenacao, filters.dataInicial, filters.dataFinal,
     filters.setorId, filters.status,
-    trackEvent, handleShowUpgradeModal, handleLoadLastSearch, handleRetryWithUfs, startResultsTour,
-    isResultsTourCompleted, searchElapsed, partialDismissed, lastSearchAvailable,
+    trackEvent, handleShowUpgradeModal, handleLoadLastSearch, handleRetryWithUfs, searchElapsed, partialDismissed, lastSearchAvailable,
     pdfLoading, billing.planInfo, session, isTrialExpiredOrQuota, billing.trialPhase, isProfileComplete,
     setPdfModalOpen, setPartialDismissed,
   ]);

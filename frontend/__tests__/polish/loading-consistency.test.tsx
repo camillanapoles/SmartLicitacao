@@ -226,10 +226,6 @@ jest.mock("../../components/billing/TrialUpsellCTA", () => ({
   TrialUpsellCTA: () => <div data-testid="trial-upsell-cta" />,
 }));
 
-jest.mock("../../components/OnboardingTourButton", () => ({
-  OnboardingTourButton: () => <div data-testid="onboarding-tour-button" />,
-}));
-
 // Controlled mock for usePipeline
 const mockUsePipeline = jest.fn();
 jest.mock("../../hooks/usePipeline", () => ({
@@ -374,10 +370,6 @@ jest.mock("react-simple-pull-to-refresh", () => ({
 
 jest.mock("../../hooks/useAnalytics", () => ({
   useAnalytics: () => ({ trackEvent: jest.fn() }),
-}));
-
-jest.mock("../../hooks/useOnboarding", () => ({
-  useOnboarding: () => ({ shouldShowOnboarding: false, restartTour: jest.fn() }),
 }));
 
 jest.mock("../../hooks/useKeyboardShortcuts", () => ({

@@ -52,33 +52,6 @@ import { SearchResultsBanners } from "./SearchResultsBanners";
 export type { SearchResultsProps } from "../types/search-results";
 export type { SearchResultsData, SearchLoadingState, SearchResultsFilters, SearchResultsActions, SearchDisplayState, SearchAuthState, SearchFeedbackState, SearchResultsGroupedProps } from "../types/search-results";
 
-// UX-404: Inline tour invite banner (AC2-AC5)
-export function TourInviteBanner({ isCompleted, onStartTour }: { isCompleted?: () => boolean; onStartTour?: () => void }) {
-  const [visible, setVisible] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => { if (!isCompleted || isCompleted() || dismissed) return; setVisible(true); }, [isCompleted, dismissed]);
-  useEffect(() => { if (!visible) return; timerRef.current = setTimeout(() => { setVisible(false); setDismissed(true); }, 10_000); return () => { if (timerRef.current) clearTimeout(timerRef.current); }; }, [visible]);
-  useEffect(() => { if (!visible) return; const h = () => { setVisible(false); setDismissed(true); }; window.addEventListener("scroll", h, { once: true, passive: true }); return () => window.removeEventListener("scroll", h); }, [visible]);
-
-  const handleStart = useCallback(() => { setVisible(false); setDismissed(true); onStartTour?.(); }, [onStartTour]);
-  const handleClose = useCallback(() => { setVisible(false); setDismissed(true); }, []);
-
-  if (!visible) return null;
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50 text-sm text-blue-800 dark:text-blue-200 animate-fade-in-up" data-testid="tour-invite-banner" role="status">
-      <span>Primeira vez vendo resultados? Clique aqui para um tour rápido.</span>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Button onClick={handleStart} variant="primary" size="sm" data-testid="tour-invite-start">Iniciar tour</Button>
-        <Button onClick={handleClose} variant="ghost" size="icon" aria-label="Fechar" data-testid="tour-invite-close">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 /**
  * TD-007 AC7: SearchResults layout orchestrator.
  * Composes: ResultsLoadingSection, ResultsHeader, ResultsToolbar, ResultsFilters,
@@ -93,7 +66,7 @@ export default function SearchResults(props: SearchResultsProps) {
     onRetryForceFresh, sourceStatuses, partialProgress, filterSummary,
     isTrialExpired, trialPhase, paywallApplied, totalBeforePaywall,
     pendingReviewCount = 0, pendingReviewUpdate, zeroMatchProgress, onTrackEvent,
-    isResultsTourCompleted, onStartResultsTour, isProfileComplete = true,
+    isProfileComplete = true,
     downloadLoading, downloadError, onDownload, planInfo, session, termosArray,
     onShowUpgradeModal, searchId, setorId, onRegenerateExcel, excelFailCount = 0,
     onGeneratePdf, pdfLoading, onRetryWithUfs, onSheetsExportSucceeded,
@@ -233,7 +206,6 @@ export default function SearchResults(props: SearchResultsProps) {
 
           <ZeroMatchBadge progress={zeroMatchProgress ?? null} />
           <ResultsHeader ref={resultsHeadingRef} result={result} rawCount={rawCount} isProfileComplete={isProfileComplete} filterSummary={filterSummary} />
-          <TourInviteBanner isCompleted={isResultsTourCompleted} onStartTour={onStartResultsTour} />
           <ResultsToolbar result={result} ordenacao={ordenacao} onOrdenacaoChange={onOrdenacaoChange} loading={loading} onDownload={onDownload} downloadLoading={downloadLoading} onRegenerateExcel={onRegenerateExcel} excelFailCount={excelFailCount} excelTimedOut={excelTimedOut} planInfo={planInfo} session={session} isTrialExpired={isTrialExpired} paywallApplied={paywallApplied} totalBeforePaywall={totalBeforePaywall} sectorName={sectorName} ufsSelecionadas={ufsSelecionadas} onGeneratePdf={onGeneratePdf} pdfLoading={pdfLoading} onSearch={onSearch} onSheetsExportSucceeded={onSheetsExportSucceeded} />
 
           {/* DEBT-FE-004: Result-area informational banners via BannerStack (max 2 visible) */}

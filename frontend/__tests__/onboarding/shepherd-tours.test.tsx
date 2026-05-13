@@ -1,5 +1,5 @@
 /**
- * STORY-4.2: Tour Component & OnboardingTourButton Tests
+ * STORY-4.2: Tour Component Tests
  *
  * Migrado de shepherd-tours (useShepherdTour) → Tour component WCAG 2.1 AA.
  *
@@ -28,7 +28,6 @@ jest.mock("focus-trap-react", () => {
 });
 
 import { Tour, type TourStepDef } from "../../components/tour/Tour";
-import { OnboardingTourButton } from "../../components/OnboardingTourButton";
 
 // ============================================================================
 // Mocks compartilhados
@@ -338,106 +337,6 @@ describe("Tour component — beforeShow (AC9)", () => {
     await waitFor(() => {
       expect(beforeShow).toHaveBeenCalled();
     });
-  });
-});
-
-// ============================================================================
-// OnboardingTourButton Component Tests (AC15-17)
-// ============================================================================
-
-describe("OnboardingTourButton (AC15-17)", () => {
-  it("renderiza o botão '?' flutuante", () => {
-    render(<OnboardingTourButton />);
-    expect(screen.getByTestId("tour-trigger-button")).toBeInTheDocument();
-    expect(screen.getByLabelText("Guia interativo")).toBeInTheDocument();
-  });
-
-  it("botão exibe texto '?'", () => {
-    render(<OnboardingTourButton />);
-    expect(screen.getByTestId("tour-trigger-button")).toHaveTextContent("?");
-  });
-
-  it("exibe menu com 3 opções ao clicar (AC16)", () => {
-    render(<OnboardingTourButton />);
-    expect(screen.queryByTestId("tour-menu")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    expect(screen.getByTestId("tour-menu")).toBeInTheDocument();
-    expect(screen.getByTestId("tour-option-search")).toBeInTheDocument();
-    expect(screen.getByTestId("tour-option-results")).toBeInTheDocument();
-    expect(screen.getByTestId("tour-option-pipeline")).toBeInTheDocument();
-  });
-
-  it("exibe labels corretos em português", () => {
-    render(<OnboardingTourButton />);
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    expect(screen.getByText("Tour de busca")).toBeInTheDocument();
-    expect(screen.getByText("Tour de resultados")).toBeInTheDocument();
-    expect(screen.getByText("Tour de pipeline")).toBeInTheDocument();
-  });
-
-  it("exibe badges numerados (1, 2, 3)", () => {
-    render(<OnboardingTourButton />);
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-  });
-
-  it("alterna menu abrir/fechar no clique", () => {
-    render(<OnboardingTourButton />);
-    const btn = screen.getByTestId("tour-trigger-button");
-    fireEvent.click(btn);
-    expect(screen.getByTestId("tour-menu")).toBeInTheDocument();
-    fireEvent.click(btn);
-    expect(screen.queryByTestId("tour-menu")).not.toBeInTheDocument();
-  });
-
-  it("tem atributo aria-expanded correto", () => {
-    render(<OnboardingTourButton />);
-    const btn = screen.getByTestId("tour-trigger-button");
-    expect(btn).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(btn);
-    expect(btn).toHaveAttribute("aria-expanded", "true");
-  });
-
-  it("fecha menu ao pressionar Escape", () => {
-    render(<OnboardingTourButton />);
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    expect(screen.getByTestId("tour-menu")).toBeInTheDocument();
-    fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByTestId("tour-menu")).not.toBeInTheDocument();
-  });
-
-  it("chama callback ao clicar em opção disponível (AC17)", () => {
-    const mockRestart = jest.fn();
-    render(<OnboardingTourButton availableTours={{ search: mockRestart }} />);
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    fireEvent.click(screen.getByTestId("tour-option-search"));
-    expect(mockRestart).toHaveBeenCalled();
-  });
-
-  it("navega para página correta quando tour está em outra página", () => {
-    currentPathname = "/dashboard";
-    render(<OnboardingTourButton availableTours={{}} />);
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    fireEvent.click(screen.getByTestId("tour-option-pipeline"));
-    expect(mockPush).toHaveBeenCalledWith("/pipeline?tour=pipeline");
-  });
-
-  it("não navega quando já está na página correta", () => {
-    currentPathname = "/buscar";
-    render(<OnboardingTourButton availableTours={{}} />);
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    fireEvent.click(screen.getByTestId("tour-option-search"));
-    expect(mockPush).not.toHaveBeenCalled();
-  });
-
-  it("fecha menu após clicar em uma opção", () => {
-    render(<OnboardingTourButton availableTours={{ search: jest.fn() }} />);
-    fireEvent.click(screen.getByTestId("tour-trigger-button"));
-    expect(screen.getByTestId("tour-menu")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("tour-option-search"));
-    expect(screen.queryByTestId("tour-menu")).not.toBeInTheDocument();
   });
 });
 

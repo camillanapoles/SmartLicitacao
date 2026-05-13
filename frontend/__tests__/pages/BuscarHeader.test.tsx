@@ -18,7 +18,6 @@ import BuscarPage from '@/app/buscar/page';
 const mockUseAuth = jest.fn();
 const mockUsePlan = jest.fn();
 const mockUseAnalytics = jest.fn();
-const mockUseOnboarding = jest.fn();
 const mockUseKeyboardShortcuts = jest.fn();
 
 jest.mock('../../app/components/AuthProvider', () => ({
@@ -31,10 +30,6 @@ jest.mock('../../hooks/usePlan', () => ({
 
 jest.mock('../../hooks/useAnalytics', () => ({
   useAnalytics: () => mockUseAnalytics(),
-}));
-
-jest.mock('../../hooks/useOnboarding', () => ({
-  useOnboarding: () => mockUseOnboarding(),
 }));
 
 jest.mock('../../hooks/useKeyboardShortcuts', () => ({
@@ -197,11 +192,6 @@ describe('BuscarPage Header - Auth States', () => {
       identifyUser: jest.fn(),
       resetUser: jest.fn(),
       trackPageView: jest.fn(),
-    });
-
-    mockUseOnboarding.mockReturnValue({
-      shouldShowOnboarding: false,
-      restartTour: jest.fn(),
     });
 
     mockUseKeyboardShortcuts.mockReturnValue(undefined);

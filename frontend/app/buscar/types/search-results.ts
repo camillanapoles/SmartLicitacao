@@ -104,7 +104,6 @@ export interface SearchResultsActions {
   onAddNeighborStates?: () => void;
   onViewNearbyResults?: () => void;
   onGeneratePdf?: (options: { clientName: string; maxItems: number }) => void;
-  onStartResultsTour?: () => void;
   /** UX-436: Retry search with a reduced set of UFs */
   onRetryWithUfs?: (ufs: string[]) => void;
   /** BIZ-METRIC-001: post-export survey trigger for the Sheets export path. */
@@ -163,7 +162,6 @@ export interface SearchAuthState {
 export interface SearchFeedbackState {
   searchId?: string;
   setorId?: string;
-  isResultsTourCompleted?: () => boolean;
 }
 
 // ---------------------------------------------------------------------------

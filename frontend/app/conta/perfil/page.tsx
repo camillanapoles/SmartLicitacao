@@ -7,8 +7,6 @@ import { useUser } from "../../../contexts/UserContext";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { safeRemoveItem } from "../../../lib/storage";
-import { GUIDED_TOUR_STORAGE_KEY } from "../../buscar/components/GuidedTour";
 import { completenessCount, TOTAL_PROFILE_FIELDS, type ProfileContext } from "../profile-utils";
 import { ATESTADOS_CATALOG, PORTE_OPTIONS, EXPERIENCIA_OPTIONS, ALL_UFS } from "../conta-constants";
 import { ProfileField, SelectField, NumberField } from "../conta-fields";
@@ -427,23 +425,6 @@ export default function PerfilPage() {
         isFounder={Boolean((user as { is_founder?: boolean } | null)?.is_founder)}
       />
 
-      {/* STORY-442 AC5: Ver tour novamente */}
-      <div className="p-6 bg-[var(--surface-0)] border border-[var(--border)] rounded-card">
-        <h2 className="text-lg font-semibold text-[var(--ink)] mb-1">Guia interativo</h2>
-        <p className="text-sm text-[var(--ink-secondary)] mb-4">
-          Refaça o tour guiado da página de busca para redescobrir as funcionalidades da plataforma.
-        </p>
-        <button
-          onClick={() => {
-            safeRemoveItem(GUIDED_TOUR_STORAGE_KEY);
-            router.push("/buscar");
-          }}
-          className="px-4 py-2 bg-[var(--brand-navy)] text-white rounded-button text-sm font-medium hover:bg-[var(--brand-blue)] transition-colors"
-          data-testid="restart-buscar-tour-btn"
-        >
-          Ver tour novamente
-        </button>
-      </div>
     </div>
   );
 }

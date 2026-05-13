@@ -17,7 +17,6 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import { TrialUpsellCTA } from "../../components/billing/TrialUpsellCTA";
 import { Tour, type TourStepDef } from "../../components/tour/Tour";
 import { safeGetItem, safeSetItem } from "../../lib/storage";
-import { OnboardingTourButton } from "../../components/OnboardingTourButton";
 import { useAnalytics } from "../../hooks/useAnalytics";
 import { useTrialPhase } from "../../hooks/useTrialPhase";
 import { PageErrorBoundary } from "../../components/PageErrorBoundary";
@@ -334,13 +333,6 @@ export default function PipelinePage() {
           )
         )}
       </main>
-
-      {/* STORY-313 AC15: Floating guide button */}
-      <OnboardingTourButton
-        availableTours={{
-          pipeline: restartPipelineTour,
-        }}
-      />
 
       <Tour
         tourId="pipeline"

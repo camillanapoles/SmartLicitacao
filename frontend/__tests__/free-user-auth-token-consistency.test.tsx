@@ -71,13 +71,6 @@ jest.mock('../hooks/useSavedSearches', () => ({
   }),
 }));
 
-jest.mock('../hooks/useOnboarding', () => ({
-  useOnboarding: () => ({
-    showOnboarding: false,
-    completeOnboarding: jest.fn(),
-  }),
-}));
-
 jest.mock('../hooks/useKeyboardShortcuts', () => ({
   useKeyboardShortcuts: jest.fn(),
   getShortcutDisplay: () => '',

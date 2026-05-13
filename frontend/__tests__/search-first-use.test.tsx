@@ -27,10 +27,6 @@ jest.mock("../hooks/useAnalytics", () => ({
   useAnalytics: () => ({ trackEvent: jest.fn() }),
 }));
 
-jest.mock("../hooks/useOnboarding", () => ({
-  useOnboarding: () => ({ shouldShowOnboarding: false, restartTour: jest.fn() }),
-}));
-
 jest.mock("../hooks/useNavigationGuard", () => ({
   useNavigationGuard: jest.fn(),
 }));

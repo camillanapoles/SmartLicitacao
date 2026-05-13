@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAnalytics } from "../../../hooks/useAnalytics";
-import { useOnboarding } from "../../../hooks/useOnboarding";
-import type { ReactNode } from "react";
 import { useKeyboardShortcuts } from "../../../hooks/useKeyboardShortcuts";
 import { useAuth } from "../../components/AuthProvider";
 import { useSearchFilters } from "./useSearchFilters";
@@ -18,11 +16,8 @@ import { useBroadcastChannel } from "../../../hooks/useBroadcastChannel";
 
 import { toast } from "sonner";
 import { getLastSearch, saveLastSearch, checkHasLastSearch } from "../../../lib/lastSearchCache";
-import { safeSetItem, safeGetItem } from "../../../lib/storage";
 import { getDaysInTrial } from "../../../lib/analytics-helpers";
 import type { BuscaResult } from "../../types";
-
-import { SEARCH_TOUR_STEPS, RESULTS_TOUR_STEPS } from "../constants/tour-steps";
 
 export function useSearchOrchestration() {
   const { session, loading: authLoading } = useAuth();
@@ -57,100 +52,6 @@ export function useSearchOrchestration() {
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(isAutoSearch);
   const [autoSearchDismissed, setAutoSearchDismissed] = useState(false);
   const [shouldSearchAfterRestore, setShouldSearchAfterRestore] = useState(false);
-
-  // ── Tours ───────────────────────────────────────────────────────────
-  const reportTourEvent = useCallback(async (tourId: string, event: string, stepsSeen: number) => {
-    try {
-      const token = session?.access_token;
-      await fetch('/api/onboarding?endpoint=tour-event', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ tour_id: tourId, event, steps_seen: stepsSeen }),
-      });
-    } catch { /* fire-and-forget */ }
-  }, [session?.access_token]);
-
-  const SEARCH_TOUR_KEY = 'onboarding_search_tour_completed';
-  const RESULTS_TOUR_KEY = 'onboarding_results_tour_completed';
-
-  const [searchTourActive, setSearchTourActive] = useState(false);
-  const [resultsTourActive, setResultsTourActive] = useState(false);
-
-  const isSearchTourCompleted = useCallback(() => safeGetItem(SEARCH_TOUR_KEY) === 'true', []);
-  const isResultsTourCompleted = useCallback(() => safeGetItem(RESULTS_TOUR_KEY) === 'true', []);
-
-  const startSearchTour = useCallback(() => setSearchTourActive(true), []);
-  const startResultsTour = useCallback(() => setResultsTourActive(true), []);
-  const restartSearchTour = useCallback(() => { safeSetItem(SEARCH_TOUR_KEY, 'false'); setSearchTourActive(true); }, []);
-  const restartResultsTour = useCallback(() => { safeSetItem(RESULTS_TOUR_KEY, 'false'); setResultsTourActive(true); }, []);
-
-  // Handlers passed to <Tour /> in buscar/page.tsx
-  const handleSearchTourComplete = useCallback((stepsSeen: number) => {
-    safeSetItem(SEARCH_TOUR_KEY, 'true');
-    setSearchTourActive(false);
-    trackEventRef.current('onboarding_tour_completed', { tour: 'search', steps_seen: stepsSeen });
-    void reportTourEvent('search', 'completed', stepsSeen);
-  }, [reportTourEvent]);
-
-  const handleSearchTourSkip = useCallback((skippedAtStep: number) => {
-    safeSetItem(SEARCH_TOUR_KEY, 'true');
-    setSearchTourActive(false);
-    trackEventRef.current('onboarding_tour_skipped', { tour: 'search', skipped_at_step: skippedAtStep });
-    void reportTourEvent('search', 'skipped', skippedAtStep);
-  }, [reportTourEvent]);
-
-  const handleResultsTourComplete = useCallback((stepsSeen: number) => {
-    safeSetItem(RESULTS_TOUR_KEY, 'true');
-    setResultsTourActive(false);
-    trackEventRef.current('onboarding_tour_completed', { tour: 'results', steps_seen: stepsSeen });
-    void reportTourEvent('results', 'completed', stepsSeen);
-  }, [reportTourEvent]);
-
-  const handleResultsTourSkip = useCallback((skippedAtStep: number) => {
-    safeSetItem(RESULTS_TOUR_KEY, 'true');
-    setResultsTourActive(false);
-    trackEventRef.current('onboarding_tour_skipped', { tour: 'results', skipped_at_step: skippedAtStep });
-    void reportTourEvent('results', 'skipped', skippedAtStep);
-  }, [reportTourEvent]);
-
-  const searchTourStartRef = useRef<() => void>(() => {});
-  searchTourStartRef.current = () => {
-    if (!isSearchTourCompleted()) {
-      startSearchTour();
-      trackEvent('onboarding_tour_started', { tour: 'search' });
-    }
-  };
-
-  const { shouldShowOnboarding, restartTour, tourElement: onboardingTourElement } = useOnboarding({
-    autoStart: true,
-    onComplete: () => {
-      trackEvent('onboarding_completed', { completion_time: Date.now() });
-      setTimeout(() => searchTourStartRef.current(), 500);
-    },
-    onDismiss: () => {
-      trackEvent('onboarding_dismissed', { dismissed_at: Date.now() });
-      setTimeout(() => searchTourStartRef.current(), 500);
-    },
-    onStepChange: (stepId, stepIndex) => trackEvent('onboarding_step', { step_id: stepId, step_index: stepIndex }),
-  });
-  // Typed as ReactNode — the consumer (buscar/page.tsx) must render this
-  const onboardingElement: ReactNode = onboardingTourElement;
-
-  useEffect(() => {
-    const welcomeDone = safeGetItem('smartlic_onboarding_completed') === 'true' ||
-                        safeGetItem('smartlic_onboarding_dismissed') === 'true';
-    if (welcomeDone && !isSearchTourCompleted()) {
-      const timer = setTimeout(() => {
-        startSearchTour();
-        trackEventRef.current('onboarding_tour_started', { tour: 'search' });
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-    // Mount-only: start tour once after onboarding; stable fns accessed via ref.
-  }, [isSearchTourCompleted, startSearchTour]);
 
   // ── Search Core ─────────────────────────────────────────────────────
   const clearResultRef = useRef<() => void>(() => {});
@@ -390,8 +291,6 @@ export function useSearchOrchestration() {
     handleShowUpgradeModal: uiState.handleShowUpgradeModal,
     handleLoadLastSearch,
     handleRetryWithUfs: sse.handleRetryWithUfs,
-    startResultsTour,
-    isResultsTourCompleted,
     setPdfModalOpen: uiState.setPdfModalOpen,
     setPartialDismissed: sse.setPartialDismissed,
     trackEvent,
@@ -444,18 +343,6 @@ export function useSearchOrchestration() {
     setShowOnboardingBanner,
     autoSearchDismissed,
     setAutoSearchDismissed,
-    shouldShowOnboarding,
-    restartTour,
-    restartSearchTour,
-    restartResultsTour,
-    // Tour elements — rendered in buscar/page.tsx
-    onboardingTourElement: onboardingElement,
-    searchTourActive,
-    resultsTourActive,
-    handleSearchTourComplete,
-    handleSearchTourSkip,
-    handleResultsTourComplete,
-    handleResultsTourSkip,
 
     // Progress — delegated to useSearchSSE
     progressAreaRef: sse.progressAreaRef,
