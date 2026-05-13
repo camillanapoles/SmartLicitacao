@@ -9,7 +9,7 @@
  *    de `.next/static/chunks/**\/*.js`).
  *  - Limite original de 250 KB (DEBT-108) era irreal para o bundle agregado
  *    atual: Next.js 16 + Sentry + Framer Motion + Recharts + dnd-kit +
- *    Supabase SSR + Stripe Elements + Shepherd.js totalizam ~1.6 MB gzipped.
+ *    Supabase SSR + Stripe Elements totalizam ~1.6 MB gzipped.
  *  - Budget atual é **hold-the-line** (baseline + ~7% head-room) para prevenir
  *    regressão, NÃO é alvo de produto.
  *  - Alvo de redução está tracked em STORY-5.14 (TD-FE-014): reduzir

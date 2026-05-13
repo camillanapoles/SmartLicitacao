@@ -4,11 +4,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import FocusTrap from "focus-trap-react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import mixpanel from "mixpanel-browser";
 
 import { WalkthroughStep } from "./WalkthroughStep";
 import { WALKTHROUGH_STEPS } from "./mock-data";
+import { getCookieConsent } from "../../app/components/CookieConsentBanner";
 
 const STORAGE_KEY = "smartlic_walkthrough_completed";
+
+function isTrackingEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  if (!process.env.NEXT_PUBLIC_MIXPANEL_TOKEN) return false;
+  const consent = getCookieConsent();
+  return consent?.analytics === true;
+}
+
+function trackWalkthrough(
+  eventName: string,
+  properties: Record<string, unknown> = {}
+): void {
+  if (!isTrackingEnabled()) return;
+  try {
+    mixpanel.track(eventName, {
+      ...properties,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "development",
+    });
+  } catch {
+    /* noop — tracking is best-effort */
+  }
+}
 
 export interface ProductWalkthroughProps {
   /** Whether the walkthrough modal is visible. */
@@ -53,18 +78,26 @@ export function ProductWalkthrough({
     setMounted(true);
   }, []);
 
-  // Reset state when the walkthrough opens
+  // Reset state and track start when the walkthrough opens
   useEffect(() => {
     if (isOpen) {
       setStepIndex(0);
       setDontShowAgain(false);
+      trackWalkthrough("walkthrough_started", { total_steps: totalSteps });
     }
-  }, [isOpen]);
+  }, [isOpen, totalSteps]);
 
-  // Announce step changes to screen readers
+  // Announce step changes to screen readers and track step view
   useEffect(() => {
-    if (isOpen && stepAnnounceRef.current && currentStep) {
-      stepAnnounceRef.current.textContent = `Passo ${stepIndex + 1} de ${totalSteps}: ${currentStep.title}`;
+    if (isOpen && currentStep) {
+      if (stepAnnounceRef.current) {
+        stepAnnounceRef.current.textContent = `Passo ${stepIndex + 1} de ${totalSteps}: ${currentStep.title}`;
+      }
+      trackWalkthrough("walkthrough_step_viewed", {
+        step_index: stepIndex,
+        total_steps: totalSteps,
+        step_title: currentStep.title,
+      });
     }
   }, [isOpen, stepIndex, currentStep, totalSteps]);
 
@@ -119,15 +152,22 @@ export function ProductWalkthrough({
   }, [dontShowAgain]);
 
   const handleDismiss = useCallback(() => {
+    trackWalkthrough("walkthrough_skipped", {
+      step_index: stepIndex,
+      total_steps: totalSteps,
+    });
     persistDismiss();
     onClose();
-  }, [persistDismiss, onClose]);
+  }, [persistDismiss, onClose, stepIndex, totalSteps]);
 
   const handleComplete = useCallback(() => {
+    trackWalkthrough("walkthrough_completed", {
+      total_steps: totalSteps,
+    });
     persistDismiss();
     onComplete?.();
     onClose();
-  }, [persistDismiss, onComplete, onClose]);
+  }, [persistDismiss, onComplete, onClose, totalSteps]);
 
   const handleNext = useCallback(() => {
     if (isLastStep) {
