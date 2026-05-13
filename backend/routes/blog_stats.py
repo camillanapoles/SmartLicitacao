@@ -344,8 +344,10 @@ async def _query_pncp_for_sector(
 ) -> list[dict]:
     """Query datalake for sector-relevant results across given UFs.
 
-    RES-BE-015b: wrapped in _run_with_budget(5s) to prevent setor/* routes from
-    wedging under Googlebot fan-out (same pattern as contratos routes, PR#579).
+    RES-BE-015b: wrapped in _run_with_budget(15s) to prevent setor/* routes from
+    wedging under Googlebot fan-out. Budget raised from 5s to 15s for issue #1191
+    because query_datalake makes 10 sequential RPC calls (one per UF), each
+    taking 0.5-2s, totaling well over 5s.
     """
     from datalake_query import query_datalake
     from pipeline.budget import _run_with_budget
@@ -363,7 +365,7 @@ async def _query_pncp_for_sector(
                 keywords=list(sector.keywords),
                 limit=2000,
             ),
-            budget=5.0,
+            budget=15.0,
             phase="route",
             source="blog_stats.sector_query",
         )
