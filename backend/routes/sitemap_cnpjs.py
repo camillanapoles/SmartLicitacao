@@ -289,7 +289,7 @@ async def sitemap_fornecedores_cnpj(response: Response):
     _fresh_fetch = True
     try:
         data = await _run_with_budget(
-            asyncio.to_thread(_fetch_top_fornecedores_cnpjs),
+            _fetch_top_fornecedores_cnpjs(),
             budget=_BUDGET_S,
             phase="route",
             source="sitemap_cnpjs.sitemap_fornecedores_cnpj",
@@ -353,26 +353,27 @@ async def sitemap_fornecedores_cnpj(response: Response):
     return SitemapFornecedoresCnpjResponse(**data)
 
 
-def _fetch_top_fornecedores_cnpjs() -> dict:
+async def _fetch_top_fornecedores_cnpjs() -> dict:
     """Busca os CNPJs de fornecedores mais ativos em mv_sitemap_fornecedores.
 
     SEO-SITEMAP-MV-001: MV pré-agregada substitui paginated scan de
     pncp_supplier_contracts. Query < 50ms.
+
+    Async com sb_execute() para retry HTTP/2 (SEN-BE-004).
     """
     try:
-        from supabase_client import get_supabase
+        from supabase_client import get_supabase, sb_execute
         sb = get_supabase()
 
         rows: list[str] = []
         page_size = 1000
         offset = 0
         while True:
-            resp = (
+            resp = await sb_execute(
                 sb.table("mv_sitemap_fornecedores")
                 .select("cnpj")
                 .order("cnpj")
                 .range(offset, offset + page_size - 1)
-                .execute()
             )
             if not resp.data:
                 break
