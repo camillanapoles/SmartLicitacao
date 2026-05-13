@@ -387,22 +387,21 @@ async def municipio_profile(slug: str):
     # observable per route.
     pib_per_capita: Optional[float] = None
 
-    def _enriched_query_sync() -> list[dict]:
-        from supabase_client import get_supabase
+    async def _enriched_query_async() -> list[dict]:
+        from supabase_client import get_supabase, sb_execute
         sb = get_supabase()
-        resp = (
+        resp = await sb_execute(
             sb.table("enriched_entities")
             .select("data")
             .eq("entity_type", "municipio")
             .eq("entity_id", ibge_code)
             .limit(1)
-            .execute()
         )
         return resp.data or []
 
     try:
         enriched_rows = await _run_with_budget(
-            asyncio.to_thread(_enriched_query_sync),
+            _enriched_query_async(),
             budget=_ENRICHED_QUERY_BUDGET_S,
             phase="route",
             source="municipios_publicos.enriched_entities",
@@ -435,10 +434,10 @@ async def municipio_profile(slug: str):
     valor_total = 0.0
     licitacoes_recentes: list[dict] = []
 
-    def _bids_query_sync() -> list[dict]:
-        from supabase_client import get_supabase
+    async def _bids_query_async() -> list[dict]:
+        from supabase_client import get_supabase, sb_execute
         sb = get_supabase()
-        resp = (
+        resp = await sb_execute(
             sb.table("pncp_raw_bids")
             .select(
                 "objeto_compra,orgao_razao_social,valor_total_estimado,"
@@ -448,13 +447,12 @@ async def municipio_profile(slug: str):
             .eq("is_active", True)
             .order("data_publicacao", desc=True)
             .limit(500)
-            .execute()
         )
         return resp.data or []
 
     try:
         rows = await _run_with_budget(
-            asyncio.to_thread(_bids_query_sync),
+            _bids_query_async(),
             budget=_BIDS_QUERY_TIMEOUT_S,
             phase="route",
             source="municipios_publicos.bids",
