@@ -19,7 +19,6 @@ Design notes:
 
 from __future__ import annotations
 
-import logging
 from typing import Optional
 
 import stripe
@@ -31,7 +30,7 @@ from services.trial_cancel_token import (
     TrialCancelTokenError,
     verify_cancel_trial_token,
 )
-from supabase_client import get_supabase
+from supabase_client import get_supabase, sb_execute
 
 logger = get_sanitized_logger(__name__)
 router = APIRouter(prefix="/conta", tags=["conta"])
@@ -91,26 +90,24 @@ def _error_response_for(reason: str) -> HTTPException:
     )
 
 
-def _load_profile_and_subscription(sb, user_id: str) -> tuple[Optional[dict], Optional[dict]]:
+async def _load_profile_and_subscription(sb, user_id: str) -> tuple[Optional[dict], Optional[dict]]:
     """Fetch profile + active user_subscriptions row (may be None if user deleted)."""
-    profile_result = (
+    profile_result = await sb_execute(
         sb.table("profiles")
         .select("id, email, plan_type, subscription_status, stripe_subscription_id")
         .eq("id", user_id)
         .limit(1)
-        .execute()
     )
     if not profile_result.data:
         return None, None
     profile = profile_result.data[0]
 
-    sub_result = (
+    sub_result = await sb_execute(
         sb.table("user_subscriptions")
         .select("id, plan_id, stripe_subscription_id, is_active, subscription_status")
         .eq("user_id", user_id)
         .eq("is_active", True)
         .limit(1)
-        .execute()
     )
     subscription = sub_result.data[0] if sub_result.data else None
     return profile, subscription
@@ -135,7 +132,7 @@ def _fetch_trial_end_from_stripe(stripe_sub_id: Optional[str]) -> Optional[int]:
 
 
 @router.get("/cancelar-trial", response_model=CancelTrialInfoResponse)
-def cancel_trial_info(token: str = Query(..., min_length=20)) -> CancelTrialInfoResponse:
+async def cancel_trial_info(token: str = Query(..., min_length=20)) -> CancelTrialInfoResponse:
     """
     Return trial metadata for the confirmation UI.
 
@@ -149,7 +146,7 @@ def cancel_trial_info(token: str = Query(..., min_length=20)) -> CancelTrialInfo
         raise _error_response_for(exc.reason) from exc
 
     sb = get_supabase()
-    profile, subscription = _load_profile_and_subscription(sb, user_id)
+    profile, subscription = await _load_profile_and_subscription(sb, user_id)
     if not profile:
         raise HTTPException(
             status_code=404,
@@ -182,7 +179,7 @@ def cancel_trial_info(token: str = Query(..., min_length=20)) -> CancelTrialInfo
 
 
 @router.post("/cancelar-trial", response_model=CancelTrialResponse)
-def cancel_trial_execute(payload: CancelTrialRequest) -> CancelTrialResponse:
+async def cancel_trial_execute(payload: CancelTrialRequest) -> CancelTrialResponse:
     """
     Cancel the user's active trial subscription.
 
@@ -198,7 +195,7 @@ def cancel_trial_execute(payload: CancelTrialRequest) -> CancelTrialResponse:
         raise _error_response_for(exc.reason) from exc
 
     sb = get_supabase()
-    profile, subscription = _load_profile_and_subscription(sb, user_id)
+    profile, subscription = await _load_profile_and_subscription(sb, user_id)
     if not profile:
         raise HTTPException(
             status_code=404,
@@ -249,20 +246,26 @@ def cancel_trial_execute(payload: CancelTrialRequest) -> CancelTrialResponse:
 
     # 2) Update local state (profiles + user_subscriptions).
     try:
-        sb.table("profiles").update(
-            {
-                "subscription_status": "canceled_trial",
-                "plan_type": "free_trial",
-            }
-        ).eq("id", user_id).execute()
+        await sb_execute(
+            sb.table("profiles").update(
+                {
+                    "subscription_status": "canceled_trial",
+                    "plan_type": "free_trial",
+                }
+            ).eq("id", user_id),
+            category="write",
+        )
     except Exception as exc:
         logger.error(f"Failed to update profiles during trial cancel: {exc}")
 
     if subscription:
         try:
-            sb.table("user_subscriptions").update(
-                {"subscription_status": "canceled", "is_active": False}
-            ).eq("id", subscription["id"]).execute()
+            await sb_execute(
+                sb.table("user_subscriptions").update(
+                    {"subscription_status": "canceled", "is_active": False}
+                ).eq("id", subscription["id"]),
+                category="write",
+            )
         except Exception as exc:
             logger.error(f"Failed to update user_subscriptions during trial cancel: {exc}")
 
