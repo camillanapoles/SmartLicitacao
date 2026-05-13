@@ -64,6 +64,7 @@ def send_email(
     reply_to: Optional[str] = None,
     headers: Optional[dict[str, str]] = None,
     from_email: Optional[str] = None,
+    attachments: Optional[list[dict[str, object]]] = None,
 ) -> Optional[str]:
     """
     Send a transactional email via Resend.
@@ -79,6 +80,10 @@ def send_email(
         reply_to: Optional reply-to address.
         headers: Optional extra headers dict.
         from_email: Optional sender override (defaults to EMAIL_FROM env var).
+        attachments: Optional list of attachment dicts, each with:
+            - filename (str): File name.
+            - content (bytes): Raw file content.
+            - content_type (str): MIME type.
 
     Returns:
         Email ID string on success, None on failure.
@@ -103,6 +108,8 @@ def send_email(
         params["reply_to"] = reply_to
     if headers:
         params["headers"] = headers
+    if attachments:
+        params["attachments"] = attachments
 
     last_error = None
     for attempt in range(MAX_RETRIES):

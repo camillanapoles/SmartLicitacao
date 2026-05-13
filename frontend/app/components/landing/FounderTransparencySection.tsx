@@ -46,8 +46,8 @@ export default function FounderTransparencySection() {
 
             <blockquote className="max-w-2xl text-lg sm:text-xl text-[var(--ink-secondary)] leading-relaxed italic">
               &ldquo;O SmartLic est&aacute; em beta. Constru&iacute; cada parte com
-              obsess&atilde;o por licita&ccedil;&otilde;es. Seus primeiros 14 dias
-              s&atilde;o gr&aacute;tis. Se gostar, fica. Se n&atilde;o, tudo bem.&rdquo;
+              obsess&atilde;o pelo sucesso das empresas em licita&ccedil;&otilde;es. Seus primeiros 14 dias
+              s&atilde;o gr&aacute;tis. Se gostar, fica. Se n&atilde;o, boa sorte!&rdquo;
             </blockquote>
 
             <div className="text-sm text-[var(--ink-muted)]">

@@ -160,6 +160,10 @@ from jobs.queue.jobs import (  # noqa: F401
     reclassify_pending_bids_job, classify_zero_match_job,
     generate_intel_report,
 )
+from jobs.cron.send_lead_magnet import (  # noqa: F401
+    send_lead_magnet_job,
+    send_lead_magnet_batch_job,
+)
 
 # --- Search job ---
 from jobs.queue.search import (  # noqa: F401

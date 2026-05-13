@@ -23440,7 +23440,7 @@
     },
     "/v1/lead-capture": {
       "post": {
-        "description": "Store a lead capture from a non-authenticated visitor.\n\n- New sources (COPY-COP-006): stored in ``lead_captures`` table\n- Old sources (backward compat): stored in ``leads`` table\n- Rate limited to 3 requests/min per IP\n- Fail-open: returns success even if DB storage fails\n\nReturns 201 on success.",
+        "description": "Store a lead capture from a non-authenticated visitor.\n\n- New sources (COPY-COP-006): stored in ``lead_captures`` table\n- Old sources (backward compat): stored in ``leads`` table\n- Rate limited to 3 requests/min per IP\n- Fail-open: returns success even if DB storage fails\n- Lead magnet PDF delivery enqueued for legacy sources (LEAD-MAGNET-001)\n\nReturns 201 on success.",
         "operationId": "capture_lead_v1_lead_capture_post",
         "requestBody": {
           "content": {

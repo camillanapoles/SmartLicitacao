@@ -3674,6 +3674,7 @@ export interface paths {
          *     - Old sources (backward compat): stored in ``leads`` table
          *     - Rate limited to 3 requests/min per IP
          *     - Fail-open: returns success even if DB storage fails
+         *     - Lead magnet PDF delivery enqueued for legacy sources (LEAD-MAGNET-001)
          *
          *     Returns 201 on success.
          */

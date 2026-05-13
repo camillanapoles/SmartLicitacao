@@ -243,6 +243,7 @@ async def lifespan(app_instance: FastAPI):
         start_indice_municipal_task,  # STORY-435 AC7
         start_new_bids_notifier_task,  # STORY-445
         start_cron_monitor_task,       # STORY-1.1 TD-DB-040
+        start_lead_magnet_batch_task,  # LEAD-MAGNET-001: lead magnet PDF delivery
     )
     from progress import _periodic_tracker_cleanup
 
@@ -264,6 +265,7 @@ async def lifespan(app_instance: FastAPI):
     task_registry.register("indice_municipal_quarterly", start_indice_municipal_task)
     task_registry.register("new_bids_notifier", start_new_bids_notifier_task)  # STORY-445
     task_registry.register("cron_monitor", start_cron_monitor_task)            # STORY-1.1
+    task_registry.register("lead_magnet_batch", start_lead_magnet_batch_task)  # LEAD-MAGNET-001
 
     await task_registry.start_all()
 
