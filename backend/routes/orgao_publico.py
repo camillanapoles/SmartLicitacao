@@ -17,7 +17,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from pipeline.budget import _run_with_budget
-from utils.postgrest_paginate import paginate_full
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["orgao-publico"])
@@ -259,40 +258,48 @@ async def _build_orgao_stats(cnpj: str) -> tuple[dict, bool]:
     valid-shape unavailable payload. Callers should cache partial responses
     under ``_NEGATIVE_CACHE_TTL_SECONDS``.
     """
-    def _sync_query() -> list[dict]:
-        from supabase_client import get_supabase
+    async def _paginate_orgao_stats() -> list[dict]:
+        from supabase_client import get_supabase, sb_execute
 
         sb = get_supabase()
         # DATA-CAP-001: paginate via .range() — without paginate_full,
         # PostgREST silently capped this at 1000 rows even with
-        # .limit(5000), so any orgão with >1000 active bids returned
+        # .limit(5000), so any órgão with >1000 active bids returned
         # exactly 1000 rounded counts (visible UX bug on /orgaos/[cnpj]).
-        builder = (
-            sb.table("pncp_raw_bids")
-            .select(
-                "orgao_razao_social,"
-                "esfera_id,"
-                "uf,"
-                "municipio,"
-                "modalidade_nome,"
-                "objeto_compra,"
-                "valor_total_estimado,"
-                "data_publicacao"
+        batch_size = 1000
+        max_total = 5000
+        all_rows: list[dict] = []
+        offset = 0
+        while len(all_rows) < max_total:
+            end = offset + batch_size - 1
+            resp = await sb_execute(
+                sb.table("pncp_raw_bids")
+                .select(
+                    "orgao_razao_social,"
+                    "esfera_id,"
+                    "uf,"
+                    "municipio,"
+                    "modalidade_nome,"
+                    "objeto_compra,"
+                    "valor_total_estimado,"
+                    "data_publicacao"
+                )
+                .eq("orgao_cnpj", cnpj)
+                .eq("is_active", True)
+                .range(offset, end)
             )
-            .eq("orgao_cnpj", cnpj)
-            .eq("is_active", True)
-        )
-        return paginate_full(
-            builder,
-            batch_size=1000,
-            max_total=5000,
-            route="orgao_publico.orgao_stats",
-            entity_type="pncp_raw_bids",
-        )
+            batch = resp.data or []
+            if not batch:
+                break
+            all_rows.extend(batch)
+            if len(batch) < batch_size:
+                break
+            offset += batch_size
+        return all_rows
 
     try:
         rows = await _run_with_budget(
-            asyncio.to_thread(_sync_query),
+            _paginate_orgao_stats(),
             budget=_ORGAO_QUERY_BUDGET_S,
             phase="route",
             source="orgao_publico.orgao_stats",
@@ -446,27 +453,23 @@ async def _fetch_contracts_data(orgao_cnpj: str, limit: int = 10) -> dict:
     """
     result = {"top_fornecedores": [], "total_contratos_24m": 0, "valor_total_contratos_24m": 0.0}
 
-    def _sync_rpc() -> dict:
-        from supabase_client import get_supabase
+    try:
+        from supabase_client import get_supabase, sb_execute
+
         sb = get_supabase()
-        resp = sb.rpc(
-            "get_orgao_top_contracts_json",
-            {"p_orgao_cnpj": orgao_cnpj, "p_limit": limit},
-        ).execute()
+        resp = await sb_execute(
+            sb.rpc(
+                "get_orgao_top_contracts_json",
+                {"p_orgao_cnpj": orgao_cnpj, "p_limit": limit},
+            )
+        )
         # supabase-py returns the JSON value directly in resp.data when the
         # RPC RETURNS a scalar JSON — handle both shapes defensively.
         data = getattr(resp, "data", None)
         if isinstance(data, list):
             data = data[0] if data else None
-        return data or {}
+        agg = data or {}
 
-    try:
-        agg = await _run_with_budget(
-            asyncio.to_thread(_sync_rpc),
-            budget=_ORGAO_QUERY_BUDGET_S,
-            phase="route",
-            source="orgao_publico.contracts_data",
-        )
         if not agg:
             return result
 
