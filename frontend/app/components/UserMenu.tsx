@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, ReactNode } from "react";
 import { useAuth } from "./AuthProvider";
 import { useAnalytics } from "../../hooks/useAnalytics";
 import Link from "next/link";
+import { ProductWalkthrough } from "../../components/walkthrough/ProductWalkthrough";
 
 interface UserMenuProps {
   /** Slot for inline badges (QuotaBadge, PlanBadge) shown inside the dropdown */
@@ -14,6 +15,7 @@ export function UserMenu({ statusSlot }: UserMenuProps) {
   const { user, session, loading, signOut, isAdmin } = useAuth();
   const { resetUser } = useAnalytics();
   const [open, setOpen] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -102,6 +104,10 @@ export function UserMenu({ statusSlot }: UserMenuProps) {
             className="block px-4 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface-1)]">
             Planos
           </Link>
+          <button onClick={() => { setOpen(false); setShowWalkthrough(true); }}
+            className="block w-full text-left px-4 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface-1)]">
+            Ver demonstração
+          </button>
           <Link href="/onboarding" onClick={() => setOpen(false)}
             className="block px-4 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface-1)]">
             Perfil de licitações
@@ -121,6 +127,14 @@ export function UserMenu({ statusSlot }: UserMenuProps) {
             </button>
           </div>
         </div>
+      )}
+
+      {showWalkthrough && (
+        <ProductWalkthrough
+          isOpen={showWalkthrough}
+          onClose={() => setShowWalkthrough(false)}
+          onComplete={() => setShowWalkthrough(false)}
+        />
       )}
     </div>
   );

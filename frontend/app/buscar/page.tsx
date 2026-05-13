@@ -26,6 +26,7 @@ import { TrialCountdown } from "../components/TrialCountdown";
 import { TrialExpiringBanner } from "../components/TrialExpiringBanner";
 import { TrialValueTracker } from "../../components/billing/TrialValueTracker";
 import { Button } from "../../components/ui/button";
+import { ProductWalkthrough } from "../../components/walkthrough/ProductWalkthrough";
 import { APP_NAME } from "../../lib/config";
 import { TrialExitSurveyModal } from "../../components/TrialExitSurveyModal";
 import { ReferralToast, shouldShowReferralToast } from "./components/ReferralToast";
@@ -49,6 +50,9 @@ function HomePageContent() {
 
   // STORY-449: Referral toast — shown after ≥3 results (throttled)
   const [showReferralToast, setShowReferralToast] = useState(false);
+
+  // Product walkthrough (#1166): "Veja como funciona" CTA in empty state
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
 
   // STORY-371 AC3: Scroll to highlighted result from email deep-link (?highlight=PNCP-xxx)
   useEffect(() => {
@@ -305,6 +309,30 @@ function HomePageContent() {
               />
             )}
 
+            {/* #1166: "Veja como funciona" CTA — shown in initial empty state before first search */}
+            {!orch.search.loading && !orch.search.result && !orch.showOnboardingBanner && (
+              <div className="mb-6 p-6 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-1)]/50 text-center">
+                <svg className="w-10 h-10 mx-auto mb-3 text-[var(--ink-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                </svg>
+                <h3 className="text-base font-semibold text-[var(--ink)] mb-1">
+                  Descubra como o SmartLic funciona
+                </h3>
+                <p className="text-sm text-[var(--ink-secondary)] mb-4 max-w-sm mx-auto">
+                  Veja um passo a passo rápido de como buscar licitações, analisar viabilidade e organizar seu pipeline.
+                </p>
+                <button
+                  onClick={() => setShowWalkthrough(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-button bg-[var(--brand-navy)] text-white text-sm font-medium hover:bg-[var(--brand-blue-hover)] transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                  </svg>
+                  Veja como funciona
+                </button>
+              </div>
+            )}
+
             {/* Scroll target for progress area */}
             <div ref={orch.progressAreaRef} />
 
@@ -383,6 +411,13 @@ function HomePageContent() {
         showPaymentRecovery={orch.showPaymentRecovery}
         graceDaysRemaining={orch.graceDaysRemaining}
         onClosePaymentRecovery={() => orch.setShowPaymentRecovery(false)}
+      />
+
+      {/* #1166: Product walkthrough modal */}
+      <ProductWalkthrough
+        isOpen={showWalkthrough}
+        onClose={() => setShowWalkthrough(false)}
+        onComplete={() => setShowWalkthrough(false)}
       />
     </div>
   );
