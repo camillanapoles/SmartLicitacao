@@ -58,6 +58,19 @@ function SignupPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const isMobile = currentDeviceType() === 'mobile';
+
+  // Mobile auto-fill: confirmPassword = password, fullName from email
+  useEffect(() => {
+    if (!isMobile) return;
+    if (password && confirmPassword !== password) {
+      form.setValue("confirmPassword", password);
+    }
+    if (email && !fullName) {
+      const nameFromEmail = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+      if (nameFromEmail) form.setValue("fullName", nameFromEmail);
+    }
+  }, [isMobile, password, email, fullName, confirmPassword, form]);
 
   // CONV-003b: 2-step state machine. Step 1 = email/password form.
   // Step 2 = Stripe PaymentElement (only when rollout branch == "card").
@@ -97,13 +110,14 @@ function SignupPageContent() {
   const passwordMeetsPolicy =
     password.length >= 8 && /[A-Z]/.test(password) && /\d/.test(password);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const isFormValid =
-    fullName.trim() !== "" &&
-    email.trim() !== "" &&
-    isEmailValid &&
-    passwordMeetsPolicy &&
-    confirmPassword === password &&
-    confirmPassword !== "";
+  const isFormValid = isMobile
+    ? email.trim() !== "" && isEmailValid && passwordMeetsPolicy
+    : fullName.trim() !== "" &&
+      email.trim() !== "" &&
+      isEmailValid &&
+      passwordMeetsPolicy &&
+      confirmPassword === password &&
+      confirmPassword !== "";
 
   // CONV-INST-005 AC2: Tag email_pending when confirmation screen is shown
   useEffect(() => {
@@ -572,6 +586,7 @@ function SignupPageContent() {
                 error={error}
                 onSubmit={onSubmit}
                 isFormValid={isFormValid}
+                isMobile={isMobile}
               />
             </>
           )}

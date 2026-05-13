@@ -11,9 +11,11 @@ import StatsSection from './components/landing/StatsSection';
 import FounderTransparencySection from './components/landing/FounderTransparencySection';
 import CredibilitySection from './components/landing/CredibilitySection';
 import FinalCTA from './components/landing/FinalCTA';
+import OpportunityPreview from './components/landing/OpportunityPreview';
 import { TrendingEditais } from './components/landing/TrendingEditais';
 import Footer from './components/Footer';
 import { HomeFaqStructuredData } from './components/HomeFaqStructuredData';
+import ExitIntentPopup from './components/ExitIntentPopup';
 
 export default function LandingPage() {
   return (
@@ -30,6 +32,7 @@ export default function LandingPage() {
         <StatsSection />
         <FounderTransparencySection />
         <CredibilitySection />
+        <OpportunityPreview />
         <TrendingEditais />
 
         <section id="suporte">
@@ -38,6 +41,7 @@ export default function LandingPage() {
       </main>
 
       <Footer />
+      <ExitIntentPopup />
     </>
   );
 }

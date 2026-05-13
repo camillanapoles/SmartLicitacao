@@ -58,11 +58,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://smartlic.tech"),
   // GTM-COPY-006 AC1: Decision-strategy positioning (max 60 chars)
   title: {
-    default: `SmartLic — Filtre Licitações por Viabilidade Real`,
+    default: `SmartLic — Máquina de Receita Previsível para Empresas B2G`,
     template: `%s | ${APP_NAME}`,
   },
   // GTM-COPY-006 AC2: Result-oriented, no unverifiable claims (max 155 chars)
-  description: "Analise a viabilidade de licitações antes de investir tempo. SmartLic cruza seu perfil com cada edital e recomenda apenas o que tem chance real de retorno.",
+  description: "Veja editais que sua empresa perderia — e os que ela pode vencer. Filtro estratégico em 27 estados para empresas B2G que querem resultado real em licitações públicas.",
   // GTM-COPY-006 AC3: Decision-territory keywords (not generic search)
   keywords: [
     "como avaliar licitação antes de participar",
@@ -80,8 +80,8 @@ export const metadata: Metadata = {
   },
   // GTM-COPY-006 AC4: OG tags aligned with new positioning
   openGraph: {
-    title: `SmartLic — Descubra Quais Licitações Valem Seu Tempo`,
-    description: "Avaliação de viabilidade por setor, região e modalidade. Filtre editais com critérios objetivos e invista tempo apenas onde há retorno real.",
+    title: `SmartLic — Máquina de Receita Previsível para Empresas B2G`,
+    description: "Veja editais que sua empresa perderia — e os que ela pode vencer. Filtro estratégico com IA para empresas B2G.",
     siteName: APP_NAME,
     url: "https://smartlic.tech",
     type: "website",
@@ -98,8 +98,8 @@ export const metadata: Metadata = {
   // GTM-COPY-006 AC4: Twitter cards aligned
   twitter: {
     card: "summary_large_image",
-    title: `SmartLic — Filtre Licitações por Viabilidade Real`,
-    description: "Avaliação objetiva de editais por setor, região e modalidade. Invista tempo apenas em licitações com chance real de retorno.",
+    title: `SmartLic — Máquina de Receita Previsível para Empresas B2G`,
+    description: "Veja editais que sua empresa perderia — e os que ela pode vencer. Filtro estratégico com IA para empresas B2G.",
     images: ["/api/og"],
     // No Twitter/X profile — omit creator/site handles
   },

@@ -32,8 +32,8 @@
   --warning-subtle: #fefce8;  /* Warning bg - decorative; pair text uses --warning */
 
   /* Borders */
-  --border: rgba(0, 0, 0, 0.08);  /* Subtle borders */
-  --border-strong: rgba(0, 0, 0, 0.15);  /* Emphasized borders */
+  --border: rgba(0, 0, 0, 0.06);  /* Subtle borders */
+  --border-strong: rgba(0, 0, 0, 0.12);  /* Emphasized borders */
   --border-accent: rgba(17, 109, 255, 0.3);  /* Brand borders */
 
   /* Text aliases (used by Pipeline, Alertas, Conta components) */
@@ -50,7 +50,7 @@
      ======================================== */
 
   /* Fluid Typography Scale */
-  --text-hero: clamp(2.5rem, 5vw + 1rem, 4.5rem);     /* 40-72px */
+  --text-hero: clamp(2.5rem, 5vw + 1rem, 5rem);     /* 40-80px */
   --text-h1: clamp(2rem, 4vw + 1rem, 3.5rem);         /* 32-56px */
   --text-h2: clamp(1.5rem, 3vw + 0.5rem, 2.5rem);     /* 24-40px */
   --text-h3: clamp(1.25rem, 2vw + 0.5rem, 1.75rem);   /* 20-28px */
@@ -88,9 +88,9 @@
   --shadow-glow-lg: 0 0 40px rgba(17, 109, 255, 0.4);
 
   /* Section Spacing (8pt grid) */
-  --section-padding-sm: 4rem;   /* 64px - Mobile */
-  --section-padding-lg: 6rem;   /* 96px - Desktop */
-  --section-gap: 8rem;          /* 128px - Between sections */
+  --section-padding-sm: 5rem;   /* 80px - Mobile */
+  --section-padding-lg: 8rem;   /* 128px - Desktop */
+  --section-gap: 10rem;         /* 160px - Between sections */
 
   /* DEBT-012: Chart palette (10 colors for Recharts + data viz) */
   --chart-1: #116dff;

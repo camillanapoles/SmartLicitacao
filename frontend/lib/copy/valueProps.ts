@@ -27,7 +27,7 @@ export const hero = {
     financialImpact: "Pare de perder dinheiro com licitações erradas.",
     filterFocus: "Só o que vale a pena chega até você.",
     wasteCut: "Licitações que realmente pagam. O resto, a gente descarta.",
-    default: "O jeito mais rápido de encontrar editais certos para sua empresa.",
+    default: "Máquina de receita previsível para empresas B2G.",
   },
 
   // COPY-COP-002: Subtítulo — filtragem inteligente, elimina ruído
@@ -36,7 +36,7 @@ export const hero = {
     b2gIntelligence: "SmartLic lê o edital, mapeia o concorrente, calcula a chance real. Sua empresa decide go/no-go em minutos — não em três dias de leitura.",
     mechanism: "O SmartLic analisa cada edital contra o perfil da sua empresa. Elimina o que não faz sentido. Entrega só o que tem chance real de retorno — com justificativa objetiva.",
     filter: "Cada edital passa por análise de compatibilidade com seu perfil. Você só vê o que merece investimento de tempo e proposta.",
-    default: "Filtragem inteligente em 27 estados. Elimina o ruído. Mostra onde você tem chance real.",
+    default: "Veja editais que sua empresa perderia — e os que ela pode vencer.",
   },
 
   // COPY-COP-003: Trust badges — numeric claims

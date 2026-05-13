@@ -11,6 +11,8 @@ import { hero } from '@/lib/copy/valueProps';
 import { trackCTAClick } from '@/lib/analytics-events';
 import HeroFounderStrip from './HeroFounderStrip';
 import HeroTrustSignals from './HeroTrustSignals';
+import FundadoresCountdown from './FundadoresCountdown';
+import LoomPlaceholder from './LoomPlaceholder';
 
 interface HeroSectionProps {
   className?: string;
@@ -47,7 +49,7 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
         max-w-landing
         mx-auto
         px-4 sm:px-6 lg:px-8
-        py-16 sm:py-24
+        py-20 sm:py-28
         overflow-hidden
         ${className}
       `}
@@ -85,10 +87,13 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             </span>
           </motion.div>
 
+          {/* Cialdini AC3 — Scarcity: Fundadores Countdown */}
+          <FundadoresCountdown />
+
           {/* COPY-COP-002: Variante C — híbrida SEO-aware */}
           <motion.h1
             className="
-              text-4xl sm:text-5xl lg:text-6xl
+              text-4xl sm:text-5xl lg:text-7xl
               font-display
               font-black
               tracking-tighter
@@ -98,17 +103,17 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             data-testid="hero-headline"
           >
             <span className="text-ink">
-              O jeito mais rápido de encontrar
+              Máquina de receita previsível
             </span>{' '}
             <span className="text-gradient">
-              editais certos para sua empresa.
+              para empresas B2G.
             </span>
           </motion.h1>
 
           {/* COPY-COP-002: Subtítulo — filtragem inteligente, elimina ruído */}
           <motion.p
             className="
-              text-lg sm:text-xl
+              text-xl sm:text-2xl
               text-ink-secondary
               mt-6
               font-medium
@@ -119,13 +124,21 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
             variants={fadeInUp}
             data-testid="hero-subheadline"
           >
-            Filtragem inteligente em 27 estados. Elimina o ruído.
-            Mostra onde você tem chance real.
+            Veja editais que sua empresa perderia — e os que ela pode vencer.
+          </motion.p>
+
+          {/* Cialdini AC2 — Microcompromisso: baixo risco antes do CTA */}
+          <motion.p
+            className="text-sm text-ink-muted mt-8 mb-2 text-center lg:text-left"
+            variants={fadeInUp}
+            data-testid="hero-microcompromisso"
+          >
+            Sem cartão. Cancele em 1 clique. Comece em 2 minutos.
           </motion.p>
 
           {/* CTA Buttons — AC5: Primary CTA visible above the fold */}
           <motion.div
-            className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mt-10"
+            className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mt-2"
             variants={fadeInUp}
           >
             <div className="flex flex-col items-center lg:items-start gap-1">
@@ -179,6 +192,9 @@ export default function HeroSection({ className = '' }: HeroSectionProps) {
 
           <HeroFounderStrip />
           <HeroTrustSignals />
+
+          {/* Cialdini AC5 — Liking/Video: Loom product tour placeholder */}
+          <LoomPlaceholder />
         </div>
 
         {/* Right column — annotated product screenshot (DEBT-125 AC1-AC8) */}

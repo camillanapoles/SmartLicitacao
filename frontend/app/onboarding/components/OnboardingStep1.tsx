@@ -27,7 +27,7 @@ export function OnboardingStep1({ data, onChange, errors, onBlur }: OnboardingSt
       />
 
       <div>
-        <Label required htmlFor="objetivo_principal">Qual é seu objetivo principal?</Label>
+        <Label htmlFor="objetivo_principal">Qual é seu objetivo principal? <span className="text-ink-muted font-normal">(opcional)</span></Label>
         <textarea
           id="objetivo_principal"
           value={data.objetivo_principal}

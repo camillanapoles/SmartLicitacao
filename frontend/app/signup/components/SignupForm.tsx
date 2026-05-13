@@ -27,6 +27,7 @@ interface SignupFormProps {
   error: string | null;
   onSubmit: (data: SignupFormData) => void;
   isFormValid: boolean;
+  isMobile?: boolean;
 }
 
 // CONV-INST-002 AC3: deterministic 8-char hex hash of a string — no PII, no external dep.
@@ -37,7 +38,7 @@ function hashStr(s: string): string {
   return Math.abs(n).toString(16).slice(0, 8).padStart(8, "0");
 }
 
-export function SignupForm({ form, loading, error, onSubmit, isFormValid }: SignupFormProps) {
+export function SignupForm({ form, loading, error, onSubmit, isFormValid, isMobile = false }: SignupFormProps) {
   const {
     register,
     handleSubmit: rhfHandleSubmit,
@@ -215,37 +216,39 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
       )}
 
       <form onSubmit={rhfHandleSubmit(onSubmit)} className="space-y-4">
-        {/* Full Name — SAB-007 AC1 */}
-        <div>
-          <Label htmlFor="fullName" required>
-            Nome completo
-          </Label>
-          <Input
-            id="fullName"
-            type="text"
-            inputSize="lg"
-            placeholder="Seu nome"
-            required
-            autoComplete="name"
-            error={errors.fullName?.message}
-            errorTestId="name-error"
-            {...register("fullName", {
-              onBlur: () => {
-                if (!firedBlursRef.current.has("fullName")) {
-                  firedBlursRef.current.add("fullName");
-                  const val = (fullName ?? "").trim();
-                  // CONV-INST-002 AC2
-                  trackWithDevice("signup_field_blur", {
-                    field: "fullName",
-                    has_value: val.length > 0,
-                    value_length: val.length,
-                    has_validation_error: Boolean(errors.fullName),
-                  });
-                }
-              },
-            })}
-          />
-        </div>
+        {/* Full Name — SAB-007 AC1 (hidden on mobile — auto-filled from email) */}
+        {!isMobile && (
+          <div>
+            <Label htmlFor="fullName" required>
+              Nome completo
+            </Label>
+            <Input
+              id="fullName"
+              type="text"
+              inputSize="lg"
+              placeholder="Seu nome"
+              required
+              autoComplete="name"
+              error={errors.fullName?.message}
+              errorTestId="name-error"
+              {...register("fullName", {
+                onBlur: () => {
+                  if (!firedBlursRef.current.has("fullName")) {
+                    firedBlursRef.current.add("fullName");
+                    const val = (fullName ?? "").trim();
+                    // CONV-INST-002 AC2
+                    trackWithDevice("signup_field_blur", {
+                      field: "fullName",
+                      has_value: val.length > 0,
+                      value_length: val.length,
+                      has_validation_error: Boolean(errors.fullName),
+                    });
+                  }
+                },
+              })}
+            />
+          </div>
+        )}
 
         {/* Email */}
         <div>
@@ -335,8 +338,8 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
           )}
         </div>
 
-        {/* Phone (STORY-258) */}
-        <div>
+        {/* Phone (STORY-258) — hidden on mobile (2-field UX) */}
+        {!isMobile && (<div>
           <Label htmlFor="phone">
             Telefone <span className="text-ink-muted font-normal">(opcional)</span>
           </Label>
@@ -379,6 +382,7 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
             </p>
           )}
         </div>
+        )}
 
         {/* Password — SAB-007 AC3 */}
         <div>
@@ -477,42 +481,44 @@ export function SignupForm({ form, loading, error, onSubmit, isFormValid }: Sign
           )}
         </div>
 
-        {/* Confirm Password — SAB-007 AC4 */}
-        <div>
-          <Label htmlFor="confirmPassword" required>
-            Confirmar senha
-          </Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            inputSize="lg"
-            placeholder="Repita sua senha"
-            required
-            autoComplete="new-password"
-            state={confirmPasswordMatch ? "success" : undefined}
-            error={errors.confirmPassword?.message}
-            errorTestId="confirm-password-error"
-            {...register("confirmPassword", {
-              onBlur: () => {
-                if (!firedBlursRef.current.has("confirmPassword")) {
-                  firedBlursRef.current.add("confirmPassword");
-                  const val = confirmPassword ?? "";
-                  // CONV-INST-002 AC2 — value_length omitido: credential metadata não vai a analytics
-                  trackWithDevice("signup_field_blur", {
-                    field: "confirmPassword",
-                    has_value: val.length > 0,
-                    has_validation_error: Boolean(errors.confirmPassword),
-                  });
-                }
-              },
-            })}
-          />
-          {confirmPasswordMatch && !errors.confirmPassword && (
-            <p className="mt-1 text-xs text-green-600" data-testid="confirm-password-match">
-              &#10003; Senhas coincidem
-            </p>
-          )}
-        </div>
+        {/* Confirm Password — SAB-007 AC4 (hidden on mobile — auto-filled) */}
+        {!isMobile && (
+          <div>
+            <Label htmlFor="confirmPassword" required>
+              Confirmar senha
+            </Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              inputSize="lg"
+              placeholder="Repita sua senha"
+              required
+              autoComplete="new-password"
+              state={confirmPasswordMatch ? "success" : undefined}
+              error={errors.confirmPassword?.message}
+              errorTestId="confirm-password-error"
+              {...register("confirmPassword", {
+                onBlur: () => {
+                  if (!firedBlursRef.current.has("confirmPassword")) {
+                    firedBlursRef.current.add("confirmPassword");
+                    const val = confirmPassword ?? "";
+                    // CONV-INST-002 AC2 — value_length omitido: credential metadata não vai a analytics
+                    trackWithDevice("signup_field_blur", {
+                      field: "confirmPassword",
+                      has_value: val.length > 0,
+                      has_validation_error: Boolean(errors.confirmPassword),
+                    });
+                  }
+                },
+              })}
+            />
+            {confirmPasswordMatch && !errors.confirmPassword && (
+              <p className="mt-1 text-xs text-green-600" data-testid="confirm-password-match">
+                &#10003; Senhas coincidem
+              </p>
+            )}
+          </div>
+        )}
 
         {/* SAB-007 AC5/AC6/AC7: Submit button with tooltip, transition, spinner */}
         <div className="relative group">

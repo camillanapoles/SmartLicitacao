@@ -11,6 +11,9 @@ export interface OnboardingData {
   experiencia_licitacoes: string;
 }
 
+// COPY-COP-005: Only CNAE is mandatory for onboarding step 1
+export const MANDATORY_FIELDS = ['cnae'] as const;
+
 // CNAE suggestions for autocomplete (AC7)
 export const CNAE_SUGGESTIONS = [
   { code: "4781-4/00", label: "Comércio varejista de artigos de vestuário e acessórios" },

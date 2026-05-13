@@ -159,7 +159,7 @@ export default function OnboardingPage() {
   // Validation per step — uses value checks for button state, zod for inline errors
   const canProceed = (): boolean => {
     if (currentStep === 0) {
-      return data.cnae.trim().length > 0 && data.objetivo_principal.trim().length > 0;
+      return data.cnae.trim().length > 0;
     }
     if (currentStep === 1) {
       if (data.ufs_atuacao.length === 0) return false;
@@ -183,7 +183,6 @@ export default function OnboardingPage() {
       const profilePayload: Record<string, unknown> = {
         ufs_atuacao: data.ufs_atuacao,
         porte_empresa: data.porte_empresa,
-        experiencia_licitacoes: data.experiencia_licitacoes,
         cnae: data.cnae,
         objetivo_principal: data.objetivo_principal,
         ticket_medio_desejado: data.faixa_valor_max || null,

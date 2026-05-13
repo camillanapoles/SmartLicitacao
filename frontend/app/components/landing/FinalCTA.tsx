@@ -16,12 +16,12 @@ export default function FinalCTA({ className = '' }: FinalCTAProps) {
       <AnimateOnScroll threshold={0.3}>
         <div className="bg-brand-navy rounded-card p-10 sm:p-14 text-center text-white">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-4">
-            Licitações estão abrindo agora. E você?
+            Sua empresa pode estar perdendo o edital certo agora.
           </h2>
 
           <AnimateOnScroll delay={100}>
             <p className="text-lg sm:text-xl mb-6 text-white/80">
-              A cada dia sem filtro estratégico, editais compatíveis com sua empresa passam — e vão para outro.
+              Enquanto você decide, seus concorrentes já estão se preparando. Pare de perder oportunidades que pagam.
             </p>
           </AnimateOnScroll>
 
@@ -39,7 +39,7 @@ export default function FinalCTA({ className = '' }: FinalCTAProps) {
                 className="w-full sm:w-auto bg-white text-brand-navy hover:bg-surface-1 font-bold px-8 py-4 rounded-button transition-all hover:scale-[1.02] active:scale-[0.98] text-center text-lg focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/50"
                 data-testid="final-cta-primary"
               >
-                Testar 14 dias grátis
+                Ver oportunidades do meu setor →
               </a>
               {/* COPY-LANDING-004 (#1003): Cross-sell sutil Plano Fundadores */}
               <a
@@ -47,7 +47,7 @@ export default function FinalCTA({ className = '' }: FinalCTAProps) {
                 className="w-full sm:w-auto border border-white/40 text-white hover:bg-white/10 font-semibold px-8 py-4 rounded-button transition-all text-center text-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/50"
                 data-testid="final-cta-fundadores"
               >
-                Ou: Plano Fundadores R$997 vitalício →
+                Vagas Fundadores se encerram: R$997 vitalício →
               </a>
             </div>
           </AnimateOnScroll>
@@ -72,7 +72,7 @@ export default function FinalCTA({ className = '' }: FinalCTAProps) {
             visibleClass="opacity-100"
           >
             <p className="mt-3 text-sm text-white/50">
-              Produto completo por 14 dias. Sem cartão. Se não analisar hoje, pode perder.
+              Últimas vagas do plano vitalício R$997. Se não agir hoje, pode perder — o edital e a vaga.
             </p>
           </AnimateOnScroll>
         </div>
