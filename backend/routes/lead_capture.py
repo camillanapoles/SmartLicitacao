@@ -247,6 +247,7 @@ async def capture_lead(
     - Old sources (backward compat): stored in ``leads`` table
     - Rate limited to 3 requests/min per IP
     - Fail-open: returns success even if DB storage fails
+    - Lead magnet PDF delivery enqueued for legacy sources (LEAD-MAGNET-001)
 
     Returns 201 on success.
     """
@@ -257,5 +258,21 @@ async def capture_lead(
     else:
         # Legacy source — store in original leads table
         await _store_in_legacy_leads(req)
+
+    # Enqueue lead magnet PDF delivery (best-effort, never blocks response)
+    try:
+        from email_service import EMAIL_ENABLED
+        if EMAIL_ENABLED:
+            from job_queue import get_arq_pool
+            pool = get_arq_pool()
+            if pool:
+                await pool.enqueue_job(
+                    "send_lead_magnet_job",
+                    email=req.email.lower().strip(),
+                    setor=req.sector,
+                    uf=req.uf.upper() if req.uf else None,
+                )
+    except Exception:
+        logger.warning("lead_magnet: failed to enqueue delivery job", exc_info=True)
 
     return LeadCaptureResponse(success=True, id=inserted_id)

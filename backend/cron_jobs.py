@@ -122,3 +122,10 @@ from jobs.cron.cron_monitor import (  # noqa: F401
     run_cron_monitor,
     start_cron_monitor_task,
 )
+
+# Lead magnet PDF delivery — #1169
+from jobs.cron.send_lead_magnet import (  # noqa: F401
+    send_lead_magnet_job,
+    send_lead_magnet_batch_job,
+    start_lead_magnet_batch_task,
+)

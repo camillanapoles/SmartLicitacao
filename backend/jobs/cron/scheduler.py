@@ -18,6 +18,7 @@ from jobs.cron.pncp_canary import start_pncp_canary_task  # noqa: F401
 from jobs.cron.llm_batch_poll import start_llm_batch_poll_task  # noqa: F401
 from jobs.cron.auth_cleanup import start_auth_cleanup_task  # noqa: F401
 from jobs.cron.seo_coverage_manifest import start_seo_coverage_manifest_task  # noqa: F401
+from jobs.cron.send_lead_magnet import start_lead_magnet_batch_task  # noqa: F401
 
 
 def register_all_cron_tasks() -> list:
@@ -37,4 +38,5 @@ def register_all_cron_tasks() -> list:
         start_billing_reconciliation_task,
         start_auth_cleanup_task,
         start_seo_coverage_manifest_task,  # SEO-COVERAGE-MANIFEST-001: 06:00 UTC daily
+        start_lead_magnet_batch_task,  # LEAD-MAGNET-001: lead magnet PDF delivery batch
     ]
