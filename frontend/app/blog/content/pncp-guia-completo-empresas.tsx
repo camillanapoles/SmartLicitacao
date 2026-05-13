@@ -287,9 +287,9 @@ export default function PncpGuiaCompletoEmpresas() {
       <BlogInlineCTA
         slug="pncp-guia-completo-empresas"
         campaign="guias"
-        ctaHref="/explorar"
-        ctaText="Explorar licitações grátis"
-        ctaMessage="Descubra editais abertos no seu setor — busca gratuita"
+        ctaHref="/buscar?source=blog-pncp-guia"
+        ctaText="Ver editais do meu setor"
+        ctaMessage="Encontre editais do seu setor no PNCP com IA — sem garimpar manualmente"
       />
 
       <h2>Filtros disponíveis e como usar cada um</h2>
@@ -598,27 +598,29 @@ export default function PncpGuiaCompletoEmpresas() {
       </p>
 
       {/* CTA final — before FAQ */}
-      <div className="not-prose mt-8 sm:mt-12 bg-brand-blue-subtle dark:bg-brand-navy/20 rounded-xl p-5 sm:p-8 text-center border border-brand-blue/20">
-        <p className="text-lg sm:text-xl font-bold text-ink mb-2">
-          Vá além do PNCP — busca multi-fonte com IA
+      <div className="not-prose mt-8 sm:mt-12 bg-gradient-to-br from-brand-navy to-brand-blue rounded-xl p-5 sm:p-8 text-center text-white">
+        <p className="text-lg sm:text-xl font-bold mb-3">
+          O PNCP não filtra por setor. O SmartLic filtra.
         </p>
-        <p className="text-sm sm:text-base text-ink-secondary mb-4 sm:mb-6 max-w-lg mx-auto">
-          O SmartLic agrega PNCP, Portal de Compras Públicas e ComprasGov,
-          classifica editais por setor com inteligência artificial e avalia
-          viabilidade automaticamente. Sem custo para começar.
+        <p className="text-sm sm:text-base text-white/80 mb-5 sm:mb-6 max-w-lg mx-auto">
+          Enquanto o portal oficial lista tudo em ordem cronológica, o SmartLic
+          classifica cada edital com IA no seu setor, avalia viabilidade em 4
+          fatores e mostra só o que interessa para sua empresa.
         </p>
-        <Link
-          href="/signup?source=blog&article=pncp-guia-completo-empresas&utm_source=blog&utm_medium=cta&utm_content=pncp-guia-completo-empresas&utm_campaign=guias"
-          className="inline-block bg-brand-navy hover:bg-brand-blue-hover text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          Teste Grátis por 14 Dias
-        </Link>
-        <p className="text-xs text-ink-secondary mt-3">
-          Sem cartão de crédito. Veja todas as funcionalidades na{' '}
-          <Link href="/features" className="underline hover:text-ink">
-            página de recursos
-          </Link>.
-        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/buscar?source=blog-pncp-guia"
+            className="inline-block bg-white text-brand-navy font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Ver editais do meu setor
+          </Link>
+          <Link
+            href="/calculadora"
+            className="inline-block bg-white/10 hover:bg-white/20 border border-white/30 text-white font-medium px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all text-center"
+          >
+            Calcular oportunidades perdidas
+          </Link>
+        </div>
       </div>
 
       <h2>Perguntas Frequentes</h2>

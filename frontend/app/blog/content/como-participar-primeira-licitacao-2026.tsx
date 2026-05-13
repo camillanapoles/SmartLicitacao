@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import BlogInlineCTA from '../components/BlogInlineCTA';
+import LeadCaptureIntermediate from '@/components/blog/LeadCaptureIntermediate';
 
 /**
  * T1: Como Participar da Primeira Licitação em 2026 — Guia Completo
@@ -396,9 +397,9 @@ export default function ComoParticiparPrimeiraLicitacao2026() {
       <BlogInlineCTA
         slug="como-participar-primeira-licitacao-2026"
         campaign="guias"
-        ctaHref="/explorar"
-        ctaText="Explorar licitações grátis"
-        ctaMessage="Descubra editais abertos no seu setor — busca gratuita"
+        ctaHref="/buscar?source=blog-primeira-licitacao"
+        ctaText="Encontrar minha primeira oportunidade"
+        ctaMessage="Descubra sua primeira licitação viável — busca gratuita"
       />
 
       <h3>Passo 7 — Buscar editais relevantes no seu setor</h3>
@@ -629,6 +630,8 @@ export default function ComoParticiparPrimeiraLicitacao2026() {
         </ul>
       </div>
 
+      <LeadCaptureIntermediate />
+
       <h2>Quanto custa participar de licitações</h2>
 
       <p>
@@ -692,27 +695,21 @@ export default function ComoParticiparPrimeiraLicitacao2026() {
       </p>
 
       {/* CTA final — before FAQ */}
-      <div className="not-prose mt-8 sm:mt-12 bg-brand-blue-subtle dark:bg-brand-navy/20 rounded-xl p-5 sm:p-8 text-center border border-brand-blue/20">
-        <p className="text-lg sm:text-xl font-bold text-ink mb-2">
-          Encontre editais do seu setor em segundos
+      <div className="not-prose mt-8 sm:mt-12 bg-gradient-to-br from-brand-navy to-brand-blue rounded-xl p-5 sm:p-8 text-center text-white">
+        <p className="text-lg sm:text-xl font-bold mb-3">
+          Encontre sua primeira licitação viável em 3 minutos
         </p>
-        <p className="text-sm sm:text-base text-ink-secondary mb-4 sm:mb-6 max-w-lg mx-auto">
-          O SmartLic agrega PNCP, Portal de Compras Públicas e ComprasGov,
-          classifica por setor com IA e avalia viabilidade automaticamente.
-          Comece sem custo.
+        <p className="text-sm sm:text-base text-white/80 mb-5 sm:mb-6 max-w-lg mx-auto">
+          Filtre por setor, estado, valor e nível de dificuldade. Sem ler edital
+          de 200 páginas. Sem certidão vencida. Sem cair em pregão que sua
+          empresa não tem chance.
         </p>
         <Link
-          href="/signup?source=blog&article=como-participar-primeira-licitacao-2026&utm_source=blog&utm_medium=cta&utm_content=como-participar-primeira-licitacao-2026&utm_campaign=guias"
-          className="inline-block bg-brand-navy hover:bg-brand-blue-hover text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+          href="/buscar?source=blog-primeira-licitacao"
+          className="inline-block bg-white text-brand-navy font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
-          Teste Grátis por 14 Dias
+          Encontrar minha primeira oportunidade
         </Link>
-        <p className="text-xs text-ink-secondary mt-3">
-          Sem cartão de crédito. Veja todas as funcionalidades na{' '}
-          <Link href="/features" className="underline hover:text-ink">
-            página de recursos
-          </Link>.
-        </p>
       </div>
 
       <h2>Perguntas Frequentes</h2>

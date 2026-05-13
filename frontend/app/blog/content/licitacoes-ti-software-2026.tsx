@@ -2,6 +2,8 @@ import Link from 'next/link';
 import BlogInlineCTA from '../components/BlogInlineCTA';
 import SectorHubPanel from '@/components/blog/hubs/SectorHubPanel';
 import type { SectorHubConfig } from '@/components/blog/hubs/SectorHubPanel';
+import MicroFiltroSetorial from '@/components/blog/MicroFiltroSetorial';
+import FinalCTATI from '@/components/blog/FinalCTATI';
 
 /**
  * SEO Sector Guide S2: Licitações de TI e Software 2026 — Hub Setorial
@@ -17,7 +19,7 @@ const TI_HUB_CONFIG: SectorHubConfig = {
   title: 'Editais abertos de TI e Software — consulte agora',
   subtitle:
     'Software, hardware, suporte técnico e consultoria em TI. Filtre por UF e modalidade — dados reais do PNCP atualizados a cada hora.',
-  ctaText: 'Receber alertas de licitações de TI',
+  ctaText: 'Ver editais de TI abertos no seu estado',
   ctaHref:
     '/signup?source=ti-hub&utm_source=blog&utm_medium=hub&utm_content=licitacoes-ti-software-2026',
   subcategories: [
@@ -53,6 +55,8 @@ const TI_HUB_CONFIG: SectorHubConfig = {
 export default function LicitacoesTISoftware2026() {
   return (
     <>
+      {/* Microfiltro Setorial — acima da dobra, antes do Hub */}
+      <MicroFiltroSetorial />
       {/* Hub TI — acima da dobra com dados reais e CTAs (PSEO-HUB-002) */}
       <SectorHubPanel config={TI_HUB_CONFIG} />
       {/* FAQPage JSON-LD */}
@@ -745,29 +749,8 @@ export default function LicitacoesTISoftware2026() {
         (sistemas hospitalares, prontuário eletrônico).
       </p>
 
-      {/* CTA Section */}
-      <div className="not-prose mt-8 sm:mt-12 bg-brand-blue-subtle dark:bg-brand-navy/20 rounded-xl p-5 sm:p-8 text-center border border-brand-blue/20">
-        <p className="text-lg sm:text-xl font-bold text-ink mb-2">
-          Monitore editais de TI com inteligência — 14 dias grátis
-        </p>
-        <p className="text-sm sm:text-base text-ink-secondary mb-4 sm:mb-6 max-w-lg mx-auto">
-          O SmartLic filtra editais de tecnologia por relevância e analisa
-          viabilidade automaticamente. Pare de ler editais irrelevantes --
-          receba apenas os que fazem sentido para o seu perfil.
-        </p>
-        <Link
-          href="/signup?source=blog&article=licitações-ti-software-2026&utm_source=blog&utm_medium=cta&utm_content=licitações-ti-software-2026&utm_campaign=guias"
-          className="inline-block bg-brand-navy hover:bg-brand-blue-hover text-white font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          Teste Grátis por 14 Dias
-        </Link>
-        <p className="text-xs text-ink-secondary mt-3">
-          Sem cartão de crédito. Veja todas as funcionalidades na{' '}
-          <Link href="/features" className="underline hover:text-ink">
-            página de recursos
-          </Link>.
-        </p>
-      </div>
+      {/* CTA Section — FinalCTATI dinâmico com seletor de foco */}
+      <FinalCTATI />
 
       {/* FAQ Section */}
       <h2>Perguntas Frequentes</h2>

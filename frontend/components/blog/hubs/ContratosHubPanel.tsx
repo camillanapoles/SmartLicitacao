@@ -49,24 +49,24 @@ export default async function ContratosHubPanel() {
       {/* CTA principal — above the fold */}
       <div className="bg-gradient-to-r from-brand-navy to-brand-blue rounded-xl p-6 sm:p-8 text-white mb-6">
         <h2 className="text-xl sm:text-2xl font-bold mb-2">
-          Consulte contratos públicos por fornecedor ou órgão
+          Descubra quem compra do seu setor no governo
         </h2>
         <p className="text-white/80 text-sm sm:text-base mb-4 max-w-xl">
-          Mais de 2 milhões de contratos extraídos do PNCP. Veja histórico de
-          fornecedores, órgãos compradores e valores reais de contratação.
+          2 milhões de contratos do PNCP indexados por fornecedor, órgão, valor
+          e setor. Atualização diária.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            href="/signup?source=contratos-hub&utm_source=blog&utm_medium=hub&utm_content=contratos-pncp"
+            href="/contratos?source=blog-contratos"
             className="inline-block bg-white text-brand-navy font-semibold px-6 py-3 rounded-button text-sm transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
           >
-            Buscar contratos agora
+            Consultar contratos agora
           </Link>
           <Link
-            href="/fornecedores"
+            href="/contratos/fornecedores"
             className="inline-block bg-white/10 hover:bg-white/20 border border-white/30 text-white font-medium px-6 py-3 rounded-button text-sm transition-all text-center"
           >
-            Ver fornecedores →
+            Ver maiores fornecedores →
           </Link>
         </div>
       </div>

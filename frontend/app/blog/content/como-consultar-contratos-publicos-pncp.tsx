@@ -256,7 +256,12 @@ export default function ComoConsultarContratosPublicosPncp() {
       </p>
 
       {/* CTA at ~40% depth */}
-      <BlogInlineCTA slug="como-consultar-contratos-publicos-pncp" campaign="contratos" />
+      <BlogInlineCTA
+        slug="como-consultar-contratos-publicos-pncp"
+        campaign="contratos"
+        ctaMessage="Mapeie compradores e fornecedores do seu mercado"
+        ctaText="Consultar contratos agora"
+      />
 
       {/* Section 4: Buscar por setor */}
       <h2>Como buscar contratos por setor no PNCP</h2>
@@ -631,6 +636,37 @@ export default function ComoConsultarContratosPublicosPncp() {
         a busca principal do SmartLic integra PNCP, Portal de Compras Públicas e ComprasGov
         em uma interface única.
       </p>
+
+      {/* CTA final — before FAQ */}
+      <div className="not-prose mt-8 sm:mt-12 bg-gradient-to-br from-brand-navy to-brand-blue rounded-xl p-5 sm:p-8 text-white">
+        <p className="text-lg sm:text-xl font-bold mb-3">
+          Mapeie quem compra, quanto compra e de quem compra — antes dos seus
+          concorrentes
+        </p>
+        <p className="text-sm sm:text-base text-white/80 mb-5 max-w-lg">
+          Identifique órgãos compradores recorrentes, fornecedores dominantes,
+          valores praticados e contratos próximos do vencimento no seu setor.
+          Dados que viram proposta comercial.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <Link
+            href="/buscar?source=blog-contratos&tab=contratos"
+            className="inline-block bg-white text-brand-navy font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
+          >
+            Mapear contratos do meu mercado
+          </Link>
+          <Link
+            href="/blog/licitacoes/facilities/sp"
+            className="inline-block bg-white/10 hover:bg-white/20 border border-white/30 text-white font-medium px-5 sm:px-6 py-2.5 sm:py-3 rounded-button text-sm sm:text-base transition-all text-center"
+          >
+            Ver exemplo: contratos de Facilities em SP →
+          </Link>
+        </div>
+        <p className="text-xs text-white/60">
+          Consultorias de licitação, representantes comerciais e empresas B2G já
+          usam para prospecção.
+        </p>
+      </div>
 
       {/* FAQ Section */}
       <h2>Perguntas Frequentes</h2>
