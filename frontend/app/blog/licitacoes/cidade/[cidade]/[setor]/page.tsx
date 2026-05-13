@@ -65,7 +65,7 @@ export async function generateMetadata({
   const { cidade, setor } = await params;
   const city = getCityBySlug(cidade);
   const sector = getSectorBySlug(setor);
-  if (!city || !sector) return { title: 'Página não encontrada | SmartLic' };
+  if (!city || !sector) return { title: 'Página não encontrada' };
 
   const stats = await fetchCidadeSectorStats(city.slug, sector.id);
   const total = stats?.total_editais ?? 0;
@@ -74,7 +74,7 @@ export async function generateMetadata({
 
   const title = `Licitações de ${sector.name} em ${city.name}/${city.uf}${
     total > 0 ? ` — ${total} editais` : ''
-  } | SmartLic`;
+  }`;
   const description =
     `Encontre licitações de ${sector.name.toLowerCase()} em ${city.name} (${ufName}). ` +
     `${total > 0 ? `${total} editais ativos nos últimos 10 dias. ` : ''}` +

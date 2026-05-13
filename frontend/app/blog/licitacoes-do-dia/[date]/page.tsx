@@ -124,7 +124,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!data) {
     const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
     return {
-      title: isValidDate ? `Sem licitacoes publicadas em ${date} | SmartLic` : 'Digest Diario',
+      title: isValidDate ? `Sem licitacoes publicadas em ${date}` : 'Digest Diario',
       robots: { index: false, follow: false },
       alternates: isValidDate ? { canonical: buildCanonical(`/blog/licitacoes-do-dia/${date}`) } : undefined,
     };

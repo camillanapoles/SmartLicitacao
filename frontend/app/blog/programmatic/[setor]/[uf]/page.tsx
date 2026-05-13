@@ -48,7 +48,7 @@ export async function generateMetadata({
   const minBids = parseInt(process.env.MIN_ACTIVE_BIDS_FOR_INDEX ?? '5', 10);
   if (total < minBids) {
     return {
-      title: `Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName} | SmartLic`,
+      title: `Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}`,
       description: `Licitações de ${sector.name} ${getUfPrep(ufUpper)} ${ufName}. Dados do PNCP atualizados diariamente.`,
       robots: { index: false, follow: false },
       // SEO-440: canonical self-referencial evita herdar o canonical da homepage (layout.tsx)
