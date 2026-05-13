@@ -3668,7 +3668,14 @@ export interface paths {
         put?: never;
         /**
          * Capture Lead
-         * @description Store a lead capture from a non-authenticated visitor. New sources (COPY-COP-006): stored in lead_captures table. Rate limited to 3 requests/min per IP.
+         * @description Store a lead capture from a non-authenticated visitor.
+         *
+         *     - New sources (COPY-COP-006): stored in ``lead_captures`` table
+         *     - Old sources (backward compat): stored in ``leads`` table
+         *     - Rate limited to 3 requests/min per IP
+         *     - Fail-open: returns success even if DB storage fails
+         *
+         *     Returns 201 on success.
          */
         post: operations["capture_lead_v1_lead_capture_post"];
         delete?: never;
@@ -9105,7 +9112,12 @@ export interface components {
             /** Valor P90 */
             valor_p90?: number | null;
         };
-        /** LeadCaptureRequest */
+        /**
+         * LeadCaptureRequest
+         * @description Body for POST /v1/lead-capture.
+         *
+         *     Supports both old (backward compat) and new (COPY-COP-006) sources.
+         */
         LeadCaptureRequest: {
             /** Captured At */
             captured_at?: string | null;
@@ -9121,10 +9133,10 @@ export interface components {
             modalidade_interesse?: ("radar" | "report" | "intel" | "nao_sei") | null;
             /** Nome */
             nome?: string | null;
-            /** Referer Path */
-            referer_path?: string | null;
             /** Origin Url */
             origin_url?: string | null;
+            /** Referer Path */
+            referer_path?: string | null;
             /** Sector */
             sector?: string | null;
             /** Source */
@@ -9138,7 +9150,10 @@ export interface components {
             /** Utm Source */
             utm_source?: string | null;
         };
-        /** LeadCaptureResponse */
+        /**
+         * LeadCaptureResponse
+         * @description Body for POST /v1/lead-capture (201).
+         */
         LeadCaptureResponse: {
             /** Id */
             id?: string | null;
