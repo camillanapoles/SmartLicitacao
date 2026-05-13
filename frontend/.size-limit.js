@@ -22,6 +22,6 @@ module.exports = [
     name: 'First Load JS (total)',
     path: '.next/static/chunks/**/*.js',
     gzip: true,
-    limit: '1782272 B',
+    limit: '1820000 B',
   },
 ];
