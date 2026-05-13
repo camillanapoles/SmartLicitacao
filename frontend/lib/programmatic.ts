@@ -186,8 +186,7 @@ export async function fetchSectorBlogStats(sectorSlug: string): Promise<SectorBl
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/setor/${sectorId}`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -209,8 +208,7 @@ export async function fetchSectorUfBlogStats(
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/setor/${sectorId}/uf/${uf.toUpperCase()}`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -229,8 +227,7 @@ export async function fetchPanoramaStats(sectorSlug: string): Promise<PanoramaSt
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/panorama/${sectorId}`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -580,8 +577,7 @@ export async function fetchAlertasPublicos(
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await ssgLimitedFetch(`${backendUrl}/v1/alertas/${sectorId}/uf/${uf.toUpperCase()}`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -835,8 +831,7 @@ export async function fetchContratosSetorStats(sectorSlug: string): Promise<Cont
   try {
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await ssgLimitedFetch(`${backendUrl}/v1/blog/stats/contratos/${sectorId}`, {
-      next: { revalidate: 86400 },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!res.ok) return null;
     return res.json();

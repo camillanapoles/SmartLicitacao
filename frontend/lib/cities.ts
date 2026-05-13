@@ -120,7 +120,7 @@ export async function fetchCidadeStats(citySlug: string): Promise<CidadeStats | 
   try {
     const res = await fetch(
       `${backendUrl}/v1/blog/stats/cidade/${encodeURIComponent(citySlug)}`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
+      { signal: AbortSignal.timeout(25000) },
     );
     if (!res.ok) return null;
     return (await res.json()) as CidadeStats;
@@ -169,7 +169,7 @@ export async function fetchCidadeSectorStats(
   try {
     const res = await fetch(
       `${backendUrl}/v1/blog/stats/cidade/${encodeURIComponent(citySlug)}/setor/${encodeURIComponent(sectorId)}`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
+      { signal: AbortSignal.timeout(25000) },
     );
     if (!res.ok) return null;
     return (await res.json()) as CidadeSectorStats;

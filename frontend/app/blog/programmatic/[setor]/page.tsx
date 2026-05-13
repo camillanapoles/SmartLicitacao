@@ -29,7 +29,7 @@ import {
  * - Contextual CTA
  */
 
-export const revalidate = 3600; // 24h ISR
+export const revalidate = 3600; // 1h ISR
 
 export function generateStaticParams() {
   return generateSectorParams();

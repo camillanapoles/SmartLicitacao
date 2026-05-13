@@ -80,7 +80,7 @@ const MODALIDADE_MAP: Record<number, { name: string; slug: string; description: 
   },
 };
 
-export const revalidate = 3600; // 24h ISR
+export const revalidate = 3600; // 1h ISR
 
 export function generateStaticParams() {
   return generateLicitacoesParams();

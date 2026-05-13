@@ -23,7 +23,7 @@ import {
  * ISR 24h. Generates 15 sectors × 27 UFs = 405 pages.
  */
 
-export const revalidate = 3600; // 24h ISR
+export const revalidate = 3600; // 1h ISR
 
 export function generateStaticParams() {
   return generateSectorUfParams();

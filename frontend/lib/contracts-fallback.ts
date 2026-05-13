@@ -87,7 +87,7 @@ export async function fetchContratosSetorUfStats(
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await ssgLimitedFetch(
       `${backendUrl}/v1/blog/stats/contratos/${sectorId}/uf/${uf.toUpperCase()}`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
+      { signal: AbortSignal.timeout(25000) },
     );
     if (!res.ok) return null;
     return await res.json();
@@ -105,7 +105,7 @@ export async function fetchContratosCidadeStats(
   try {
     const res = await ssgLimitedFetch(
       `${backendUrl}/v1/blog/stats/contratos/cidade/${encodeURIComponent(cidadeSlug)}`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
+      { signal: AbortSignal.timeout(25000) },
     );
     if (!res.ok) return null;
     return await res.json();
@@ -125,7 +125,7 @@ export async function fetchContratosCidadeSetorStats(
     const sectorId = SECTOR_SLUG_TO_BACKEND_ID[sectorSlug] ?? sectorSlug.replace(/-/g, '_');
     const res = await ssgLimitedFetch(
       `${backendUrl}/v1/blog/stats/contratos/cidade/${encodeURIComponent(cidadeSlug)}/setor/${sectorId}`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) },
+      { signal: AbortSignal.timeout(25000) },
     );
     if (!res.ok) return null;
     return await res.json();
