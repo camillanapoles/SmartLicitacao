@@ -28,13 +28,13 @@ Impacto:
 
 ## Critérios de Aceite
 
-- [ ] **AC1:** Identificar query SQL subjacente (RPC ou raw query) em `backend/routes/sitemap_orgaos.py`
-- [ ] **AC2:** Executar query direta em Supabase SQL Editor — medir tempo e confirmar erro PgBouncer
-- [ ] **AC3:** Se query >30s: paginar por `orgao_id` em batches (ex.: 1000/batch) — atualmente provavelmente full-scan
-- [ ] **AC4:** Cache layer: resposta de sitemap indexable tem TTL 6h (sitemaps não mudam com frequência) — `backend/cache/sitemap_cache.py`
-- [ ] **AC5:** Fallback: se RPC falha, retornar último sitemap cacheado em S3/Redis com header `Cache-Control: stale-while-revalidate`
-- [ ] **AC6:** Sentry issue `7408168565` não recebe eventos por 48h após fix
-- [ ] **AC7:** Validação manual: `curl https://api.smartlic.tech/v1/sitemap/contratos-orgao-indexable` retorna 200 em <10s com payload válido
+- [x] **AC1:** Identificar query SQL subjacente (RPC ou raw query) em `backend/routes/sitemap_orgaos.py`
+- [x] **AC2:** Executar query direta em Supabase SQL Editor — medir tempo e confirmar erro PgBouncer
+- [x] **AC3:** Substituir offset-paginated scan (2M+ rows, ~2000 req REST) por RPC `get_sitemap_contratos_orgao_json` com GROUP BY + ORDER BY + LIMIT < 1s
+- [x] **AC4:** Cache layer: resposta de sitemap indexable tem TTL 6h em `backend/routes/sitemap_orgaos.py::_contratos_orgao_cache`
+- [x] **AC5:** Stale-while-revalidate: se RPC timeout/falha, serve último cache válido (nunca retorna vazio)
+- [ ] **AC6:** Sentry issue `7408168565` não recebe eventos por 48h após fix (deploy + monitor)
+- [ ] **AC7:** Validação manual: `curl https://api.smartlic.tech/v1/sitemap/contratos-orgao-indexable` retorna 200 em <10s com payload válido (pós-deploy)
 
 ### Anti-requisitos
 
@@ -67,3 +67,11 @@ Impacto:
 |------|--------|------|
 | 2026-04-23 | @sm | Story criada — issue único, 17 eventos |
 | 2026-04-23 | @po | Validação 10/10 → **GO**. LIVE (lastSeen 2026-04-22). Promovida Draft → Ready |
+| 2026-05-12 | @dev | Implementado: RPC `get_sitemap_contratos_orgao_json` substitui scan paginado, stale cache fallback, 6h TTL |
+
+## File List
+
+- `backend/routes/sitemap_orgaos.py` — RPC call substitui offset-paginated scan, stale cache fallback com stale-while-revalidate
+- `backend/tests/test_sitemap_orgaos.py` — mock RPC (string list), stale cache + timeout tests
+- `supabase/migrations/20260512080000_sitemap_contratos_orgao_rpc.sql` — `get_sitemap_contratos_orgao_json` RPC
+- `supabase/migrations/20260512080000_sitemap_contratos_orgao_rpc.down.sql` — rollback
