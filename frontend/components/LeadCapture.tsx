@@ -39,7 +39,7 @@ export function LeadCapture({ source, heading, description, setor, uf }: LeadCap
     return (
       <div className="rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-6 text-center">
         <p className="text-green-800 dark:text-green-200 font-medium">
-          Pronto! Você receberá as análises no seu email.
+          Pronto! Seu guia de oportunidades B2G chegará em instantes.
         </p>
       </div>
     );

@@ -208,7 +208,7 @@ export default function DiagnosticForm({
         data-testid="diagnostic-form-success"
       >
         <p className="text-green-800 dark:text-green-200 font-medium">
-          Recebemos seu contato! Retornaremos em até 48 horas.
+          Diagnóstico solicitado! Você receberá seu guia personalizado em instantes e nossa equipe retornará em até 48 horas.
         </p>
       </div>
     );

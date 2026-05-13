@@ -54,10 +54,7 @@ export default function MasterclassClient({ tema, title, topics }: MasterclassCl
               </svg>
             </div>
             <div>
-              <p className="text-lg font-bold text-ink-primary">Em breve — masterclass em produção</p>
-              <p className="mt-1 text-sm text-ink-secondary">
-                Você será notificado por email quando a masterclass estiver disponível.
-              </p>
+              <p className="text-lg font-bold text-ink-primary">Inscrição confirmada! Você receberá o conteúdo em primeira mão.</p>
             </div>
           </div>
         </div>
