@@ -27,7 +27,6 @@ BIZ-FOUND-002 changes:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 
@@ -39,7 +38,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from metrics import FOUNDING_CHECKOUTS_TOTAL
 from rate_limiter import require_rate_limit
-from supabase_client import get_supabase
+from supabase_client import get_supabase, sb_execute
 
 
 logger = logging.getLogger(__name__)
@@ -166,40 +165,41 @@ def _mask_email(email: str) -> str:
     return f"{local[:2]}****@{domain}"
 
 
-def _already_registered(sb, email: str) -> bool:
+async def _already_registered(sb, email: str) -> bool:
     """Return True if the email already owns a profile. Best-effort, non-blocking."""
     try:
-        res = sb.table("profiles").select("id").eq("email", email).limit(1).execute()
+        res = await sb_execute(
+            sb.table("profiles").select("id").eq("email", email).limit(1)
+        )
         return bool(res.data)
     except Exception as e:
         logger.warning(f"founding: profile lookup failed (non-blocking): {e}")
         return False
 
 
-def _get_session_lead(sb, session_id: str) -> dict | None:
+async def _get_session_lead(sb, session_id: str) -> dict | None:
     """Return founding_leads row for the given Stripe checkout session ID.
 
     Returns ``None`` when not found. Raises on unexpected DB errors.
     """
-    res = (
+    res = await sb_execute(
         sb.table("founding_leads")
         .select("email, checkout_status, magic_link_sent_at, created_at")
         .eq("checkout_session_id", session_id)
         .limit(1)
-        .execute()
     )
     rows = res.data or []
     return rows[0] if rows else None
 
 
-def _check_availability(sb) -> dict[str, Any]:
+async def _check_availability(sb) -> dict[str, Any]:
     """Call ``check_founding_availability()`` RPC; return normalized dict.
 
     On any DB error returns ``available=False`` with reason ``'unavailable'``
     so the route fails closed (never accidentally over-sell the cohort).
     """
     try:
-        res = sb.rpc("check_founding_availability").execute()
+        res = await sb_execute(sb.rpc("check_founding_availability"), category="rpc")
         rows = getattr(res, "data", None) or []
         if not rows:
             logger.warning("founding: check_founding_availability returned empty")
@@ -292,7 +292,7 @@ async def founding_availability(response: Response) -> Any:
 
     sb = get_supabase()
     snapshot = await _run_with_budget(
-        asyncio.to_thread(_check_availability, sb),
+        _check_availability(sb),
         budget=3.0,
         phase="route",
         source="founding.availability",
@@ -378,12 +378,9 @@ async def founding_session_status(
 
     sb = get_supabase()
 
-    def _fetch():
-        return _get_session_lead(sb, session_id)
-
     try:
         lead = await _run_with_budget(
-            asyncio.to_thread(_fetch),
+            _get_session_lead(sb, session_id),
             budget=5.0,
             phase="route",
             source="founding.session_status",
@@ -436,7 +433,7 @@ async def founding_session_status(
     has_account = False
     if email:
         try:
-            has_account = await asyncio.to_thread(_already_registered, sb, email)
+            has_account = await _already_registered(sb, email)
         except Exception as exc:
             logger.warning(
                 f"founding: session-status profile check failed (non-blocking): {exc}"
@@ -501,7 +498,7 @@ async def founding_checkout(
     # Evaluated BEFORE Stripe config checks so that 410 responses are always
     # returned correctly even in environments without Stripe configured (e.g. tests).
     snapshot = await _run_with_budget(
-        asyncio.to_thread(_check_availability, sb),
+        _check_availability(sb),
         budget=3.0,
         phase="route",
         source="founding.checkout_gate",
@@ -523,7 +520,7 @@ async def founding_checkout(
             },
         )
 
-    if await asyncio.to_thread(_already_registered, sb, payload.email):
+    if await _already_registered(sb, payload.email):
         raise HTTPException(
             status_code=409,
             detail="Este email já possui conta SmartLic. Faça login para gerenciar sua assinatura.",
@@ -561,11 +558,8 @@ async def founding_checkout(
         "user_agent": request.headers.get("user-agent", "")[:500],
     }
 
-    def _insert_lead():
-        return sb.table("founding_leads").insert(lead_row).execute()
-
     lead_insert = await _run_with_budget(
-        asyncio.to_thread(_insert_lead),
+        sb_execute(sb.table("founding_leads").insert(lead_row), category="write"),
         budget=5.0,
         phase="route",
         source="founding.checkout.insert_lead",
@@ -620,16 +614,13 @@ async def founding_checkout(
     try:
         _session_id = session.id
 
-        def _update_session_id():
-            return (
+        await _run_with_budget(
+            sb_execute(
                 sb.table("founding_leads")
                 .update({"checkout_session_id": _session_id})
-                .eq("id", lead_id)
-                .execute()
-            )
-
-        await _run_with_budget(
-            asyncio.to_thread(_update_session_id),
+                .eq("id", lead_id),
+                category="write",
+            ),
             budget=5.0,
             phase="route",
             source="founding.checkout.update_session_id",
