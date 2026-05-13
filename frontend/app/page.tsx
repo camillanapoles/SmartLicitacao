@@ -15,7 +15,7 @@ import OpportunityPreview from './components/landing/OpportunityPreview';
 import { TrendingEditais } from './components/landing/TrendingEditais';
 import Footer from './components/Footer';
 import { HomeFaqStructuredData } from './components/HomeFaqStructuredData';
-import ExitIntentPopup from './components/ExitIntentPopup';
+import { ExitIntentPopup } from './components/ExitIntentPopup';
 
 export default function LandingPage() {
   return (
