@@ -69,7 +69,8 @@
         "sentry.*.config.ts",
         "next.config.js",
         "scripts/**/*",
-        "e2e-tests/**/*"
+        "e2e-tests/**/*",
+        "app/api-types.generated.ts"
       ],
       "rules": {
         "no-restricted-syntax": "off",
