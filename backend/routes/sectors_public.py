@@ -37,6 +37,10 @@ router = APIRouter(
 
 # AC2: 6h InMemory cache
 _CACHE_TTL_SECONDS = 6 * 60 * 60
+# 5min negative cache (DB timeout / failure path) — same pattern as blog_stats.
+# Stops Googlebot retry-storm from re-saturating Supabase pool while letting the
+# next crawl wave probe again after a short window.
+_NEGATIVE_CACHE_TTL_SECONDS = 5 * 60
 _stats_cache: dict[str, tuple[dict, float]] = {}
 
 
@@ -188,7 +192,12 @@ async def get_sector_stats(slug: str):
 
     # Generate on-demand if cache miss
     stats = await _generate_sector_stats(sector_id, sector)
-    _set_cached_stats(sector_id, stats)
+    # ISSUE-1191: empty results (from _SEO_SEMAPHORE timeout inside
+    # query_datalake) MUST use negative-cache TTL — the full 6h TTL would
+    # bake a stale-zero into _stats_cache and make /licitacoes/* pages
+    # show zero editais for hours despite the data existing.
+    has_data = stats.get("total_open", 0) > 0
+    _set_cached_stats(sector_id, stats, ttl=_NEGATIVE_CACHE_TTL_SECONDS if not has_data else _CACHE_TTL_SECONDS)
 
     return SectorStatsResponse(**stats)
 
@@ -201,15 +210,15 @@ def _get_cached_stats(sector_id: str) -> Optional[dict]:
     """Return cached stats if still fresh (< 6h)."""
     if sector_id not in _stats_cache:
         return None
-    data, ts = _stats_cache[sector_id]
-    if time.time() - ts >= _CACHE_TTL_SECONDS:
+    data, ts, ttl = _stats_cache[sector_id]
+    if time.time() - ts >= ttl:
         del _stats_cache[sector_id]
         return None
     return data
 
 
-def _set_cached_stats(sector_id: str, data: dict) -> None:
-    _stats_cache[sector_id] = (data, time.time())
+def _set_cached_stats(sector_id: str, data: dict, ttl: float = _CACHE_TTL_SECONDS) -> None:
+    _stats_cache[sector_id] = (data, time.time(), ttl)
 
 
 def invalidate_all_stats() -> None:
@@ -346,7 +355,9 @@ async def refresh_all_sector_stats() -> int:
     for sector_id, sector in SECTORS.items():
         try:
             stats = await _generate_sector_stats(sector_id, sector)
-            _set_cached_stats(sector_id, stats)
+            # ISSUE-1191: same negative-cache guard as get_sector_stats
+            has_data = stats.get("total_open", 0) > 0
+            _set_cached_stats(sector_id, stats, ttl=_NEGATIVE_CACHE_TTL_SECONDS if not has_data else _CACHE_TTL_SECONDS)
             refreshed += 1
             logger.info("Refreshed sector stats: %s (%d items)", sector_id, stats["total_open"])
         except Exception as e:
