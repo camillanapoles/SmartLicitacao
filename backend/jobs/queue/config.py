@@ -172,6 +172,17 @@ class WorkerSettings:
     except ImportError:
         _founders_functions = []
 
+    # Lead magnet PDF delivery jobs
+    try:
+        from jobs.cron.send_lead_magnet import send_lead_magnet_job as _send_lead_magnet_job
+        from jobs.cron.send_lead_magnet import send_lead_magnet_batch_job as _send_lead_magnet_batch_job
+        _lead_magnet_functions = [_send_lead_magnet_job, _send_lead_magnet_batch_job]
+    except ImportError:
+        logger.exception(
+            "Lead magnet jobs not registered; queued lead-magnet jobs will silently fail"
+        )
+        _lead_magnet_functions = []
+
     functions = [
         llm_summary_job, excel_generation_job, search_job,
         bid_analysis_job, daily_digest_job, email_alerts_job,
@@ -182,6 +193,7 @@ class WorkerSettings:
         *_ingestion_functions,
         *_monitoring_functions,
         *_founders_functions,
+        *_lead_magnet_functions,
     ]
     cron_jobs = _worker_cron_jobs
     on_startup = _worker_on_startup

@@ -53,13 +53,23 @@ export async function POST(request: NextRequest) {
     });
 
     if (!res.ok) {
-      console.warn(`Lead capture backend returned ${res.status} — storing locally only`);
+      const requestId = res.headers.get('x-request-id');
+      console.warn('Lead capture backend returned non-OK response', {
+        status: res.status,
+        requestId,
+      });
+      return NextResponse.json(
+        { success: false, error: `Erro ao processar (${res.status})` },
+        { status: 502 },
+      );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Lead capture error:', error);
-    // Still return success — we don't want to block the UX
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { success: false, error: 'Serviço indisponível. Tente novamente.' },
+      { status: 502 },
+    );
   }
 }
