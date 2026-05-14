@@ -53,8 +53,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!res.ok) {
-      const errorBody = await res.text();
-      console.warn(`Lead capture backend returned ${res.status}: ${errorBody}`);
+      const requestId = res.headers.get('x-request-id');
+      console.warn('Lead capture backend returned non-OK response', {
+        status: res.status,
+        requestId,
+      });
       return NextResponse.json(
         { success: false, error: `Erro ao processar (${res.status})` },
         { status: 502 },

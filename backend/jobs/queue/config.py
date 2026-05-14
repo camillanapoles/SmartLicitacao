@@ -178,6 +178,9 @@ class WorkerSettings:
         from jobs.cron.send_lead_magnet import send_lead_magnet_batch_job as _send_lead_magnet_batch_job
         _lead_magnet_functions = [_send_lead_magnet_job, _send_lead_magnet_batch_job]
     except ImportError:
+        logger.exception(
+            "Lead magnet jobs not registered; queued lead-magnet jobs will silently fail"
+        )
         _lead_magnet_functions = []
 
     functions = [
