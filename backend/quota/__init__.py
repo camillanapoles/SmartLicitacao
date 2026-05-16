@@ -57,9 +57,11 @@ from quota.plan_enforcement import (
     create_legacy_quota_info,
     get_active_plan_dependency,
     get_plan_from_profile,
+    get_subcontract_intel_dependency,
     get_trial_phase,
     register_search_session,
     require_active_plan,
+    requires_subcontract_intel,
     save_search_session,
     update_search_session_status,
 )
@@ -109,9 +111,11 @@ __all__ = [
     "create_legacy_quota_info",
     "get_active_plan_dependency",
     "get_plan_from_profile",
+    "get_subcontract_intel_dependency",
     "get_trial_phase",
     "register_search_session",
     "require_active_plan",
+    "requires_subcontract_intel",
     "save_search_session",
     "update_search_session_status",
 ]

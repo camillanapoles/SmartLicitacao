@@ -90,6 +90,7 @@ class PlanCapabilities(TypedDict):
     max_history_days: int
     allow_excel: bool
     allow_pipeline: bool  # STORY-250: Pipeline de Oportunidades
+    allow_subcontract_intel: bool  # SUBINTEL-030: Inteligência de Cadeia de Fornecimento (default off, additive)
     max_requests_per_month: int
     max_requests_per_min: int
     max_summary_tokens: int
@@ -102,6 +103,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 365,  # GTM-003: 1 year (same as smartlic_pro)
         "allow_excel": True,  # GTM-003: Full product during trial
         "allow_pipeline": True,  # GTM-003: Full product during trial
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 1000,  # STORY-264 AC1: Full access (same as smartlic_pro)
         "max_requests_per_min": 2,  # STORY-264 AC2: Anti-abuse rate limit kept
         "max_summary_tokens": 10000,  # GTM-003: Full AI analysis (same as smartlic_pro)
@@ -111,6 +113,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 30,
         "allow_excel": False,
         "allow_pipeline": False,  # STORY-250
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 50,
         "max_requests_per_min": 10,
         "max_summary_tokens": 200,
@@ -120,6 +123,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 365,
         "allow_excel": True,
         "allow_pipeline": True,  # STORY-250
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 300,
         "max_requests_per_min": 30,
         "max_summary_tokens": 500,
@@ -129,6 +133,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 1825,  # 5 years
         "allow_excel": True,
         "allow_pipeline": True,  # STORY-250
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
@@ -138,6 +143,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 1825,  # 5 years
         "allow_excel": True,
         "allow_pipeline": True,
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
@@ -148,6 +154,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 1825,  # 5 years
         "allow_excel": True,
         "allow_pipeline": True,
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
@@ -158,6 +165,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 1825,  # 5 years
         "allow_excel": True,
         "allow_pipeline": True,
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 5000,  # 1000 x 5 members
         "max_requests_per_min": 10,  # Rate limit per org
         "max_summary_tokens": 10000,
@@ -168,6 +176,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 7,
         "allow_excel": False,
         "allow_pipeline": False,
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 10,
         "max_requests_per_min": 2,
         "max_summary_tokens": 200,
@@ -177,6 +186,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_history_days": 99999,
         "allow_excel": True,
         "allow_pipeline": True,
+        "allow_subcontract_intel": False,  # SUBINTEL-030
         "max_requests_per_month": 99999,
         "max_requests_per_min": 120,
         "max_summary_tokens": 10000,
@@ -239,6 +249,7 @@ _UNKNOWN_PLAN_DEFAULTS = PlanCapabilities(
     max_history_days=30,
     allow_excel=False,
     allow_pipeline=False,  # STORY-250
+    allow_subcontract_intel=False,  # SUBINTEL-030
     max_requests_per_month=10,
     max_requests_per_min=5,
     max_summary_tokens=200,
@@ -272,6 +283,9 @@ def _coerce_capabilities_row(plan_id: str, raw: Optional[dict], max_searches: Op
             max_history_days=int(raw["max_history_days"]),
             allow_excel=bool(raw["allow_excel"]),
             allow_pipeline=bool(raw["allow_pipeline"]),
+            # SUBINTEL-030: optional jsonb key — defaults False when absent so
+            # existing DB rows without it still coerce (non-regression).
+            allow_subcontract_intel=bool(raw.get("allow_subcontract_intel", False)),
             # max_searches column wins when set (legacy override path)
             max_requests_per_month=int(max_searches) if max_searches else int(raw["max_requests_per_month"]),
             max_requests_per_min=int(raw["max_requests_per_min"]),
@@ -334,6 +348,7 @@ def _load_plan_capabilities_from_db() -> dict[str, PlanCapabilities]:
                         max_history_days=base_caps["max_history_days"],
                         allow_excel=base_caps["allow_excel"],
                         allow_pipeline=base_caps["allow_pipeline"],
+                        allow_subcontract_intel=base_caps.get("allow_subcontract_intel", False),  # SUBINTEL-030
                         max_requests_per_month=int(max_searches) if max_searches else base_caps["max_requests_per_month"],
                         max_requests_per_min=base_caps["max_requests_per_min"],
                         max_summary_tokens=base_caps["max_summary_tokens"],
@@ -348,6 +363,7 @@ def _load_plan_capabilities_from_db() -> dict[str, PlanCapabilities]:
                         max_history_days=_UNKNOWN_PLAN_DEFAULTS["max_history_days"],
                         allow_excel=_UNKNOWN_PLAN_DEFAULTS["allow_excel"],
                         allow_pipeline=_UNKNOWN_PLAN_DEFAULTS["allow_pipeline"],
+                        allow_subcontract_intel=_UNKNOWN_PLAN_DEFAULTS["allow_subcontract_intel"],  # SUBINTEL-030
                         max_requests_per_month=int(max_searches) if max_searches else _UNKNOWN_PLAN_DEFAULTS["max_requests_per_month"],
                         max_requests_per_min=_UNKNOWN_PLAN_DEFAULTS["max_requests_per_min"],
                         max_summary_tokens=_UNKNOWN_PLAN_DEFAULTS["max_summary_tokens"],

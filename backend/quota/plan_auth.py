@@ -176,3 +176,93 @@ def get_active_plan_dependency():
         return await require_active_plan(user)
 
     return _dep
+
+
+# ============================================================================
+# SUBINTEL-030 (EPIC-SUBINTEL #1224): Subcontracting Intelligence gate
+# ============================================================================
+
+_SUBCONTRACT_INTEL_UPSELL = {
+    "message": "Inteligência de Cadeia de Fornecimento disponível no plano SmartLic Insight.",
+    "error_code": "subcontract_intel_not_available",
+    "upgrade_cta": "Conhecer o SmartLic Insight",
+    "suggested_plan": "smartlic_insight",
+}
+
+
+async def requires_subcontract_intel(user: dict) -> dict:
+    """FastAPI dependency: gate for the Subcontracting Intelligence vertical.
+
+    SUBINTEL-030 — strictly additive, two-stage gate consumed by every
+    ``/v1/subcontract/*`` endpoint (SUBINTEL-010+):
+
+      1. Global feature flag ``SUBCONTRACT_INTEL_ENABLED``. When OFF the whole
+         vertical is inert — the endpoint behaves as if it does not exist
+         (HTTP 404), so production is unaffected until the flag is flipped.
+      2. Plan capability ``allow_subcontract_intel``. Only plans that opt in
+         (the SmartLic Insight tier — SUBINTEL-031) pass; everyone else gets
+         an upsell HTTP 403. Master/admin always bypass.
+
+    Default state (flag off, capability ``False`` on every existing plan) is
+    behaviourally identical to this dependency not existing — no regression.
+
+    Security posture: this is a paid premium gate, so it FAILS CLOSED on
+    transient backend errors (unlike ``require_active_plan`` which is
+    intentionally fail-open). ``check_quota`` itself already degrades to
+    ``free_trial`` on DB errors, whose capability is ``False`` → 403.
+    """
+    from fastapi import HTTPException
+    from authorization import has_master_access
+    from config.features import get_feature_flag
+    from quota.plan_enforcement import check_quota
+    from supabase_client import CircuitBreakerOpenError
+
+    user_id = user["id"]
+
+    # Stage 1: global kill-switch. Off ⇒ route is inert (404), as if unmounted.
+    if not get_feature_flag("SUBCONTRACT_INTEL_ENABLED"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    # Master/admin always bypass the capability gate (mirrors require_active_plan).
+    try:
+        if await has_master_access(user_id):
+            return user
+    except Exception:
+        # Fail-closed: do NOT grant access on a failed master check. Fall
+        # through to the capability check below.
+        pass
+
+    try:
+        quota_info = await asyncio.to_thread(check_quota, user_id)
+    except CircuitBreakerOpenError:
+        # Premium gate must not open on transient DB unavailability.
+        raise HTTPException(status_code=403, detail=_SUBCONTRACT_INTEL_UPSELL)
+
+    caps = getattr(quota_info, "capabilities", None) or {}
+    if not caps.get("allow_subcontract_intel", False):
+        track_funnel_event(
+            "paywall_hit",
+            user_id=user_id,
+            properties={
+                "reason": "subcontract_intel_not_available",
+                "plan_id": getattr(quota_info, "plan_id", None),
+            },
+        )
+        raise HTTPException(status_code=403, detail=_SUBCONTRACT_INTEL_UPSELL)
+
+    return user
+
+
+def get_subcontract_intel_dependency():
+    """FastAPI Depends factory chaining require_auth → requires_subcontract_intel.
+
+    Endpoints in the future ``/v1/subcontract/*`` router (SUBINTEL-010+) use
+    this so the gate is enforced consistently across the vertical.
+    """
+    from fastapi import Depends
+    from auth import require_auth
+
+    async def _dep(user: dict = Depends(require_auth)):
+        return await requires_subcontract_intel(user)
+
+    return _dep

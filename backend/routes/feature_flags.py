@@ -207,6 +207,7 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "MESSAGES_ENABLED": "Messaging system",
     "ALERTS_SYSTEM_ENABLED": "Alerts system feature (unreleased)",
     "PARTNERS_ENABLED": "Partners feature (unreleased)",
+    "SUBCONTRACT_INTEL_ENABLED": "Subcontracting / supply-chain intelligence vertical (EPIC-SUBINTEL #1224, unreleased)",
     # Infra
     "METRICS_ENABLED": "Prometheus metrics collection",
     "RATE_LIMITING_ENABLED": "Redis token-bucket rate limiting",
@@ -289,6 +290,8 @@ _FLAG_LIFECYCLE: dict[str, dict] = {
     "EMBEDDING_ENABLED": {"owner": "search", "category": "search", "lifecycle": "experimental", "created": "2026-03"},
     # BIZ-FOUND-002: Founders lifetime offer kill switch
     "FOUNDERS_OFFER_ENABLED": {"owner": "billing", "category": "founding", "lifecycle": "temporary", "created": "2026-05"},
+    # SUBINTEL-030 (EPIC-SUBINTEL #1224): subcontracting intelligence vertical
+    "SUBCONTRACT_INTEL_ENABLED": {"owner": "product", "category": "subcontract", "lifecycle": "experimental", "created": "2026-05"},
 }
 
 

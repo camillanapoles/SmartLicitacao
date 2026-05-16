@@ -450,6 +450,8 @@ from quota.plan_auth import (
     require_active_plan,
     _require_active_plan_dep,
     get_active_plan_dependency,
+    requires_subcontract_intel,
+    get_subcontract_intel_dependency,
 )
 
 
