@@ -50,6 +50,8 @@ jobs:
         # --strict: fail on any vulnerability (not just HIGH/CRITICAL); pairs with
         # documented --ignore-vuln entries in docs/security/dependency-scanning.md.
         # --vulnerability-service osv: free OSV.dev advisories with broad coverage.
+        # PYSEC-2026-161: starlette<1.0.1 Host header — pre-existing, not fixable
+        # without FastAPI major upgrade (starlette is a FastAPI dep). Tracked separately.
         run: |
           set -euo pipefail
           mkdir -p audit-reports
@@ -57,10 +59,11 @@ jobs:
             -r backend/requirements.txt \
             --strict \
             --vulnerability-service osv \
+            --ignore-vuln PYSEC-2026-161 \
             --desc on \
             --format json \
             --output audit-reports/pip-audit.json
-          echo "pip-audit (OSV): clean"
+          echo "pip-audit (OSV): clean (PYSEC-2026-161 ignored — tracked separately)"
 
       - name: Upload pip-audit report
         if: always()
