@@ -12,25 +12,27 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    v_total bigint := 0;
-    v_item  jsonb;
 BEGIN
-    FOR v_item IN SELECT * FROM jsonb_array_elements(p_mapping)
-    LOOP
-        WITH updated AS (
-            UPDATE pncp_raw_bids
-            SET codigo_municipio_ibge = (v_item->>'codigo'),
-                updated_at = now()
-            WHERE is_active = true
-              AND LOWER(municipio) = LOWER(v_item->>'nome')
-              AND UPPER(uf) = UPPER(v_item->>'uf')
-              AND (codigo_municipio_ibge IS NULL OR codigo_municipio_ibge = '')
-            RETURNING 1
-        )
-        SELECT v_total + count(*) INTO v_total FROM updated;
-    END LOOP;
-
-    RETURN QUERY SELECT v_total;
+    WITH mapping AS (
+        SELECT
+            (item->>'nome')  AS nome,
+            (item->>'uf')    AS uf,
+            (item->>'codigo') AS codigo
+        FROM jsonb_array_elements(p_mapping) AS item
+    ),
+    updated AS (
+        UPDATE pncp_raw_bids b
+        SET codigo_municipio_ibge = m.codigo,
+            updated_at = now()
+        FROM mapping m
+        WHERE b.is_active = true
+          AND LOWER(b.municipio) = LOWER(m.nome)
+          AND UPPER(b.uf) = UPPER(m.uf)
+          AND (b.codigo_municipio_ibge IS NULL OR b.codigo_municipio_ibge = '')
+        RETURNING 1
+    )
+    RETURN QUERY
+    SELECT count(*)::bigint AS rows_updated
+    FROM updated;
 END;
 $$;

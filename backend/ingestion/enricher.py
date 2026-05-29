@@ -487,19 +487,51 @@ async def _fetch_ibge_municipio_lookup() -> dict[tuple[str, str], str]:
 
     logger.info("[EnricherIBGE] Fetching full municipios list from IBGE API...")
     lookup: dict[tuple[str, str], str] = {}
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(
-            f"{_IBGE_API_BASE}/v1/localidades/municipios",
-            follow_redirects=True,
-        )
-        if resp.status_code != 200:
+
+    # Simple retry with exponential backoff: 1s → 2s → 4s
+    max_retries = 3
+    last_error: str | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(
+                    f"{_IBGE_API_BASE}/v1/localidades/municipios",
+                    follow_redirects=True,
+                )
+                if resp.status_code != 200:
+                    last_error = f"HTTP {resp.status_code}"
+                    if attempt < max_retries:
+                        delay = 2 ** attempt
+                        logger.warning(
+                            "[EnricherIBGE] IBGE API returned %d (attempt %d/%d) — retrying in %ds",
+                            resp.status_code, attempt + 1, max_retries + 1, delay,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    logger.error(
+                        "[EnricherIBGE] IBGE municipios API returned %d after %d attempts — using cached lookup",
+                        resp.status_code, max_retries + 1,
+                    )
+                    return _IBGE_MUNICIPIOS_CACHE  # fallback to stale cache
+
+                municipios = resp.json()
+                break  # success — exit retry loop
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
+            last_error = str(e)
+            if attempt < max_retries:
+                delay = 2 ** attempt
+                logger.warning(
+                    "[EnricherIBGE] IBGE API request failed: %s (attempt %d/%d) — retrying in %ds",
+                    e, attempt + 1, max_retries + 1, delay,
+                )
+                await asyncio.sleep(delay)
+                continue
             logger.error(
-                "[EnricherIBGE] IBGE municipios API returned %d — using cached lookup if available",
-                resp.status_code,
+                "[EnricherIBGE] IBGE API request failed after %d attempts: %s — using cached lookup",
+                max_retries + 1, e,
             )
             return _IBGE_MUNICIPIOS_CACHE  # fallback to stale cache
 
-        municipios = resp.json()
         for m in municipios:
             nome = (m.get("nome") or "").strip().lower()
             uf = (
@@ -554,7 +586,7 @@ async def enrich_pncp_ibge_codes_job() -> dict[str, Any]:
         resp = await sb_execute(
             sb.table("pncp_raw_bids")
             .select("municipio, uf")
-            .is_("codigo_municipio_ibge", "null")
+            .or_("codigo_municipio_ibge.is.null,codigo_municipio_ibge.eq.''")
             .eq("is_active", True)
             .range(offset, offset + batch_size - 1)
         )
@@ -598,16 +630,16 @@ async def enrich_pncp_ibge_codes_job() -> dict[str, Any]:
     if updates:
         # Build a mapping table via JSONB and update in one pass
         try:
-            mapping_json = json.dumps([
+            mapping = [
                 {"nome": u["municipio"], "uf": u["uf"], "codigo": u["codigo"]}
                 for u in updates
-            ])
+            ]
             result = await sb_execute(
                 sb.rpc(
                     "backfill_ibge_codes",
-                    {"p_mapping": mapping_json},
+                    {"p_mapping": mapping},
                 ),
-                category="write",
+                category="rpc",
             )
             actual_updated = result.data if result.data else 0
             if isinstance(actual_updated, list):
