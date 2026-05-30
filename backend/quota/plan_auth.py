@@ -266,3 +266,87 @@ def get_subcontract_intel_dependency():
         return await requires_subcontract_intel(user)
 
     return _dep
+
+
+# ============================================================================
+# B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations gate
+# ============================================================================
+
+_B2G_OPS_UPSELL = {
+    "message": "Sistema Operacional B2G disponível no plano SmartLic Command.",
+    "error_code": "b2g_ops_not_available",
+    "upgrade_cta": "Conhecer o SmartLic Command",
+    "suggested_plan": "smartlic_command",
+}
+
+
+async def requires_workspace_basic(user: dict) -> dict:
+    """FastAPI dependency: gate for the B2G Operations vertical.
+
+    B2GOPS-000 — strictly additive, two-stage gate consumed by every
+    B2GOPS endpoint:
+
+      1. Global feature flag ``B2G_OPS_ENABLED``. When OFF the whole
+         vertical is inert — the endpoint behaves as if it does not exist
+         (HTTP 404), so production is unaffected until the flag is flipped.
+      2. Plan capability ``allow_workspace_basic``. Only plans that opt in
+         pass; everyone else gets an upsell HTTP 403. Master/admin always bypass.
+
+    Default state (flag off, capability ``False`` on every existing plan) is
+    behaviourally identical to this dependency not existing — no regression.
+
+    Security posture: this is a paid premium gate, so it FAILS CLOSED on
+    transient backend errors.
+    """
+    from fastapi import HTTPException
+    from authorization import has_master_access
+    from config.features import get_feature_flag
+    from quota.plan_enforcement import check_quota
+    from supabase_client import CircuitBreakerOpenError
+
+    user_id = user["id"]
+
+    # Stage 1: global kill-switch. Off ⇒ route is inert (404), as if unmounted.
+    if not get_feature_flag("B2G_OPS_ENABLED"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    # Master/admin always bypass the capability gate.
+    try:
+        if await has_master_access(user_id):
+            return user
+    except Exception:
+        pass
+
+    try:
+        quota_info = await asyncio.to_thread(check_quota, user_id)
+    except CircuitBreakerOpenError:
+        raise HTTPException(status_code=403, detail=_B2G_OPS_UPSELL)
+
+    caps = getattr(quota_info, "capabilities", None) or {}
+    if not caps.get("allow_workspace_basic", False):
+        track_funnel_event(
+            "paywall_hit",
+            user_id=user_id,
+            properties={
+                "reason": "b2g_ops_not_available",
+                "plan_id": getattr(quota_info, "plan_id", None),
+            },
+        )
+        raise HTTPException(status_code=403, detail=_B2G_OPS_UPSELL)
+
+    return user
+
+
+def get_workspace_basic_dependency():
+    """FastAPI Depends factory chaining require_auth → requires_workspace_basic.
+
+    B2GOPS endpoints use this so the gate is enforced consistently across the
+    B2G Operations vertical.
+    """
+    from fastapi import Depends
+    from auth import require_auth
+
+    async def _dep(user: dict = Depends(require_auth)):
+        return await requires_workspace_basic(user)
+
+    return _dep

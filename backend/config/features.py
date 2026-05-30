@@ -199,6 +199,10 @@ EMBEDDING_THRESHOLD: float = float(os.getenv("EMBEDDING_THRESHOLD", "0.6"))
 # enabled. Strictly additive: no existing feature changes while this is false.
 SUBCONTRACT_INTEL_ENABLED: bool = str_to_bool(os.getenv("SUBCONTRACT_INTEL_ENABLED", "false"))
 
+# B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations vertical gate
+# Default OFF — the entire B2GOPS vertical stays inert until explicitly enabled.
+B2G_OPS_ENABLED: bool = str_to_bool(os.getenv("B2G_OPS_ENABLED", "false"))
+
 
 # ============================================
 # Runtime-Reloadable Feature Flags (STORY-226 AC16)
@@ -265,6 +269,8 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     "PARTNERS_ENABLED": ("PARTNERS_ENABLED", "false"),
     # SUBINTEL-030 (EPIC-SUBINTEL #1224): subcontracting intelligence vertical
     "SUBCONTRACT_INTEL_ENABLED": ("SUBCONTRACT_INTEL_ENABLED", "false"),
+    # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations workspace_basic gate
+    "B2G_OPS_ENABLED": ("B2G_OPS_ENABLED", "false"),
     # --- Infra ---
     "METRICS_ENABLED": ("METRICS_ENABLED", "true"),
     "RATE_LIMITING_ENABLED": ("RATE_LIMITING_ENABLED", "true"),

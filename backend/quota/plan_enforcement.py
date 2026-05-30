@@ -452,6 +452,8 @@ from quota.plan_auth import (
     get_active_plan_dependency,
     requires_subcontract_intel,
     get_subcontract_intel_dependency,
+    requires_workspace_basic,
+    get_workspace_basic_dependency,
 )
 
 
