@@ -126,7 +126,7 @@ class TestStatsCache:
         assert result["total_open"] == 42
 
     def test_cache_expired_returns_none(self, sample_stats):
-        _stats_cache["medicamentos"] = (sample_stats, time.time() - _CACHE_TTL_SECONDS - 1)
+        _stats_cache["medicamentos"] = (sample_stats, time.time() - _CACHE_TTL_SECONDS - 1, _CACHE_TTL_SECONDS)
         assert _get_cached_stats("medicamentos") is None
 
     def test_invalidate_all(self, sample_stats):

@@ -529,7 +529,11 @@ async def get_sector_blog_stats(setor_id: str):
         "trend_90d": trend_90d,
         "last_updated": now.isoformat(),
     }
-    _cache_set(cache_key, data)
+    # ISSUE-1191: empty results (e.g. from _SEO_SEMAPHORE timeout inside
+    # query_datalake) MUST use negative-cache TTL — the full 6h TTL would
+    # bake a stale-zero into _blog_cache and make blog programmatic pages
+    # show zero editais for hours despite the data existing.
+    _cache_set(cache_key, data, ttl=_NEGATIVE_CACHE_TTL_SECONDS if not results else _CACHE_TTL_SECONDS)
     return SectorBlogStats(**data)
 
 
@@ -646,7 +650,10 @@ async def get_sector_uf_stats(setor_id: str, uf: str):
         "vs_media_nacional_pct": vs_media_nacional_pct,
         "top_compradores": top_compradores,
     }
-    _cache_set(cache_key, data)
+    # ISSUE-1191: empty results MUST use negative-cache TTL — the full 6h TTL
+    # would bake a stale-zero into _blog_cache and make blog programmatic pages
+    # show zero editais for hours despite the data existing.
+    _cache_set(cache_key, data, ttl=_NEGATIVE_CACHE_TTL_SECONDS if not uf_results else _CACHE_TTL_SECONDS)
     return SectorUfStats(**data)
 
 
@@ -724,7 +731,8 @@ async def get_cidade_stats(cidade: str):
         "avg_value": round(avg_val, 2),
         "last_updated": now.isoformat(),
     }
-    _cache_set(cache_key, data)
+    # ISSUE-1191: empty results MUST use negative-cache TTL
+    _cache_set(cache_key, data, ttl=_NEGATIVE_CACHE_TTL_SECONDS if not city_results else _CACHE_TTL_SECONDS)
     return CidadeStats(**data)
 
 
@@ -798,7 +806,8 @@ async def get_cidade_sector_stats(cidade: str, setor_id: str):
         "has_sufficient_data": len(city_results) >= 5,
         "last_updated": now.isoformat(),
     }
-    _cache_set(cache_key, data)
+    # ISSUE-1191: empty results MUST use negative-cache TTL
+    _cache_set(cache_key, data, ttl=_NEGATIVE_CACHE_TTL_SECONDS if not city_results else _CACHE_TTL_SECONDS)
     return CidadeSectorStats(**data)
 
 
@@ -860,7 +869,8 @@ async def get_panorama_stats(setor_id: str):
         "crescimento_estimado_pct": crescimento,
         "last_updated": now.isoformat(),
     }
-    _cache_set(cache_key, data)
+    # ISSUE-1191: empty results MUST use negative-cache TTL
+    _cache_set(cache_key, data, ttl=_NEGATIVE_CACHE_TTL_SECONDS if not results else _CACHE_TTL_SECONDS)
     return PanoramaStats(**data)
 
 
