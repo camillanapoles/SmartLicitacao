@@ -293,3 +293,5 @@ COMMENT ON FUNCTION public.supplier_growth_anomaly(TEXT, INT) IS
 GRANT EXECUTE ON FUNCTION public.supplier_growth_anomaly(TEXT, INT) TO anon;
 GRANT EXECUTE ON FUNCTION public.supplier_growth_anomaly(TEXT, INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.supplier_growth_anomaly(TEXT, INT) TO service_role;
+
+
