@@ -1,7 +1,7 @@
 # Copywriting Guidelines — SmartLic
 
-**Versão:** v1.0
-**Referência:** REPO-002 (issue #754)
+**Versão:** v1.1
+**Referência:** REPO-002 (issue #754), REPO-COMMS (#1289)
 **Plano:** `docs/sessions/2026-05/2026-05-07-reposicionamento-b2g-issues-plan.md`
 
 ---
@@ -238,7 +238,41 @@ A extração de texto de `.tsx` é heurística (regex sobre JSX text + string li
 
 ---
 
-## 8. Referências
+## 8. REPO-COMMS — Léxico do Reposicionamento B2G
+
+**Issue:** [#1289](https://github.com/tjsasakifln/SmartLic/issues/1289) — Overhaul de Copy/Homepage
+
+### Palavras banidas (adicional ao léxico existente)
+
+| Palavra/Frase | Motivo |
+|---------------|--------|
+| "IA" / "inteligência artificial" | Posiciona como software, não como vantagem competitiva |
+| "machine learning" | Jargão técnico irrelevante para o comprador B2G |
+| "algoritmo" | Transfere crédito para a tecnologia, não para o resultado |
+| "plataforma" | Genérico — toda SaaS é "plataforma" |
+| "monitoramento" | Evoca passividade — SmartLic é pró-ativo |
+| "alerta" | Evoca notificação genérica, não inteligência |
+| "match" | Estrangeirismo desnecessário; usar "compatibilidade" |
+| "buscar" / "encontrar" | Evoca search commodity; usar "detectar", "antecipar" |
+| "dados abertos" | Minimiza o valor agregado pelo processamento proprietário |
+
+### Palavras preferidas
+
+| Categoria | Termos |
+|-----------|--------|
+| Posicionamento | inteligência comercial, vantagem competitiva, terminal de inteligência |
+| Ação | antecipar, decidir, executar, posicionar, detectar, classificar |
+| Resultado | oportunidade, estratégia, território, predição, mapa, comando |
+| Valor | receita pública, contrato, vantagem, evidência |
+
+### Referência de implementação
+
+- Biblioteca de copy: `frontend/lib/copy/b2gIntelCopy.ts`
+- Componentes: `frontend/app/components/landing/HeroB2GIntel.tsx` e demais
+
+---
+
+## 9. Referências
 
 - Plano de reposicionamento: `docs/sessions/2026-05/2026-05-07-reposicionamento-b2g-issues-plan.md`
 - Issue: [#754](https://github.com/tjsasakifln/pncp-poc/issues/754)
