@@ -17,3 +17,4 @@ ALTER ROLE service_role SET statement_timeout = '60s';
 
 -- Reload PostgREST schema/role config so the new setting takes effect immediately.
 NOTIFY pgrst, 'reload config';
+
