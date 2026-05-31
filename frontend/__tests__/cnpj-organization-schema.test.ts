@@ -59,14 +59,9 @@ describe('buildOrgSchema (#996 SEO-P2-009)', () => {
     });
   });
 
-  it('builds sameAs with Receita Federal + LinkedIn search URLs', () => {
+  it('omits sameAs when no canonical entity URLs are available', () => {
     const schema = buildOrgSchema(BASE_PERFIL);
-    const sameAs = schema.sameAs as string[];
-    expect(sameAs).toHaveLength(2);
-    expect(sameAs[0]).toContain('servicos.receita.fazenda.gov.br');
-    expect(sameAs[0]).toContain('09225035000101');
-    expect(sameAs[1]).toContain('linkedin.com/search/results/companies');
-    expect(sameAs[1]).toContain(encodeURIComponent('Empresa Teste LTDA'));
+    expect(schema.sameAs).toBeUndefined();
   });
 
   it('writes a contract-history-rich description when total_contratos_24m > 0', () => {
@@ -97,17 +92,21 @@ describe('buildOrgSchema (#996 SEO-P2-009)', () => {
     expect(schema.knowsAbout).toBe('Vestuário e Têxtil');
   });
 
-  it('maps porte to size when present', () => {
+  it('maps porte to additionalProperty when present', () => {
     const schema = buildOrgSchema(BASE_PERFIL);
-    expect(schema.size).toBe('ME');
+    expect(schema.additionalProperty).toEqual({
+      '@type': 'PropertyValue',
+      name: 'porte',
+      value: 'ME',
+    });
   });
 
-  it('omits size when porte is empty string', () => {
+  it('omits additionalProperty when porte is empty string', () => {
     const schema = buildOrgSchema({
       ...BASE_PERFIL,
       empresa: { ...BASE_PERFIL.empresa, porte: '' },
     });
-    expect(schema.size).toBeUndefined();
+    expect(schema.additionalProperty).toBeUndefined();
   });
 
   it('emits areaServed as AdministrativeArea[] from ufs_atuacao', () => {

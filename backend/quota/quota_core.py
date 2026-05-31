@@ -92,6 +92,7 @@ class PlanCapabilities(TypedDict):
     allow_pipeline: bool  # STORY-250: Pipeline de Oportunidades
     allow_subcontract_intel: bool  # SUBINTEL-030: Inteligência de Cadeia de Fornecimento (default off, additive)
     allow_predictive_intel: bool  # PREDINT-000: Inteligência Preditiva (default off, additive)
+    allow_workspace_basic: bool  # B2GOPS-000: B2G Operations workspace (default off, additive)
     max_requests_per_month: int
     max_requests_per_min: int
     max_summary_tokens: int
@@ -106,6 +107,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": True,  # GTM-003: Full product during trial
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 1000,  # STORY-264 AC1: Full access (same as smartlic_pro)
         "max_requests_per_min": 2,  # STORY-264 AC2: Anti-abuse rate limit kept
         "max_summary_tokens": 10000,  # GTM-003: Full AI analysis (same as smartlic_pro)
@@ -117,6 +119,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": False,  # STORY-250
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 50,
         "max_requests_per_min": 10,
         "max_summary_tokens": 200,
@@ -128,6 +131,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": True,  # STORY-250
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 300,
         "max_requests_per_min": 30,
         "max_summary_tokens": 500,
@@ -139,6 +143,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": True,  # STORY-250
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
@@ -150,6 +155,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": True,
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
@@ -162,6 +168,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": True,
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
@@ -174,6 +181,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": True,
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 5000,  # 1000 x 5 members
         "max_requests_per_min": 10,  # Rate limit per org
         "max_summary_tokens": 10000,
@@ -186,6 +194,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": False,
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 10,
         "max_requests_per_min": 2,
         "max_summary_tokens": 200,
@@ -197,6 +206,7 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "allow_pipeline": True,
         "allow_subcontract_intel": False,  # SUBINTEL-030
         "allow_predictive_intel": False,  # PREDINT-000
+        "allow_workspace_basic": False,  # B2GOPS-000
         "max_requests_per_month": 99999,
         "max_requests_per_min": 120,
         "max_summary_tokens": 10000,
@@ -261,6 +271,7 @@ _UNKNOWN_PLAN_DEFAULTS = PlanCapabilities(
     allow_pipeline=False,  # STORY-250
     allow_subcontract_intel=False,  # SUBINTEL-030
     allow_predictive_intel=False,  # PREDINT-000
+    allow_workspace_basic=False,  # B2GOPS-000
     max_requests_per_month=10,
     max_requests_per_min=5,
     max_summary_tokens=200,
@@ -284,6 +295,7 @@ def _coerce_capabilities_row(plan_id: str, raw: Optional[dict], max_searches: Op
         return None
     required_keys = (
         "max_history_days", "allow_excel", "allow_pipeline",
+        "allow_workspace_basic",
         "max_requests_per_month", "max_requests_per_min",
         "max_summary_tokens", "priority",
         "allow_predictive_intel",
@@ -301,6 +313,9 @@ def _coerce_capabilities_row(plan_id: str, raw: Optional[dict], max_searches: Op
             # PREDINT-000: optional jsonb key — defaults False when absent so
             # existing DB rows without it still coerce (non-regression).
             allow_predictive_intel=bool(raw.get("allow_predictive_intel", False)),
+            # B2GOPS-000: optional jsonb key — defaults False when absent so
+            # existing DB rows without it still coerce (non-regression).
+            allow_workspace_basic=bool(raw.get("allow_workspace_basic", False)),
             # max_searches column wins when set (legacy override path)
             max_requests_per_month=int(max_searches) if max_searches else int(raw["max_requests_per_month"]),
             max_requests_per_min=int(raw["max_requests_per_min"]),
@@ -365,6 +380,7 @@ def _load_plan_capabilities_from_db() -> dict[str, PlanCapabilities]:
                         allow_pipeline=base_caps["allow_pipeline"],
                         allow_subcontract_intel=base_caps.get("allow_subcontract_intel", False),  # SUBINTEL-030
                         allow_predictive_intel=base_caps.get("allow_predictive_intel", False),  # PREDINT-000
+                        allow_workspace_basic=base_caps.get("allow_workspace_basic", False),  # B2GOPS-000
                         max_requests_per_month=int(max_searches) if max_searches else base_caps["max_requests_per_month"],
                         max_requests_per_min=base_caps["max_requests_per_min"],
                         max_summary_tokens=base_caps["max_summary_tokens"],
@@ -381,6 +397,7 @@ def _load_plan_capabilities_from_db() -> dict[str, PlanCapabilities]:
                         allow_pipeline=_UNKNOWN_PLAN_DEFAULTS["allow_pipeline"],
                         allow_subcontract_intel=_UNKNOWN_PLAN_DEFAULTS["allow_subcontract_intel"],  # SUBINTEL-030
                         allow_predictive_intel=_UNKNOWN_PLAN_DEFAULTS["allow_predictive_intel"],  # PREDINT-000
+                        allow_workspace_basic=_UNKNOWN_PLAN_DEFAULTS["allow_workspace_basic"],  # B2GOPS-000
                         max_requests_per_month=int(max_searches) if max_searches else _UNKNOWN_PLAN_DEFAULTS["max_requests_per_month"],
                         max_requests_per_min=_UNKNOWN_PLAN_DEFAULTS["max_requests_per_min"],
                         max_summary_tokens=_UNKNOWN_PLAN_DEFAULTS["max_summary_tokens"],

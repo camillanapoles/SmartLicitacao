@@ -204,6 +204,9 @@ SUBCONTRACT_INTEL_ENABLED: bool = str_to_bool(os.getenv("SUBCONTRACT_INTEL_ENABL
 # frontend) stays inert until explicitly enabled. Strictly additive: no existing
 # feature changes while this is false.
 PREDICTIVE_INTEL_ENABLED: bool = str_to_bool(os.getenv("PREDICTIVE_INTEL_ENABLED", "false"))
+# B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations vertical gate
+# Default OFF — the entire B2GOPS vertical stays inert until explicitly enabled.
+B2G_OPS_ENABLED: bool = str_to_bool(os.getenv("B2G_OPS_ENABLED", "false"))
 
 
 # ============================================
@@ -273,6 +276,8 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     "SUBCONTRACT_INTEL_ENABLED": ("SUBCONTRACT_INTEL_ENABLED", "false"),
     # PREDINT-000 (EPIC-PREDINT #1260): predictive intelligence vertical
     "PREDICTIVE_INTEL_ENABLED": ("PREDICTIVE_INTEL_ENABLED", "false"),
+    # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations workspace_basic gate
+    "B2G_OPS_ENABLED": ("B2G_OPS_ENABLED", "false"),
     # --- Infra ---
     "METRICS_ENABLED": ("METRICS_ENABLED", "true"),
     "RATE_LIMITING_ENABLED": ("RATE_LIMITING_ENABLED", "true"),
