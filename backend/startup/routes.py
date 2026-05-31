@@ -87,6 +87,7 @@ from routes.pseo_data import router as pseo_data_router
 from routes.seo_coverage_manifest import router as seo_coverage_manifest_router
 from routes.products import router as products_router
 from routes.seasonal_calendar import router as seasonal_calendar_router
+from routes.network_events import router as network_events_router
 
 _v1_routers = [
     admin_router, subscriptions_router, upgrade_to_lifetime_router,
@@ -136,6 +137,7 @@ _v1_routers = [
     seo_coverage_manifest_router,
     products_router,
     seasonal_calendar_router,
+    network_events_router,
 ]
 
 
