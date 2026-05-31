@@ -5019,6 +5019,53 @@
         "title": "DiagnosticoRequest",
         "type": "object"
       },
+      "DigitalProductOut": {
+        "description": "Public representation of a digital product for checkout.",
+        "properties": {
+          "delivery_config": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Delivery Config",
+            "type": "object"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preview_config": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Preview Config",
+            "type": "object"
+          },
+          "price_brl": {
+            "title": "Price Brl",
+            "type": "integer"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "name",
+          "price_brl"
+        ],
+        "title": "DigitalProductOut",
+        "type": "object"
+      },
       "DimensionItem": {
         "properties": {
           "count": {
@@ -10868,6 +10915,22 @@
         ],
         "title": "PorteEmpresa",
         "type": "string"
+      },
+      "ProductsResponse": {
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/DigitalProductOut"
+            },
+            "title": "Products",
+            "type": "array"
+          }
+        },
+        "required": [
+          "products"
+        ],
+        "title": "ProductsResponse",
+        "type": "object"
       },
       "ProfileCompletenessResponse": {
         "description": "STORY-260 AC3: Response for GET /v1/profile/completeness.",
@@ -24898,6 +24961,28 @@
         "summary": "Get Plans",
         "tags": [
           "billing"
+        ]
+      }
+    },
+    "/v1/products": {
+      "get": {
+        "description": "List active digital products available for one-time purchase.\n\nPublic (no auth required). Results cached in Redis for 1 hour.",
+        "operationId": "list_products_v1_products_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Products",
+        "tags": [
+          "products"
         ]
       }
     },
