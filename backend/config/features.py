@@ -199,6 +199,11 @@ EMBEDDING_THRESHOLD: float = float(os.getenv("EMBEDDING_THRESHOLD", "0.6"))
 # enabled. Strictly additive: no existing feature changes while this is false.
 SUBCONTRACT_INTEL_ENABLED: bool = str_to_bool(os.getenv("SUBCONTRACT_INTEL_ENABLED", "false"))
 
+# PREDINT-000 (EPIC-PREDINT #1260): global kill-switch for the Predictive
+# Intelligence vertical. Default OFF — the entire feature set (RPCs, endpoints,
+# frontend) stays inert until explicitly enabled. Strictly additive: no existing
+# feature changes while this is false.
+PREDICTIVE_INTEL_ENABLED: bool = str_to_bool(os.getenv("PREDICTIVE_INTEL_ENABLED", "false"))
 # COMPINT-000 (EPIC-COMPINT #1261): global kill-switch for the Competitive
 # Intelligence vertical (analise-concorrencia/, /v1/competitive-intel/*
 # endpoints, frontend). Default OFF — the entire vertical stays inert until
@@ -275,6 +280,8 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     "PARTNERS_ENABLED": ("PARTNERS_ENABLED", "false"),
     # SUBINTEL-030 (EPIC-SUBINTEL #1224): subcontracting intelligence vertical
     "SUBCONTRACT_INTEL_ENABLED": ("SUBCONTRACT_INTEL_ENABLED", "false"),
+    # PREDINT-000 (EPIC-PREDINT #1260): predictive intelligence vertical
+    "PREDICTIVE_INTEL_ENABLED": ("PREDICTIVE_INTEL_ENABLED", "false"),
     # COMPINT-000 (EPIC-COMPINT #1261): competitive intelligence vertical
     "COMPETITIVE_INTEL_ENABLED": ("COMPETITIVE_INTEL_ENABLED", "false"),
     # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations workspace_basic gate

@@ -208,6 +208,7 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "ALERTS_SYSTEM_ENABLED": "Alerts system feature (unreleased)",
     "PARTNERS_ENABLED": "Partners feature (unreleased)",
     "SUBCONTRACT_INTEL_ENABLED": "Subcontracting / supply-chain intelligence vertical (EPIC-SUBINTEL #1224, unreleased)",
+    "PREDICTIVE_INTEL_ENABLED": "Predictive intelligence vertical (EPIC-PREDINT #1260, unreleased)",
     "COMPETITIVE_INTEL_ENABLED": "Competitive intelligence vertical (EPIC-COMPINT #1261, unreleased)",
     "B2G_OPS_ENABLED": "B2G Operations workspace_basic vertical (EPIC-B2GOPS #1262, unreleased)",
     # Infra
@@ -294,6 +295,8 @@ _FLAG_LIFECYCLE: dict[str, dict] = {
     "FOUNDERS_OFFER_ENABLED": {"owner": "billing", "category": "founding", "lifecycle": "temporary", "created": "2026-05"},
     # SUBINTEL-030 (EPIC-SUBINTEL #1224): subcontracting intelligence vertical
     "SUBCONTRACT_INTEL_ENABLED": {"owner": "product", "category": "subcontract", "lifecycle": "experimental", "created": "2026-05"},
+    # PREDINT-000 (EPIC-PREDINT #1260): predictive intelligence vertical
+    "PREDICTIVE_INTEL_ENABLED": {"owner": "product", "category": "predictive", "lifecycle": "experimental", "created": "2026-05"},
     # COMPINT-000 (EPIC-COMPINT #1261): competitive intelligence vertical
     "COMPETITIVE_INTEL_ENABLED": {"owner": "product", "category": "competitive", "lifecycle": "experimental", "created": "2026-05"},
     # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations workspace_basic gate

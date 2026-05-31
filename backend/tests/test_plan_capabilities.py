@@ -20,12 +20,13 @@ class TestPlanCapabilities:
     """Test PLAN_CAPABILITIES constants."""
 
     def test_all_plans_have_required_fields(self):
-        """All plans must have all required capability fields (including allow_pipeline + allow_subcontract_intel)."""
+        """All plans must have all required capability fields (including allow_pipeline + allow_subcontract_intel + allow_predictive_intel)."""
         required_fields = {
             "max_history_days",
             "allow_excel",
             "allow_pipeline",  # STORY-250
             "allow_subcontract_intel",  # SUBINTEL-030 (EPIC-SUBINTEL #1224)
+            "allow_predictive_intel",  # PREDINT-000 (EPIC-PREDINT #1260)
             "allow_competitive_intel",  # COMPINT-000 (EPIC-COMPINT #1261)
             "allow_workspace_basic",  # B2GOPS-000 (EPIC-B2GOPS #1262)
             "max_requests_per_month",

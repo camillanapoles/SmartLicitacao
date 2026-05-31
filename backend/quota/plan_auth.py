@@ -269,6 +269,95 @@ def get_subcontract_intel_dependency():
 
 
 # ============================================================================
+# PREDINT-000 (EPIC-PREDINT #1260): Predictive Intelligence gate
+# ============================================================================
+
+_PREDICTIVE_INTEL_UPSELL = {
+    "message": "Inteligência Preditiva disponível no plano SmartLic Command.",
+    "error_code": "predictive_intel_not_available",
+    "upgrade_cta": "Conhecer o SmartLic Command",
+    "suggested_plan": "smartlic_command",
+}
+
+
+async def requires_predictive_intel(user: dict) -> dict:
+    """FastAPI dependency: gate for the Predictive Intelligence vertical.
+
+    PREDINT-000 — strictly additive, two-stage gate consumed by every
+    predictive intel endpoint (PREDINT-010+):
+
+      1. Global feature flag ``PREDICTIVE_INTEL_ENABLED``. When OFF the whole
+         vertical is inert — the endpoint behaves as if it does not exist
+         (HTTP 404), so production is unaffected until the flag is flipped.
+      2. Plan capability ``allow_predictive_intel``. Only plans that opt in
+         pass; everyone else gets an upsell HTTP 403. Master/admin always bypass.
+
+    Default state (flag off, capability ``False`` on every existing plan) is
+    behaviourally identical to this dependency not existing — no regression.
+
+    Security posture: this is a paid premium gate, so it FAILS CLOSED on
+    transient backend errors (unlike ``require_active_plan`` which is
+    intentionally fail-open). ``check_quota`` itself already degrades to
+    ``free_trial`` on DB errors, whose capability is ``False`` → 403.
+    """
+    from fastapi import HTTPException
+    from authorization import has_master_access
+    from config.features import get_feature_flag
+    from quota.plan_enforcement import check_quota
+    from supabase_client import CircuitBreakerOpenError
+
+    user_id = user["id"]
+
+    # Stage 1: global kill-switch. Off ⇒ route is inert (404), as if unmounted.
+    if not get_feature_flag("PREDICTIVE_INTEL_ENABLED"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    # Master/admin always bypass the capability gate (mirrors require_active_plan).
+    try:
+        if await has_master_access(user_id):
+            return user
+    except Exception:
+        # Fail-closed: do NOT grant access on a failed master check. Fall
+        # through to the capability check below.
+        pass
+
+    try:
+        quota_info = await asyncio.to_thread(check_quota, user_id)
+    except CircuitBreakerOpenError:
+        # Premium gate must not open on transient DB unavailability.
+        raise HTTPException(status_code=403, detail=_PREDICTIVE_INTEL_UPSELL)
+
+    caps = getattr(quota_info, "capabilities", None) or {}
+    if not caps.get("allow_predictive_intel", False):
+        track_funnel_event(
+            "paywall_hit",
+            user_id=user_id,
+            properties={
+                "reason": "predictive_intel_not_available",
+                "plan_id": getattr(quota_info, "plan_id", None),
+            },
+        )
+        raise HTTPException(status_code=403, detail=_PREDICTIVE_INTEL_UPSELL)
+
+    return user
+
+
+def get_predictive_intel_dependency():
+    """FastAPI Depends factory chaining require_auth → requires_predictive_intel.
+
+    Endpoints in the future predictive intel router (PREDINT-010+) use
+    this so the gate is enforced consistently across the vertical.
+    """
+    from fastapi import Depends
+    from auth import require_auth
+
+    async def _dep(user: dict = Depends(require_auth)):
+        return await requires_predictive_intel(user)
+
+    return _dep
+
+
+# ============================================================================
 # COMPINT-000 (EPIC-COMPINT #1261): Competitive Intelligence gate
 # ============================================================================
 

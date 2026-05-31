@@ -80,6 +80,7 @@ class TestCoerceCapabilitiesRow:
         "allow_excel": True,
         "allow_pipeline": True,
         "allow_subcontract_intel": False,
+        "allow_predictive_intel": False,
         "allow_competitive_intel": False,
         "allow_workspace_basic": False,
         "max_requests_per_month": 1000,
