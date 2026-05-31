@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from auth import require_auth
 from rate_limiter import require_rate_limit
-from supabase_client import get_supabase
+from supabase_client import get_supabase, sb_execute
 
 from schemas.checkout import CheckoutRequest, CheckoutResponse
 
@@ -63,7 +63,9 @@ async def _lookup_product(sku: str) -> dict:
     """
     try:
         sb = get_supabase()
-        result = sb.table("digital_products").select("*").eq("sku", sku).limit(1).execute()
+        result = await sb_execute(
+            sb.table("digital_products").select("*").eq("sku", sku).limit(1)
+        )
         rows = result.data if result.data else []
         return rows[0] if rows else None
     except Exception as exc:
@@ -150,10 +152,12 @@ def _ensure_stripe_price(product: dict) -> str:
     # Persist stripe IDs back to the product row (best-effort)
     try:
         sb = get_supabase()
-        sb.table("digital_products").update({
-            "stripe_product_id": stripe_product_id,
-            "stripe_price_id": stripe_price_id,
-        }).eq("id", product["id"]).execute()
+        await sb_execute(
+            sb.table("digital_products").update({
+                "stripe_product_id": stripe_product_id,
+                "stripe_price_id": stripe_price_id,
+            }).eq("id", product["id"])
+        )
         logger.info(
             "checkout: persisted stripe ids for product %s (sku=%s)",
             product["id"][:8],
