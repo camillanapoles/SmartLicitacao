@@ -306,12 +306,13 @@ def _coerce_capabilities_row(plan_id: str, raw: Optional[dict], max_searches: Op
         return None
     required_keys = (
         "max_history_days", "allow_excel", "allow_pipeline",
-        "allow_workspace_basic",
         "max_requests_per_month", "max_requests_per_min",
         "max_summary_tokens", "priority",
-        "allow_predictive_intel",
-        "max_summary_tokens", "priority", "allow_competitive_intel",
     )
+    # PREDINT-000 / COMPINT-000 / B2GOPS-000: allow_predictive_intel,
+    # allow_competitive_intel, and allow_workspace_basic are NOT in
+    # required_keys — each uses raw.get(key, False) so legacy rows
+    # without them still coerce (additive rollout).
     if not all(k in raw for k in required_keys):
         return None
     try:
