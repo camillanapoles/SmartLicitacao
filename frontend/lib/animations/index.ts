@@ -13,6 +13,8 @@ export {
   useScrollAnimation,
   useStaggeredScrollAnimation,
   useScrollProgress,
+  usePrefersReducedMotion,
+  useLandingAnimation,
 } from './scrollAnimations';
 
 // Framer Motion variants

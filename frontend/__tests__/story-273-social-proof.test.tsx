@@ -1,14 +1,13 @@
 /**
  * STORY-273: Social Proof & Trust Signals — Integration Tests
- * SAB-006: Updated for condensed landing page (6 sections).
+ * REPO-COMMS #1289: Updated for B2G repositioning landing page (7 sections).
  *
  * Tests:
- * - AC3: Beta counter present on landing page (now inside FinalCTA)
+ * - AC3: Social proof message present on landing page (now in SocialProofMetrics)
  * - AC5: LGPD badge in Portuguese in Footer
- * - Regression: condensed landing page structure (SAB-006)
+ * - Regression: B2G landing page structure (#1289)
  *
- * NOTE: AC1 (TestimonialSection on landing) was superseded by SAB-006 —
- * section removed to achieve 5x viewport target. Component still exists.
+ * NOTE: SAB-006 FinalCTA section replaced by MarketSocialProof in REPO-COMMS #1289.
  */
 
 import { render, screen } from '@testing-library/react';
@@ -42,61 +41,82 @@ jest.mock('framer-motion', () => {
   return { motion, AnimatePresence: ({ children }: { children: React.ReactNode }) => children };
 });
 
-// Mock animations lib
+// Mock animations lib (REPO-COMMS #1289: added useLandingAnimation + usePrefersReducedMotion)
 jest.mock('../lib/animations', () => ({
   useScrollAnimation: () => ({ ref: { current: null }, isVisible: true }),
+  useLandingAnimation: () => ({ ref: { current: null }, isVisible: true, shouldAnimate: true }),
+  usePrefersReducedMotion: () => false,
   fadeInUp: {},
   staggerContainer: {},
   scaleIn: {},
 }));
 
-// Mock all landing page sections (SAB-006 condensed set)
+// Mock all landing page sections (REPO-COMMS #1289 B2G repositioning set)
 jest.mock('../app/components/landing/LandingNavbar', () => {
   return function MockLandingNavbar() {
     return <nav data-testid="landing-navbar">Navbar</nav>;
   };
 });
 
-jest.mock('../app/components/landing/HeroSection', () => {
-  return function MockHeroSection() {
-    return <section data-testid="hero-section">Hero</section>;
+jest.mock('../app/components/landing/HeroB2GIntel', () => {
+  return function MockHeroB2GIntel() {
+    return <section data-testid="hero-b2g">HeroB2GIntel</section>;
   };
 });
 
-jest.mock('../app/components/landing/OpportunityCost', () => {
-  return function MockOpportunityCost() {
-    return <section data-testid="opportunity-cost">OpportunityCost</section>;
+jest.mock('../app/components/landing/AntecipeDecidaExecute', () => {
+  return function MockAntecipeDecidaExecute() {
+    return <section data-testid="antecipe-decida-execute">AntecipeDecidaExecute</section>;
   };
 });
 
-jest.mock('../app/components/landing/BeforeAfter', () => {
-  return function MockBeforeAfter() {
-    return <section data-testid="before-after">BeforeAfter</section>;
+jest.mock('../app/components/landing/TerminalComparison', () => {
+  return function MockTerminalComparison() {
+    return <section data-testid="terminal-comparison">TerminalComparison</section>;
   };
 });
 
-jest.mock('../app/components/landing/HowItWorks', () => {
-  return function MockHowItWorks() {
-    return <section data-testid="how-it-works">HowItWorks</section>;
-  };
-});
-
-jest.mock('../app/components/landing/StatsSection', () => {
-  return function MockStatsSection() {
-    return <section data-testid="stats-section">StatsSection</section>;
-  };
-});
-
-jest.mock('../app/components/landing/FinalCTA', () => {
-  return function MockFinalCTA() {
+jest.mock('../app/components/landing/SocialProofMetrics', () => {
+  return function MockSocialProofMetrics() {
     return (
-      <section data-testid="final-cta">
+      <section data-testid="social-proof-metrics">
         <p data-testid="beta-counter">
           Empresas de engenharia, TI, saúde, uniformes e facilities já analisam oportunidades com SmartLic
         </p>
-        FinalCTA
+        SocialProofMetrics
       </section>
     );
+  };
+});
+
+jest.mock('../app/components/landing/PersonasSection', () => {
+  return function MockPersonasSection() {
+    return <section data-testid="personas-section">PersonasSection</section>;
+  };
+});
+
+jest.mock('../app/components/landing/PricingSectionB2G', () => {
+  return function MockPricingSectionB2G() {
+    return <section data-testid="pricing-b2g">PricingSectionB2G</section>;
+  };
+});
+
+jest.mock('../app/components/landing/MarketSocialProof', () => {
+  return function MockMarketSocialProof() {
+    return <section data-testid="market-social-proof">MarketSocialProof</section>;
+  };
+});
+
+jest.mock('../app/components/landing/NewsletterFooter', () => {
+  return function MockNewsletterFooter() {
+    return <section data-testid="newsletter-footer">NewsletterFooter</section>;
+  };
+});
+
+// Mock B2GIntelTheme (passes children through)
+jest.mock('../app/components/landing/B2GIntelTheme', () => {
+  return function MockB2GIntelTheme({ children }: { children: React.ReactNode }) {
+    return <div data-testid="b2g-intel-theme">{children}</div>;
   };
 });
 
@@ -107,9 +127,16 @@ jest.mock('../app/components/Footer', () => {
   };
 });
 
-// Mock TrendingEditais (async Server Component — not renderable in jsdom)
-jest.mock('../app/components/landing/TrendingEditais', () => ({
-  TrendingEditais: function MockTrendingEditais() {
+// Mock HomeFaqStructuredData (JSON-LD, no visual output)
+jest.mock('../app/components/HomeFaqStructuredData', () => ({
+  HomeFaqStructuredData: function MockHomeFaqStructuredData() {
+    return null;
+  },
+}));
+
+// Mock ExitIntentPopup
+jest.mock('../app/components/ExitIntentPopup', () => ({
+  ExitIntentPopup: function MockExitIntentPopup() {
     return null;
   },
 }));
@@ -119,13 +146,13 @@ import LandingPage from '../app/page';
 
 // ---- Tests ----
 
-describe('STORY-273 + SAB-006: Landing Page Social Proof Integration', () => {
+describe('STORY-273 + REPO-COMMS #1289: Landing Page Social Proof Integration', () => {
   beforeEach(() => {
     render(<LandingPage />);
   });
 
-  describe('AC3: Beta counter (SAB-006: absorbed into FinalCTA)', () => {
-    it('should render the beta counter inside FinalCTA', () => {
+  describe('AC3: Social proof message (absorbed into SocialProofMetrics)', () => {
+    it('should render the beta counter inside SocialProofMetrics', () => {
       expect(screen.getByTestId('beta-counter')).toBeInTheDocument();
     });
 
@@ -138,51 +165,49 @@ describe('STORY-273 + SAB-006: Landing Page Social Proof Integration', () => {
     });
   });
 
-  describe('SAB-006: Condensed landing page structure', () => {
-    it('should have exactly 6 content sections + navbar + footer', () => {
+  describe('REPO-COMMS #1289: B2G landing page structure', () => {
+    it('should have exactly 7 content sections + navbar + newsletter + footer', () => {
       expect(screen.getByTestId('landing-navbar')).toBeInTheDocument();
-      expect(screen.getByTestId('hero-section')).toBeInTheDocument();
-      expect(screen.getByTestId('opportunity-cost')).toBeInTheDocument();
-      expect(screen.getByTestId('before-after')).toBeInTheDocument();
-      expect(screen.getByTestId('how-it-works')).toBeInTheDocument();
-      expect(screen.getByTestId('stats-section')).toBeInTheDocument();
-      expect(screen.getByTestId('final-cta')).toBeInTheDocument();
+      expect(screen.getByTestId('hero-b2g')).toBeInTheDocument();
+      expect(screen.getByTestId('antecipe-decida-execute')).toBeInTheDocument();
+      expect(screen.getByTestId('terminal-comparison')).toBeInTheDocument();
+      expect(screen.getByTestId('social-proof-metrics')).toBeInTheDocument();
+      expect(screen.getByTestId('personas-section')).toBeInTheDocument();
+      expect(screen.getByTestId('pricing-b2g')).toBeInTheDocument();
+      expect(screen.getByTestId('market-social-proof')).toBeInTheDocument();
+      expect(screen.getByTestId('newsletter-footer')).toBeInTheDocument();
       expect(screen.getByTestId('footer')).toBeInTheDocument();
     });
 
-    it('should NOT contain removed sections', () => {
-      expect(screen.queryByTestId('proof-of-value')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('analysis-carousel')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('value-prop')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('comparison-table')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('differentials-grid')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('data-sources')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('sectors-grid')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('trust-criteria')).not.toBeInTheDocument();
-      // COPY-COP-004 (#1125): TestimonialSection removed
-      expect(screen.queryByTestId('testimonial-section')).not.toBeInTheDocument();
+    it('should NOT contain old SAB-006 sections', () => {
+      expect(screen.queryByTestId('hero-section')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('opportunity-cost')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('before-after')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('how-it-works')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('stats-section')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('final-cta')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('founder-transparency-section')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('credibility-section')).not.toBeInTheDocument();
     });
 
-    it('should maintain correct section order: Hero → Problema → Solução → Como Funciona → Stats → Founder Transparency → Credibility → CTA', () => {
+    it('should maintain correct section order: Hero → Antecipe → Terminal → SocialProof → Personas → Pricing → MarketSocialProof', () => {
       const main = screen.getByRole('main');
       const html = main.innerHTML;
 
-      const heroIdx = html.indexOf('data-testid="hero-section"');
-      const problemaIdx = html.indexOf('data-testid="opportunity-cost"');
-      const solucaoIdx = html.indexOf('data-testid="before-after"');
-      const comoIdx = html.indexOf('data-testid="how-it-works"');
-      const statsIdx = html.indexOf('data-testid="stats-section"');
-      const founderIdx = html.indexOf('data-testid="founder-transparency-section"');
-      const credibilityIdx = html.indexOf('data-testid="credibility-section"');
-      const ctaIdx = html.indexOf('data-testid="final-cta"');
+      const heroIdx = html.indexOf('data-testid="hero-b2g"');
+      const antecipeIdx = html.indexOf('data-testid="antecipe-decida-execute"');
+      const terminalIdx = html.indexOf('data-testid="terminal-comparison"');
+      const socialIdx = html.indexOf('data-testid="social-proof-metrics"');
+      const personasIdx = html.indexOf('data-testid="personas-section"');
+      const pricingIdx = html.indexOf('data-testid="pricing-b2g"');
+      const marketIdx = html.indexOf('data-testid="market-social-proof"');
 
-      expect(heroIdx).toBeLessThan(problemaIdx);
-      expect(problemaIdx).toBeLessThan(solucaoIdx);
-      expect(solucaoIdx).toBeLessThan(comoIdx);
-      expect(comoIdx).toBeLessThan(statsIdx);
-      expect(statsIdx).toBeLessThan(founderIdx);
-      expect(founderIdx).toBeLessThan(credibilityIdx);
-      expect(credibilityIdx).toBeLessThan(ctaIdx);
+      expect(heroIdx).toBeLessThan(antecipeIdx);
+      expect(antecipeIdx).toBeLessThan(terminalIdx);
+      expect(terminalIdx).toBeLessThan(socialIdx);
+      expect(socialIdx).toBeLessThan(personasIdx);
+      expect(personasIdx).toBeLessThan(pricingIdx);
+      expect(pricingIdx).toBeLessThan(marketIdx);
     });
   });
 });

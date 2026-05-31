@@ -3,6 +3,30 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
+ * REPO-COMMS #1289 / WCAG 2.1: Detecta preferência de reduced motion do usuário.
+ *
+ * Usa window.matchMedia('(prefers-reduced-motion: reduce)') + listener para
+ * detectar mudanças em tempo real. Retorna `true` quando o usuário prefere
+ * animações reduzidas ou desabilitadas.
+ *
+ * @returns true se o usuário prefere reduced motion
+ */
+export function usePrefersReducedMotion(): boolean {
+  const [prefersReduced, setPrefersReduced] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReduced(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  return prefersReduced;
+}
+
+/**
  * STORY-174: useScrollAnimation hook
  *
  * Triggers animation when element enters viewport using Intersection Observer.
@@ -141,4 +165,26 @@ export function useScrollProgress() {
   }, []);
 
   return progress;
+}
+
+/**
+ * REPO-COMMS #1289: Combina useScrollAnimation + usePrefersReducedMotion
+ * para uso nos componentes da landing page B2G.
+ *
+ * Centraliza a lógica de: scroll trigger + acessibilidade (WCAG 2.1
+ * prefers-reduced-motion). Elimina duplicação em 6+ componentes.
+ *
+ * @param threshold - Porcentagem visível para trigger (0-1, default 0.15)
+ * @returns { ref, isVisible, shouldAnimate }
+ */
+export function useLandingAnimation(threshold = 0.15) {
+  const { ref, isVisible } = useScrollAnimation(threshold);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  return {
+    ref,
+    isVisible,
+    /** true quando scroll trigger disparou E usuário NÃO prefere reduced motion */
+    shouldAnimate: isVisible && !prefersReducedMotion,
+  };
 }
