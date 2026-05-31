@@ -186,3 +186,5 @@ COMMENT ON FUNCTION public.network_orgao_patterns(VARCHAR, INT, INT) IS
 GRANT EXECUTE ON FUNCTION public.network_orgao_patterns(VARCHAR, INT, INT) TO anon;
 GRANT EXECUTE ON FUNCTION public.network_orgao_patterns(VARCHAR, INT, INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.network_orgao_patterns(VARCHAR, INT, INT) TO service_role;
+
+
