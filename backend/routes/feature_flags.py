@@ -209,6 +209,7 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "PARTNERS_ENABLED": "Partners feature (unreleased)",
     "SUBCONTRACT_INTEL_ENABLED": "Subcontracting / supply-chain intelligence vertical (EPIC-SUBINTEL #1224, unreleased)",
     "COMPETITIVE_INTEL_ENABLED": "Competitive intelligence vertical (EPIC-COMPINT #1261, unreleased)",
+    "B2G_OPS_ENABLED": "B2G Operations workspace_basic vertical (EPIC-B2GOPS #1262, unreleased)",
     # Infra
     "METRICS_ENABLED": "Prometheus metrics collection",
     "RATE_LIMITING_ENABLED": "Redis token-bucket rate limiting",
@@ -295,6 +296,8 @@ _FLAG_LIFECYCLE: dict[str, dict] = {
     "SUBCONTRACT_INTEL_ENABLED": {"owner": "product", "category": "subcontract", "lifecycle": "experimental", "created": "2026-05"},
     # COMPINT-000 (EPIC-COMPINT #1261): competitive intelligence vertical
     "COMPETITIVE_INTEL_ENABLED": {"owner": "product", "category": "competitive", "lifecycle": "experimental", "created": "2026-05"},
+    # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations workspace_basic gate
+    "B2G_OPS_ENABLED": {"owner": "product", "category": "b2gops", "lifecycle": "experimental", "created": "2026-05"},
 }
 
 

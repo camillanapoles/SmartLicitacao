@@ -205,6 +205,9 @@ SUBCONTRACT_INTEL_ENABLED: bool = str_to_bool(os.getenv("SUBCONTRACT_INTEL_ENABL
 # explicitly enabled. Strictly additive: no existing feature changes while
 # this is false.
 COMPETITIVE_INTEL_ENABLED: bool = str_to_bool(os.getenv("COMPETITIVE_INTEL_ENABLED", "false"))
+# B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations vertical gate
+# Default OFF — the entire B2GOPS vertical stays inert until explicitly enabled.
+B2G_OPS_ENABLED: bool = str_to_bool(os.getenv("B2G_OPS_ENABLED", "false"))
 
 
 # ============================================
@@ -274,6 +277,8 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     "SUBCONTRACT_INTEL_ENABLED": ("SUBCONTRACT_INTEL_ENABLED", "false"),
     # COMPINT-000 (EPIC-COMPINT #1261): competitive intelligence vertical
     "COMPETITIVE_INTEL_ENABLED": ("COMPETITIVE_INTEL_ENABLED", "false"),
+    # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations workspace_basic gate
+    "B2G_OPS_ENABLED": ("B2G_OPS_ENABLED", "false"),
     # --- Infra ---
     "METRICS_ENABLED": ("METRICS_ENABLED", "true"),
     "RATE_LIMITING_ENABLED": ("RATE_LIMITING_ENABLED", "true"),

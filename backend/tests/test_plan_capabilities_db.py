@@ -81,6 +81,7 @@ class TestCoerceCapabilitiesRow:
         "allow_pipeline": True,
         "allow_subcontract_intel": False,
         "allow_competitive_intel": False,
+        "allow_workspace_basic": False,
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,

@@ -42,11 +42,9 @@ export function buildOrgSchema(perfil: PerfilB2GLite): Record<string, unknown> {
     minimumFractionDigits: 0,
   }).format(valor_total_24m);
 
-  // sameAs: external authoritative references for entity disambiguation (Knowledge Panel signals).
-  const sameAs = [
-    `https://servicos.receita.fazenda.gov.br/Servicos/cnpjreva/Cnpjreva_Solicitacao.asp?cnpj=${empresa.cnpj}`,
-    `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(empresa.razao_social)}`,
-  ];
+  // sameAs omitted intentionally — canonical entity URLs (website, LinkedIn profile)
+  // not yet available in PerfilB2G payload. Backend follow-up tracked in #996.
+  // When available, add: sameAs: [empresa.website, empresa.linkedinProfile].filter(Boolean)
 
   const description =
     total_contratos_24m > 0
@@ -78,13 +76,16 @@ export function buildOrgSchema(perfil: PerfilB2GLite): Record<string, unknown> {
       addressCountry: 'BR',
     },
     url: `https://smartlic.tech/cnpj/${empresa.cnpj}`,
-    sameAs,
     description,
     knowsAbout: setor_nome,
   };
 
   if (empresa.porte) {
-    orgSchema.size = empresa.porte;
+    orgSchema.additionalProperty = {
+      '@type': 'PropertyValue',
+      name: 'porte',
+      value: empresa.porte,
+    };
   }
 
   if (ufs_atuacao && ufs_atuacao.length > 0) {

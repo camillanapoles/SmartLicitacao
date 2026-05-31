@@ -27,6 +27,7 @@ class TestPlanCapabilities:
             "allow_pipeline",  # STORY-250
             "allow_subcontract_intel",  # SUBINTEL-030 (EPIC-SUBINTEL #1224)
             "allow_competitive_intel",  # COMPINT-000 (EPIC-COMPINT #1261)
+            "allow_workspace_basic",  # B2GOPS-000 (EPIC-B2GOPS #1262)
             "max_requests_per_month",
             "max_requests_per_min",
             "max_summary_tokens",
