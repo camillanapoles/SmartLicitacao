@@ -199,7 +199,7 @@ async def start_lead_magnet_batch_task() -> asyncio.Task:
         while True:
             try:
                 from job_queue import get_arq_pool
-                pool = get_arq_pool()
+                pool = await get_arq_pool()
                 if pool:
                     await pool.enqueue_job("send_lead_magnet_batch_job")
             except Exception:

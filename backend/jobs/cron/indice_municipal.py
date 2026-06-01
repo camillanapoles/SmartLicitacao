@@ -60,7 +60,13 @@ async def run_indice_municipal_recalc() -> dict:
 
 
 async def _indice_municipal_loop() -> None:
-    """Loop de background: roda imediatamente no startup, depois a cada 90 dias."""
+    """Loop de background: aguarda 120s no startup, depois recalcula a cada 90 dias.
+
+    O delay inicial evita que o recálculo bloqueie o event loop durante o startup,
+    o que causava timeout no healthcheck do Railway (GET /health/live > 120s).
+    """
+    # Delay inicial para não competir com healthcheck de startup
+    await asyncio.sleep(120)
     while True:
         try:
             await run_indice_municipal_recalc()
