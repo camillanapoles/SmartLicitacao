@@ -42,8 +42,13 @@ function getInactivityTimeoutMs(): number {
 }
 
 /**
- * CRIT-026 AC6+AC7: Perform the actual SSE fetch to backend with undici
- * dispatcher and fallback timeout. Extracted for retry support.
+ * CRIT-026 AC6+AC7: Perform SSE fetch to backend. Extracted for retry support.
+ *
+ * Nota: dispatcher undici (bodyTimeout: 0) removido na build de 2026-06-01.
+ * Node 20+ built-in fetch já usa undici internamente; HARDEN-011 provê
+ * inactivity timeout (120s) via Promise.race no reader loop — o dispatcher
+ * customizado tornou-se redundante e o `import("undici")` quebrava o build
+ * (webpack não resolve módulo built-in não declarado).
  */
 async function fetchSSEStream(
   backendUrl: string,
@@ -51,36 +56,18 @@ async function fetchSSEStream(
   headers: Record<string, string>,
   signal: AbortSignal
 ): Promise<Response> {
-  const fetchOptions: Record<string, unknown> = {
+  const fetchOptions: RequestInit = {
     headers,
     signal,
   };
 
-  // CRIT-012 AC4 + CRIT-026 AC5: Build fetch options with undici bodyTimeout: 0
-  let undiciActive = false;
-  try {
-    // @ts-expect-error — undici is available at runtime in Node.js but lacks type declarations
-    const undiciModule = await import("undici");
-    const UndiciAgent = undiciModule.Agent;
-    if (UndiciAgent) {
-      fetchOptions.dispatcher = new UndiciAgent({
-        bodyTimeout: 0,
-        headersTimeout: 30_000,
-      });
-      undiciActive = true;
-    }
-  } catch {
-    // undici not available — proceed without custom dispatcher
-  }
-
-  // CRIT-026 AC5: Diagnostic logging for undici import result
   console.log(
-    `[SSE-PROXY] search_id=${searchId} undici_dispatcher=${undiciActive ? "custom" : "default"}`
+    `[SSE-PROXY] search_id=${searchId} dispatcher=built-in`
   );
 
   return fetch(
     `${backendUrl}/v1/buscar-progress/${encodeURIComponent(searchId)}`,
-    fetchOptions as RequestInit
+    fetchOptions
   );
 }
 

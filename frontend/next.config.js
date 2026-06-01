@@ -14,6 +14,11 @@ const nextConfig = {
   reactStrictMode: true,
   trailingSlash: false,
   output: 'standalone',
+
+  // BUILD-FIX-2026-06-01: Aumentar staticPageGenerationTimeout para 300s.
+  // Default 60s insuficiente para ISR com 200+ páginas × fetch backend.
+  // Sem isso, cascade timeout → 3 retries → build falha.
+  staticPageGenerationTimeout: 300,
   // Fix standalone output when repo has multiple lockfiles (root + frontend)
   // Without this, Next.js infers the wrong workspace root and server.js
   // ends up in a nested path instead of .next/standalone/server.js

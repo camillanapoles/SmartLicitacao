@@ -60,19 +60,31 @@ async function fetchProfile(catmat: string): Promise<ItemProfile | null> {
 
 // Memory feedback_isr_fetch_cache_alignment_next16: usar `next.revalidate` em vez de
 // `cache: 'no-store'` — alinha com semântica ISR (revalidate=86400 abaixo).
+// BUILD-FIX-2026-06-01: generateStaticParams com try-catch. Se backend falhar
+// durante build (timeout/rede), retorna [] — páginas serão geradas on-demand
+// via ISR no primeiro request. Sem isso, 200 páginas × 31 workers = cascade
+// timeout que mata o build.
+export const dynamicParams = true;
 export async function generateStaticParams() {
-  const data = await fetchWithBudget<{ catmats?: string[] }>(
-    `${BACKEND_URL}/v1/sitemap/itens`,
-    {
-      timeout: 15000,
-      retries: 0,
-      revalidate: 3600,
-      label: 'sitemap-itens-static',
-      fallback: { catmats: [] },
-    },
-  );
-  const catmats: string[] = (data?.catmats || []).slice(0, _MAX_STATIC_CATMATS);
-  return catmats.map((catmat) => ({ catmat }));
+  try {
+    const data = await fetchWithBudget<{ catmats?: string[] }>(
+      `${BACKEND_URL}/v1/sitemap/itens`,
+      {
+        timeout: 30000,
+        retries: 2,
+        revalidate: 3600,
+        label: 'sitemap-itens-static',
+        fallback: { catmats: [] },
+      },
+    );
+    const catmats: string[] = (data?.catmats || []).slice(0, _MAX_STATIC_CATMATS);
+    return catmats.map((catmat) => ({ catmat }));
+  } catch {
+    // Backend unreachable during build — skip pre-rendering.
+    // ISR will generate pages on-demand at runtime.
+    console.warn('[generateStaticParams] /itens/[catmat] — backend unreachable, skipping pre-render');
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
