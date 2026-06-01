@@ -4015,6 +4015,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/network-events/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Network Event
+         * @description Record an anonymized network event.
+         *
+         *     Only collects data if user has explicitly opted in
+         *     (profiles.allow_network_analytics = true). LGPD Art. 6, I.
+         */
+        post: operations["record_network_event_v1_network_events_record_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-events/top": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Top Network Events
+         * @description Get top dimension values for a given event type.
+         *
+         *     Public endpoint — returns only anonymized aggregated data.
+         */
+        get: operations["get_top_network_events_v1_network_events_top_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/notifications/new-bids-count": {
         parameters: {
             query?: never;
@@ -10712,6 +10757,44 @@ export interface components {
             /** Items */
             items: components["schemas"]["ReconciliationRun"][];
         };
+        /** RecordEventRequest */
+        RecordEventRequest: {
+            /**
+             * Dimensao Tipo
+             * @description Tipo da dimensao: setor, uf, modalidade, orgao
+             */
+            dimensao_tipo: string;
+            /**
+             * Dimensao Valor
+             * @description Valor da dimensao (ex: saude, SP, pregao)
+             */
+            dimensao_valor: string;
+            /**
+             * Evento Tipo
+             * @description Tipo do evento: search_query, sector_view, org_view, cnpj_lookup
+             */
+            evento_tipo: string;
+            /**
+             * Metadados
+             * @description Metadados adicionais (setores, ufs, modalidades). NUNCA PII.
+             */
+            metadados?: {
+                [key: string]: unknown;
+            };
+        };
+        /** RecordEventResponse */
+        RecordEventResponse: {
+            /**
+             * Message
+             * @default Evento registrado com sucesso
+             */
+            message: string;
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+        };
         /** RecoveryCodesResponse */
         RecoveryCodesResponse: {
             /** Codes */
@@ -12108,6 +12191,13 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** TopItem */
+        TopItem: {
+            /** Contagem */
+            contagem: number;
+            /** Dimensao Valor */
+            dimensao_valor: string;
+        };
         /** TopOpportunity */
         TopOpportunity: {
             /** Data Encerramento */
@@ -12128,6 +12218,17 @@ export interface components {
             title: string;
             /** Value */
             value: number;
+        };
+        /** TopResponse */
+        TopResponse: {
+            /** Evento Tipo */
+            evento_tipo: string;
+            /** Items */
+            items: components["schemas"]["TopItem"][];
+            /** Periodo Fim */
+            periodo_fim: string;
+            /** Periodo Inicio */
+            periodo_inicio: string;
         };
         /** TopSupplierItem */
         TopSupplierItem: {
@@ -17917,6 +18018,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MunicipioProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_network_event_v1_network_events_record_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordEventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_top_network_events_v1_network_events_top_get: {
+        parameters: {
+            query: {
+                /** @description Tipo de evento para filtrar */
+                evento_tipo: string;
+                /** @description Dimensao para agregar */
+                dimensao_tipo?: string;
+                /** @description Janela em dias */
+                dias?: number;
+                /** @description Maximo de resultados */
+                limite?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopResponse"];
                 };
             };
             /** @description Validation Error */
