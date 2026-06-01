@@ -274,6 +274,7 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     "ab_experiments_enabled": ("AB_EXPERIMENTS_ENABLED", "false"),
     # --- Feature Gates (unreleased features) ---
     "ORGANIZATIONS_ENABLED": ("ORGANIZATIONS_ENABLED", "false"),
+    "MESSAGES_ENABLED": ("MESSAGES_ENABLED", "true"),
     "PARTNERS_ENABLED": ("PARTNERS_ENABLED", "false"),
     # SUBINTEL-030 (EPIC-SUBINTEL #1224): subcontracting intelligence vertical
     "SUBCONTRACT_INTEL_ENABLED": ("SUBCONTRACT_INTEL_ENABLED", "false"),
