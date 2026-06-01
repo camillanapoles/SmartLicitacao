@@ -9,6 +9,7 @@ import Footer from '@/app/components/Footer';
 import FornecedorPseoCTA from './FornecedorPseoCTA';
 import { isNoindexed } from '@/lib/seo/noindex';
 import AlertEntityCta from '@/components/seo/AlertEntityCta';
+import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 
 // Sprint 3 Parte 13: paginas de perfil de fornecedor por CNPJ
 // ISR 24h — dados do PNCP atualizados diariamente
@@ -483,6 +484,15 @@ export default async function FornecedorCnpjPage({ params }: Props) {
 
           {/* Lead Capture — client component fires pseo_supplier_viewed + pseo_checkout_click */}
           <FornecedorPseoCTA cnpj={cnpj} razaoSocial={profile.razao_social} />
+
+          {/* CONV-013: WhatsApp CTA — falar com founder */}
+          <WhatsAppCTA
+            source="fornecedor_page"
+            entity={profile.razao_social}
+            entityId={cnpj}
+            setor={undefined}
+            uf={profile.uf_sede}
+          />
 
           <p className="text-xs text-gray-400 mt-8">{profile.aviso_legal}</p>
         </div>

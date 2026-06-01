@@ -10,6 +10,7 @@ import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
 import { AdvisoryDisclaimer } from '@/components/legal/AdvisoryDisclaimer';
+import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 
 const BACKEND_URL = getBackendUrl();
 
@@ -244,6 +245,16 @@ export default async function OrgaoPerfilPage({
           Solicitar análise de edital
         </Link>
       </section>
+
+      {/* CONV-013: WhatsApp CTA — falar com founder */}
+      <div className="mt-8">
+        <WhatsAppCTA
+          source="orgao_page"
+          entity={stats.nome}
+          entityId={slug}
+          uf={stats.uf}
+        />
+      </div>
 
       {/* #788: Founders plan CTA for high-intent organic visitors */}
       <FoundersRibbon

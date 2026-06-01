@@ -26,6 +26,7 @@ import {
 import { getCitiesByUf } from '@/lib/cities';
 import { getFreshnessLabel } from '@/lib/seo';
 import { isNoindexed } from '@/lib/seo/noindex';
+import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 
 /**
  * MKT-003 AC1: Sector × UF programmatic page.
@@ -713,6 +714,17 @@ export default async function LicitacoesSectorUfPage({
               </section>
             );
           })()}
+
+          {/* CONV-013: WhatsApp CTA — falar com founder */}
+          <div className="mt-10">
+            <WhatsAppCTA
+              source="blog_licitacoes_page"
+              entity={sector.name}
+              entityId={`${setor}-${uf}`}
+              setor={setor}
+              uf={ufUpper}
+            />
+          </div>
         </div>
       </main>
 

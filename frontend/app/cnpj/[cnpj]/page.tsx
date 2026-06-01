@@ -7,6 +7,7 @@ import InlineTrialCTA from '../../components/InlineTrialCTA';
 import IntelReportCTA from './IntelReportCTA';
 import { LeadCapture } from '@/components/LeadCapture';
 import { FoundersRibbon } from '@/components/banners/FoundersRibbon';
+import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 import { fetchWithBudget } from '@/lib/safe-fetch';
 import { getBackendUrl } from '@/lib/backend-url';
 import { buildOrgSchema } from './_jsonld';
@@ -272,6 +273,17 @@ export default async function CnpjPerfilPage({
           Mapear meu setor
         </Link>
       </section>
+
+      {/* CONV-013: WhatsApp CTA — falar com founder */}
+      <div className="mt-8">
+        <WhatsAppCTA
+          source="cnpj_page"
+          entity={empresa.razao_social}
+          entityId={cnpj}
+          setor={perfil.setor_detectado}
+          uf={empresa.uf}
+        />
+      </div>
 
       {/* #788: Founders plan CTA for high-intent organic visitors */}
       <FoundersRibbon

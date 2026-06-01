@@ -26,6 +26,7 @@ import { SeoOpportunityBanner } from "@/app/components/seo/SeoOpportunityBanner"
 import { LeadCapture } from "@/components/LeadCapture";
 import SeoBannerCta from "@/app/components/landing/SeoBannerCta";
 import AlertEntityCta from "@/components/seo/AlertEntityCta";
+import WhatsAppCTA from "@/app/components/whatsapp/WhatsAppCTA";
 
 /**
  * STORY-324 AC5: SSG with ISR 6h for sector landing pages.
@@ -513,6 +514,16 @@ export default async function SectorPage({
           variant="contextual"
           copy="Receba inteligência B2G sem mensalidade. Acesso vitalício R$997."
           src="pseo_licitacoes"
+        />
+      </section>
+
+      {/* CONV-013: WhatsApp CTA — falar com founder */}
+      <section className="max-w-5xl mx-auto px-4 pb-4">
+        <WhatsAppCTA
+          source="licitacoes_page"
+          entity={sector.name}
+          entityId={setor}
+          setor={setor}
         />
       </section>
 
