@@ -43,6 +43,7 @@ from webhooks.handlers.checkout import (  # noqa: F401
     handle_intel_report_payment_failed as _handle_intel_report_payment_failed,
     _send_async_payment_failed_email,
     _create_partner_referral_async,
+    _create_post_purchase_sequence,
 )
 from webhooks.handlers.subscription import (  # noqa: F401
     handle_subscription_created as _handle_subscription_created,

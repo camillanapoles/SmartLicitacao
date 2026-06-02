@@ -94,6 +94,11 @@ async def handle_intel_report_checkout_completed(sb, session_data: dict) -> None
                 f"Could not enqueue generate_intel_report (non-fatal, will retry on webhook replay): {arq_err}"
             )
 
+        # CONV-011b-1: Create post-purchase sequence if product_sku is present in metadata
+        product_sku = metadata.get("product_sku")
+        if product_sku:
+            await _create_post_purchase_sequence(sb, purchase_id, product_sku, user_id)
+
 
 async def handle_intel_report_async_payment_succeeded(sb, session_data: dict) -> None:
     """Handle checkout.session.async_payment_succeeded for Intel Report (Boleto/PIX — #630).
@@ -160,14 +165,57 @@ async def handle_checkout_session_completed(sb, event: stripe.Event) -> None:
     # dispatched early and returned before the subscription-activation path.
     if session_data.get("mode") == "payment" and metadata.get("source") == "founding":
         logger.info(
-            f"checkout.session.completed: founding mode=payment — "
-            f"routing to mark_founding_lead_completed"
+            "checkout.session.completed: founding mode=payment — "
+            "routing to mark_founding_lead_completed"
         )
         try:
             from webhooks.handlers.founding import mark_founding_lead_completed
             mark_founding_lead_completed(sb, session_data)
         except Exception as e:
             logger.error(f"founding mode=payment handler failed (non-fatal): {e}")
+        return
+
+    # CONV-011b-1: Digital product one-time payment (mode=payment + product_sku in metadata)
+    if session_data.get("mode") == "payment" and metadata.get("product_sku"):
+        product_sku = metadata["product_sku"]
+        digital_user_id = metadata.get("user_id")
+        if not digital_user_id:
+            logger.warning(
+                f"Digital product checkout missing user_id in metadata: product_sku={product_sku}"
+            )
+            return
+
+        logger.info(
+            f"Digital product checkout completed: user_id={digital_user_id[:8]}, "
+            f"product_sku={product_sku}, session_id={session_data.get('id')}"
+        )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        purchase_row = {
+            "user_id": digital_user_id,
+            "product_type": "digital_product",
+            "entity_key": product_sku,
+            "status": "completed",
+            "stripe_checkout_session_id": session_data.get("id"),
+            "stripe_payment_intent_id": session_data.get("payment_intent"),
+            "created_at": now_iso,
+        }
+
+        insert_result = await _run_with_budget(
+            asyncio.to_thread(lambda: sb.table("intel_report_purchases").insert(purchase_row).execute()),
+            budget=_WEBHOOK_QUERY_BUDGET_S,
+            phase="route",
+            source="webhook.digital_product.insert_purchase",
+        )
+
+        digital_purchase_id = None
+        if insert_result.data:
+            digital_purchase_id = insert_result.data[0].get("id")
+            logger.info(f"Digital product purchase created: purchase_id={digital_purchase_id}")
+
+        if digital_purchase_id:
+            await _create_post_purchase_sequence(sb, digital_purchase_id, product_sku, digital_user_id)
+
         return
 
     user_id = resolve_user_id(sb, session_data)
@@ -482,6 +530,136 @@ async def handle_async_payment_failed(sb, event: stripe.Event) -> None:
 
     # Send notification email
     _send_async_payment_failed_email(sb, user_id, plan_id)
+
+
+# ============================================================================
+# Post-purchase sequence (CONV-011b-1)
+# ============================================================================
+
+_DIGITAL_STEPS_DEFINITIONS = [
+    {"step": "delivery", "offset_hours": 0, "template_id": None, "sent_at": None, "opened_at": None},
+    {"step": "followup", "offset_hours": 48, "template_id": None, "sent_at": None, "opened_at": None},
+    {"step": "reengagement", "offset_hours": 168, "template_id": None, "sent_at": None, "opened_at": None},
+]
+
+
+async def _create_post_purchase_sequence(sb, purchase_id: str, product_sku: str, user_id: str) -> None:
+    """Create a post_purchase_sequences row and schedule ARQ email jobs.
+
+    CONV-011b-1: Foundation for the 3-step email sequence (delivery 0h,
+    followup 48h, reengagement 7d). Webhook calls this after creating a
+    purchase record, so the sequence row and ARQ schedule fan out atomically.
+
+    Idempotent: skips if a sequence for this purchase_id already exists.
+    Never raises — failures are logged as warnings.
+    """
+    try:
+        # Check for existing sequence (idempotency)
+        def _sync_check_existing():
+            return (
+                sb.table("post_purchase_sequences")
+                .select("id")
+                .eq("purchase_id", purchase_id)
+                .limit(1)
+                .execute()
+            )
+
+        existing = await _run_with_budget(
+            asyncio.to_thread(_sync_check_existing),
+            budget=_WEBHOOK_QUERY_BUDGET_S,
+            phase="route",
+            source="webhook.post_purchase.check_existing",
+        )
+        if existing and existing.data:
+            logger.info(
+                f"Post-purchase sequence already exists for purchase_id={purchase_id}, skipping"
+            )
+            return
+
+        # Populate template_ids based on product_sku
+        steps = []
+        for s in _DIGITAL_STEPS_DEFINITIONS:
+            step_def = dict(s)
+            step_def["template_id"] = f"{product_sku}_{step_def['step']}"
+            steps.append(step_def)
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        def _sync_insert_sequence():
+            return sb.table("post_purchase_sequences").insert({
+                "purchase_id": purchase_id,
+                "product_sku": product_sku,
+                "user_id": user_id,
+                "status": "active",
+                "sequence_steps": steps,
+                "current_step": 0,
+                "created_at": now_iso,
+                "updated_at": now_iso,
+            }).execute()
+
+        insert_result = await _run_with_budget(
+            asyncio.to_thread(_sync_insert_sequence),
+            budget=_WEBHOOK_QUERY_BUDGET_S,
+            phase="route",
+            source="webhook.post_purchase.insert_sequence",
+        )
+
+        if not insert_result.data:
+            logger.warning(
+                f"Post-purchase sequence insert returned no data for purchase_id={purchase_id}"
+            )
+            return
+
+        sequence_id = insert_result.data[0]["id"]
+        logger.info(
+            f"Post-purchase sequence created: sequence_id={sequence_id}, "
+            f"purchase_id={purchase_id}, product_sku={product_sku}"
+        )
+
+        # Schedule ARQ jobs for each step (best-effort)
+        try:
+            from job_queue import get_arq_pool
+            pool = await get_arq_pool()
+            if pool:
+                await pool.enqueue_job(
+                    "send_post_purchase_step",
+                    sequence_id=sequence_id,
+                    step_index=0,
+                )
+                logger.info(
+                    f"send_post_purchase_step[0] enqueued for sequence_id={sequence_id}"
+                )
+                if len(steps) > 1:
+                    await pool.enqueue_job(
+                        "send_post_purchase_step",
+                        sequence_id=sequence_id,
+                        step_index=1,
+                        _defer_by=timedelta(hours=steps[1]["offset_hours"]),
+                    )
+                    logger.info(
+                        f"send_post_purchase_step[1] enqueued (+{steps[1]['offset_hours']}h) "
+                        f"for sequence_id={sequence_id}"
+                    )
+                if len(steps) > 2:
+                    await pool.enqueue_job(
+                        "send_post_purchase_step",
+                        sequence_id=sequence_id,
+                        step_index=2,
+                        _defer_by=timedelta(hours=steps[2]["offset_hours"]),
+                    )
+                    logger.info(
+                        f"send_post_purchase_step[2] enqueued (+{steps[2]['offset_hours']}h) "
+                        f"for sequence_id={sequence_id}"
+                    )
+        except Exception as arq_err:
+            logger.warning(
+                f"Could not enqueue post-purchase ARQ jobs (non-fatal): {arq_err}"
+            )
+
+    except Exception as e:
+        logger.warning(
+            f"Failed to create post-purchase sequence for purchase_id={purchase_id}: {e}"
+        )
 
 
 # ============================================================================

@@ -613,7 +613,7 @@ async def email_alerts_job(ctx: dict) -> dict:
     try:
         from supabase_client import get_supabase
         db = get_supabase()
-    except Exception as e:
+    except Exception:
         return {"status": "db_unavailable", **stats}
 
     try:
@@ -915,3 +915,105 @@ async def classify_zero_match_job(ctx: dict, search_id: str, candidates: list[di
     if tracker:
         await tracker.emit("zero_match_ready", -1, f"Classificação concluída: {len(approved)} oportunidades encontradas", total_classified=classified, approved=len(approved), rejected=rejected_count)
     return {"status": "completed", "total_classified": classified, "approved": len(approved), "rejected": rejected_count, "pending": pending_count, "duration_s": round(duration, 1)}
+
+
+# ============================================================================
+# CONV-011b-1: Post-purchase email sequence step (delivery/followup/reengagement)
+# ============================================================================
+
+
+async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) -> dict:
+    """Execute one step of a post-purchase sequence.
+
+    Called by ARQ worker at each offset (0h, 48h, 7d) to send the email
+    and advance the sequence. The actual email sending is a stub — part 2/3
+    of CONV-011b implements the Resend integration.
+
+    Args:
+        ctx: ARQ worker context.
+        sequence_id: UUID of the post_purchase_sequences row.
+        step_index: 0-based index of the step to execute.
+
+    Returns:
+        dict with status: "completed", "not_found", "already_sent", "step_mismatch".
+    """
+    from supabase_client import get_supabase
+
+    db = get_supabase()
+    start = time.monotonic()
+
+    # Fetch sequence
+    result = db.table("post_purchase_sequences").select("*").eq("id", sequence_id).limit(1).execute()
+    if not result.data:
+        logger.warning(f"send_post_purchase_step: sequence not found: {sequence_id}")
+        return {"status": "not_found", "sequence_id": sequence_id, "step_index": step_index}
+
+    sequence = result.data[0]
+    steps = sequence.get("sequence_steps") or []
+
+    if step_index >= len(steps):
+        logger.warning(
+            f"send_post_purchase_step: step_index={step_index} out of range "
+            f"(sequence has {len(steps)} steps) for sequence_id={sequence_id}"
+        )
+        return {"status": "step_mismatch", "sequence_id": sequence_id, "step_index": step_index}
+
+    step = steps[step_index]
+
+    # Check if this step was already sent
+    if step.get("sent_at"):
+        logger.info(
+            f"send_post_purchase_step: step {step_index} already sent at {step['sent_at']} "
+            f"for sequence_id={sequence_id}"
+        )
+        return {"status": "already_sent", "sequence_id": sequence_id, "step_index": step_index}
+
+    step_name = step.get("step", f"step_{step_index}")
+    product_sku = sequence.get("product_sku", "unknown")
+
+    logger.info(
+        f"Executing post-purchase step: sequence_id={sequence_id}, "
+        f"step={step_name} (index={step_index}), product_sku={product_sku}"
+    )
+
+    # TODO (CONV-011b-2): Send actual email via Resend SDK
+    #   template_id = step.get("template_id", f"{product_sku}_{step_name}")
+    #   user = db.table("profiles").select("email, full_name").eq("id", sequence["user_id"]).single().execute()
+    #   send_email_async(to=user["email"], template=template_id, ...)
+    #
+    # For now, mark the step as sent so the skeleton is testable.
+    now_iso = datetime.now(timezone.utc).isoformat()
+    steps[step_index]["sent_at"] = now_iso
+
+    # Determine new current_step and status
+    new_current_step = step_index + 1
+    new_status = sequence.get("status")
+
+    if new_current_step >= len(steps):
+        new_status = "completed"
+    elif new_status != "active":
+        new_status = "active"
+
+    db.table("post_purchase_sequences").update({
+        "sequence_steps": steps,
+        "current_step": new_current_step,
+        "status": new_status,
+    }).eq("id", sequence_id).execute()
+
+    duration = time.monotonic() - start
+    logger.info(
+        f"Post-purchase step completed: sequence_id={sequence_id}, "
+        f"step={step_name} (index={step_index}), "
+        f"current_step={new_current_step}, status={new_status}, "
+        f"duration={duration:.2f}s"
+    )
+
+    return {
+        "status": "completed",
+        "sequence_id": sequence_id,
+        "step_index": step_index,
+        "step_name": step_name,
+        "current_step": new_current_step,
+        "sequence_status": new_status,
+        "duration_s": round(duration, 2),
+    }
