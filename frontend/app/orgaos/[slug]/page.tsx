@@ -11,6 +11,7 @@ import { getBackendUrl } from '@/lib/backend-url';
 import { AdvisoryDisclaimer } from '@/components/legal/AdvisoryDisclaimer';
 import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 import PreviewCTA from '@/app/components/programmatic/PreviewCTA';
+import { resolveJourney } from '@/lib/seo/relatedResolver';
 
 const BACKEND_URL = getBackendUrl();
 
@@ -192,6 +193,19 @@ export default async function OrgaoPerfilPage({
     { label: stats.nome },
   ];
 
+  // CONV-017 (#1332): Build intent-progressive journey for this órgão.
+  const journey = resolveJourney({
+    type: 'orgao',
+    value: stats.cnpj,
+    currentUrl: `/orgaos/${slug}`,
+    name: stats.nome,
+    uf: stats.uf,
+    sectorSlug: stats.top_setores?.[0],
+    sectorName: stats.top_setores?.[0]
+      ? undefined
+      : undefined,
+  });
+
   return (
     <>
     {/* CONV-002b: Sticky bottom mobile CTA — contextual */}
@@ -214,12 +228,9 @@ export default async function OrgaoPerfilPage({
     <ContentPageLayout
       breadcrumbLabel={stats.nome}
       breadcrumbItems={breadcrumbItems}
-      relatedPages={[
-        { href: '/orgaos', title: 'Órgãos Compradores' },
-        { href: '/cnpj', title: 'Consulta CNPJ' },
-        { href: '/calculadora', title: 'Calculadora de Oportunidades' },
-        { href: '/licitacoes', title: 'Licitações por Setor' },
-      ]}
+      relatedPages={[]}
+      journeyLinks={journey}
+      journeySourceTemplate="orgao"
     >
       <script
         type="application/ld+json"

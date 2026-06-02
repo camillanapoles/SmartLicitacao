@@ -12,6 +12,8 @@ import AlertEntityCta from '@/components/seo/AlertEntityCta';
 import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 import { PseoPageTracker } from '@/app/components/seo/PseoPageTracker';
 import PreviewCTA from '@/app/components/programmatic/PreviewCTA';
+import { resolveJourney } from '@/lib/seo/relatedResolver';
+import { JourneyLinks } from '@/app/components/navigation/JourneyLinks';
 
 // Sprint 3 Parte 13: paginas de perfil de fornecedor por CNPJ
 // ISR 24h — dados do PNCP atualizados diariamente
@@ -171,6 +173,17 @@ export default async function FornecedorCnpjPage({ params }: Props) {
   const valorFmtLd = profile.valor_total >= 1_000_000
     ? `R$ ${(profile.valor_total / 1_000_000).toFixed(1)} mi`
     : `R$ ${(profile.valor_total / 1_000).toFixed(0)} mil`;
+
+  // CONV-017 (#1332): Build intent-progressive journey from profile data.
+  const journey = resolveJourney({
+    type: 'fornecedor',
+    value: cnpj,
+    currentUrl: `/fornecedores/${cnpj}`,
+    name: profile.razao_social,
+    uf: profile.uf_sede,
+    orgaoCnpjs: profile.top_compradores.map((o) => o.cnpj),
+    orgaoNames: profile.top_compradores.map((o) => o.nome),
+  });
 
   const jsonLd = [
     {
@@ -482,36 +495,8 @@ export default async function FornecedorCnpjPage({ params }: Props) {
             </div>
           </section>
 
-          {/* Páginas Relacionadas — PSEO-TMPL-001 (#882): interlinking bidirecional completo */}
-          <section className="border-t border-gray-200 pt-8 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Páginas Relacionadas</h2>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <Link href={`/cnpj/${cnpj}`} className="text-blue-600 hover:underline">
-                Consulta CNPJ — {cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}
-              </Link>
-              <Link href="/fornecedores" className="text-blue-600 hover:underline">
-                Todos os Fornecedores
-              </Link>
-              {profile.top_compradores.slice(0, 2).map((o) => (
-                <Link
-                  key={o.cnpj}
-                  href={`/contratos/orgao/${o.cnpj}`}
-                  className="text-blue-600 hover:underline"
-                >
-                  Contratos de {o.nome.split(' ').slice(0, 3).join(' ')}
-                </Link>
-              ))}
-              {profile.ufs_atuantes.slice(0, 2).map((uf) => (
-                <Link
-                  key={uf}
-                  href={`/contratos/${uf.toLowerCase()}`}
-                  className="text-blue-600 hover:underline"
-                >
-                  Contratos em {uf}
-                </Link>
-              ))}
-            </div>
-          </section>
+          {/* CONV-017 (#1332): JourneyLinks replaces flat "Páginas Relacionadas" */}
+          <JourneyLinks journey={journey} sourceTemplate="fornecedor" />
 
           {/* CONV-014: Alert CTA — monitorar contratos desta empresa */}
           <AlertEntityCta

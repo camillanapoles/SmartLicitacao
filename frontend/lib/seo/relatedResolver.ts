@@ -9,11 +9,16 @@
  * Diversity: results are seeded by a hash of `currentUrl` so different pages
  * surface different subsets of the candidate pool — avoids the "every page
  * links to the same 6 URLs" anti-pattern flagged by site crawlers.
+ *
+ * CONV-017 (#1332): Interlinking journeys for entity pages. Adds
+ * journey-specific context types (fornecedor, orgao, contrato, municipio) and
+ * a resolveJourney() function that returns ordered, intent-progressive steps
+ * instead of shuffled related links.
  */
 import { BLOG_ARTICLES } from '@/lib/blog';
 import { GLOSSARY_TERMS } from '@/lib/glossary-terms';
 import { QUESTIONS } from '@/lib/questions';
-import { SECTORS } from '@/lib/sectors';
+import { SECTORS, getRelatedSectors } from '@/lib/sectors';
 
 export type RelatedContextType =
   | 'sector'
@@ -46,6 +51,62 @@ export interface RelatedLink {
   href: string;
   /** Tag for the badge in the UI. */
   kind: 'artigo' | 'pergunta' | 'glossario' | 'setor' | 'panorama' | 'ferramenta';
+}
+
+/* -------------------------------------------------------------------------- */
+/* CONV-017 (#1332): Journey types for entity-page interlinking               */
+/* -------------------------------------------------------------------------- */
+
+/** Entity page types that support intent-progressive journeys. */
+export type JourneyEntityType =
+  | 'fornecedor'
+  | 'orgao'
+  | 'contrato'
+  | 'municipio';
+
+/**
+ * A single step in an intent-progressive journey.
+ * Ordered by commercial intent (most transactional → most exploratory).
+ */
+export interface JourneyStep {
+  /** 1-based position in the journey (1–5). */
+  position: number;
+  /** Short heading for the link. */
+  title: string;
+  /** Descriptive text explaining why the user would take this step. */
+  description: string;
+  /** Internal URL. */
+  href: string;
+  /** Semantic type of the destination for analytics tracking. */
+  destinationType: string;
+  /** Emoji icon representing the step. */
+  icon: string;
+}
+
+/**
+ * Context for resolving an intent-progressive journey on entity pages.
+ */
+export interface JourneyContext {
+  /** Entity type. */
+  type: JourneyEntityType;
+  /** Primary identifier (CNPJ, slug, or sector). */
+  value: string;
+  /** Current page path (excluded from self-linking). */
+  currentUrl: string;
+  /** Human-readable name of the entity. */
+  name?: string;
+  /** UF code (e.g. "SP", "RJ") for geography-biased links. */
+  uf?: string;
+  /** Human-readable UF name. */
+  ufName?: string;
+  /** Sector slug when known (e.g. "engenharia"). */
+  sectorSlug?: string;
+  /** Sector name when known. */
+  sectorName?: string;
+  /** Top buyer CNPJs for fornecedor/orgao pages (first = primary). */
+  orgaoCnpjs?: string[];
+  /** Top buyer names matching orgaoCnpjs. */
+  orgaoNames?: string[];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -321,6 +382,272 @@ function resolveCnpj(ctx: RelatedContext): RelatedLink[] {
 }
 
 /* -------------------------------------------------------------------------- */
+/* CONV-017 (#1332): Journey resolvers per entity type                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Jornada do Fornecedor — intenção progressiva.
+ *
+ * 1. Órgãos compradores  → transacional
+ * 2. Setores de atuação   → exploratório-setorial
+ * 3. Concorrentes         → inteligência competitiva
+ * 4. Subcontratação       → parceria
+ * 5. Relatório completo   → aprofundamento
+ */
+function resolveFornecedorJourney(ctx: JourneyContext): JourneyStep[] {
+  const cnpj = ctx.value;
+  const name = ctx.name ?? 'este fornecedor';
+
+  // Step 1: link to top comprador orgão if available, else generic orgãos page.
+  const orgaoHref = ctx.orgaoCnpjs?.[0]
+    ? `/orgaos/${ctx.orgaoCnpjs[0]}`
+    : '/orgaos';
+  const orgaoTitle = ctx.orgaoCnpjs?.[0]
+    ? `Órgãos compradores de ${name}`
+    : 'Órgãos compradores do governo';
+
+  // Step 2: link to setor if available, else generic licitacoes page.
+  const setorHref = ctx.sectorSlug
+    ? `/licitacoes/${ctx.sectorSlug}`
+    : '/licitacoes';
+
+  return [
+    {
+      position: 1,
+      title: orgaoTitle,
+      description: 'Conheça os órgãos que mais contratam esta empresa.',
+      href: orgaoHref,
+      destinationType: 'orgao',
+      icon: '🏛️',
+    },
+    {
+      position: 2,
+      title: `Setores de atuação`,
+      description: 'Descubra os setores onde esta empresa atua em licitações.',
+      href: setorHref,
+      destinationType: 'licitacoes',
+      icon: '📋',
+    },
+    {
+      position: 3,
+      title: 'Concorrentes',
+      description: 'Veja quem compete com esta empresa nos mesmos mercados.',
+      href: `/intel-concorrente?cnpj=${cnpj}`,
+      destinationType: 'concorrente',
+      icon: '🔍',
+    },
+    {
+      position: 4,
+      title: 'Subcontratação',
+      description: 'Identifique oportunidades de subcontratação com esta empresa.',
+      href: '/subcontratacao/mapear',
+      destinationType: 'subcontratacao',
+      icon: '🤝',
+    },
+    {
+      position: 5,
+      title: 'Relatório completo',
+      description: `Análise aprofundada de oportunidades B2G para ${name}.`,
+      href: `/intel-reports/new?cnpj=${cnpj}`,
+      destinationType: 'relatorio',
+      icon: '📊',
+    },
+  ];
+}
+
+/**
+ * Jornada do Órgão — intenção progressiva.
+ *
+ * 1. Categorias principais → transacional
+ * 2. Fornecedores          → descoberta
+ * 3. Contratos             → histórico
+ * 4. Órgãos similares      → comparação
+ * 5. Criar alerta          → conversão
+ */
+function resolveOrgaoJourney(ctx: JourneyContext): JourneyStep[] {
+  const cnpj = ctx.value;
+  const name = ctx.name ?? 'este órgão';
+
+  // Step 1: link to setor if available, else generic licitacoes.
+  const categoriasHref = ctx.sectorSlug
+    ? `/licitacoes/${ctx.sectorSlug}`
+    : '/licitacoes';
+
+  // Step 4: link to orgaos filtered by UF.
+  const similaresHref = ctx.uf
+    ? `/orgaos?uf=${ctx.uf.toLowerCase()}`
+    : '/orgaos';
+
+  return [
+    {
+      position: 1,
+      title: 'Categorias principais',
+      description: `Veja as licitações por categoria que ${name} publica.`,
+      href: categoriasHref,
+      destinationType: 'licitacoes',
+      icon: '📋',
+    },
+    {
+      position: 2,
+      title: `Fornecedores recorrentes`,
+      description: 'Quem mais vence licitações e fornece para este órgão.',
+      href: `/fornecedores/${cnpj}`,
+      destinationType: 'fornecedor',
+      icon: '🏢',
+    },
+    {
+      position: 3,
+      title: `Contratos do órgão`,
+      description: 'Histórico completo de contratos firmados por este órgão.',
+      href: `/contratos/orgao/${cnpj}`,
+      destinationType: 'contrato',
+      icon: '📄',
+    },
+    {
+      position: 4,
+      title: 'Órgãos similares',
+      description: 'Compare com outros órgãos compradores na mesma região.',
+      href: similaresHref,
+      destinationType: 'orgao',
+      icon: '🏛️',
+    },
+    {
+      position: 5,
+      title: 'Criar alerta',
+      description: 'Receba notificações de novos editais publicados por este órgão.',
+      href: `/signup?ref=orgao-${cnpj}`,
+      destinationType: 'alerta',
+      icon: '🔔',
+    },
+  ];
+}
+
+/**
+ * Jornada do Contrato (setor × UF) — intenção progressiva.
+ *
+ * 1. Editais abertos agora → transacional
+ * 2. Fornecedores ativos   → descoberta
+ * 3. Órgãos compradores    → top buyers
+ * 4. Setores relacionados  → adjacência
+ * 5. Relatório             → aprofundamento
+ */
+function resolveContratoJourney(ctx: JourneyContext): JourneyStep[] {
+  const { sectorSlug, uf, sectorName, ufName, value } = ctx;
+  const sl = sectorSlug ?? value;
+  const u = (uf ?? '').toLowerCase();
+
+  // Step 4: related sectors for branching.
+  const relatedSectors = getRelatedSectors(sl);
+  const relatedSector = relatedSectors[0];
+
+  return [
+    {
+      position: 1,
+      title: `Editais abertos agora`,
+      description: `Veja os editais abertos de ${sectorName ?? 'licitações'}${ufName ? ` em ${ufName}` : ''}.`,
+      href: `/licitacoes/${sl}/${u}`,
+      destinationType: 'licitacoes',
+      icon: '📢',
+    },
+    {
+      position: 2,
+      title: `Fornecedores ativos`,
+      description: `Fornecedores que atuam em ${sectorName ?? 'licitações'}${ufName ? ` ${ufName}` : ''}.`,
+      href: `/fornecedores/${sl}/${u}`,
+      destinationType: 'fornecedor',
+      icon: '🏢',
+    },
+    {
+      position: 3,
+      title: 'Órgãos que mais compram',
+      description: 'Os maiores compradores deste setor na região.',
+      href: `/orgaos?uf=${u}`,
+      destinationType: 'orgao',
+      icon: '🏛️',
+    },
+    {
+      position: 4,
+      title: relatedSector
+        ? `Setores relacionados: ${relatedSector.name}`
+        : 'Setores relacionados',
+      description: relatedSector
+        ? `Explore contratos de ${relatedSector.name}${ufName ? ` em ${ufName}` : ''}.`
+        : 'Veja contratos em outros setores.',
+      href: relatedSector
+        ? `/contratos/${relatedSector.slug}/${u}`
+        : '/contratos',
+      destinationType: 'contrato',
+      icon: '📎',
+    },
+    {
+      position: 5,
+      title: 'Relatório de oportunidade',
+      description: `Análise completa de oportunidades em ${sectorName ?? 'licitações'}${ufName ? ` ${ufName}` : ''}.`,
+      href: `/intel-reports/new?sector=${sl}&uf=${u}`,
+      destinationType: 'relatorio',
+      icon: '📊',
+    },
+  ];
+}
+
+/**
+ * Jornada do Município — intenção progressiva.
+ *
+ * 1. Editais abertos   → transacional
+ * 2. Fornecedores      → descoberta
+ * 3. Órgãos municipais → exploração
+ * 4. Comparar          → benchmarking
+ * 5. Alerta            → conversão
+ */
+function resolveMunicipioJourney(ctx: JourneyContext): JourneyStep[] {
+  const { value: slug, name, uf } = ctx;
+  const nome = name ?? slug;
+
+  return [
+    {
+      position: 1,
+      title: `Editais abertos em ${nome}`,
+      description: `Veja as licitações públicas abertas em ${nome} agora.`,
+      href: `/licitacoes?municipio=${slug}`,
+      destinationType: 'licitacoes',
+      icon: '📢',
+    },
+    {
+      position: 2,
+      title: `Fornecedores em ${nome}`,
+      description: `Empresas que fornecem para órgãos em ${nome}.`,
+      href: uf ? `/fornecedores?uf=${uf.toLowerCase()}&municipio=${slug}` : '/fornecedores',
+      destinationType: 'fornecedor',
+      icon: '🏢',
+    },
+    {
+      position: 3,
+      title: `Órgãos municipais`,
+      description: `Órgãos públicos sediados em ${nome}.`,
+      href: uf ? `/orgaos?uf=${uf.toLowerCase()}&municipio=${slug}` : '/orgaos',
+      destinationType: 'orgao',
+      icon: '🏛️',
+    },
+    {
+      position: 4,
+      title: 'Comparar municípios',
+      description: 'Compare indicadores de licitações entre municípios.',
+      href: `/comparador?municipio=${slug}`,
+      destinationType: 'comparador',
+      icon: '📊',
+    },
+    {
+      position: 5,
+      title: 'Criar alerta',
+      description: `Receba alertas semanais de editais em ${nome}.`,
+      href: `/signup?ref=municipio-${slug}`,
+      destinationType: 'alerta',
+      icon: '🔔',
+    },
+  ];
+}
+
+/* -------------------------------------------------------------------------- */
 /* Public API                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -373,4 +700,41 @@ export function resolveRelated(
   // Deterministic shuffle for diversity, then cap.
   const shuffled = deterministicShuffle(filtered, ctx.currentUrl);
   return shuffled.slice(0, limit);
+}
+
+/**
+ * CONV-017 (#1332): Resolve an intent-progressive journey for entity pages.
+ *
+ * Unlike resolveRelated(), this returns an ordered, non-shuffled sequence of
+ * up to 5 steps that guides the user from transactional to exploratory pages.
+ * Each step carries structured metadata for tracking and Schema.org markup.
+ *
+ * Guarantees:
+ * - Always returns exactly 5 steps (may overshoot).
+ * - Ordered by commercial intent (most actionable first).
+ * - Never includes `ctx.currentUrl`.
+ */
+export function resolveJourney(ctx: JourneyContext): JourneyStep[] {
+  let steps: JourneyStep[];
+  switch (ctx.type) {
+    case 'fornecedor':
+      steps = resolveFornecedorJourney(ctx);
+      break;
+    case 'orgao':
+      steps = resolveOrgaoJourney(ctx);
+      break;
+    case 'contrato':
+      steps = resolveContratoJourney(ctx);
+      break;
+    case 'municipio':
+      steps = resolveMunicipioJourney(ctx);
+      break;
+    default:
+      steps = [];
+  }
+
+  // Filter out current page, limit to 5.
+  return steps
+    .filter((s) => s.href !== ctx.currentUrl)
+    .slice(0, 5);
 }

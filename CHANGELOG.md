@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Frontend / SEO
+- **JourneyLinks — jornadas de intenção progressiva [CONV-017] (#1332)** — Substitui 'Páginas Relacionadas' (lista plana) por jornadas estruturadas de intenção progressiva em 4 entity pages (`fornecedores`, `orgaos`, `contratos`, `municipios`). `JourneyLinks` (server component com Schema.org ItemList JSON-LD) + `JourneyLinkTracker` (client component para Mixpanel). `relatedResolver.ts` com tipos `JourneyStep`/`JourneyContext` e resolvers por contexto de entidade. Rollback: `git revert <merge-commit>`.
+
 ### Added — Backend / Subcontracting Intelligence
 - **Capability `allow_subcontract_intel` + feature flag `SUBCONTRACT_INTEL_ENABLED` [SUBINTEL-030] (#1234)** — Mecanismo de gating **estritamente aditivo** para a futura vertical de Inteligência de Cadeia de Fornecimento (EPIC-SUBINTEL #1224). Novo campo `allow_subcontract_intel: bool` em `PlanCapabilities` (TypedDict) + `_UNKNOWN_PLAN_DEFAULTS` + 3 construtores do loader DB (jsonb opcional via `.get(...,False)` — não-regressão para linhas existentes), com valor `False` em todos os 9 planos atuais. Dependency `requires_subcontract_intel` + factory `get_subcontract_intel_dependency` em `quota/plan_auth.py` (flag off → 404 rota inerte; capability false → 403 upsell; master bypass; fail-closed em circuit-breaker open) para os futuros endpoints `/v1/subcontract/*`. Feature flag `SUBCONTRACT_INTEL_ENABLED` (default `false`) registrada em `config/features.py` + registry + lifecycle/description em `routes/feature_flags.py`. Comportamento de produção inalterado até ativação explícita. 23 testes novos + atualização de não-regressão. Rollback: reverter o merge ou manter a flag off (estado default).
 

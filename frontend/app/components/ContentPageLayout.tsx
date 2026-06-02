@@ -3,6 +3,8 @@ import Footer from './Footer';
 import Link from 'next/link';
 import BreadcrumbNav from '@/components/seo/BreadcrumbNav';
 import type { BreadcrumbItem } from '@/lib/seo';
+import type { JourneyStep } from '@/lib/seo/relatedResolver';
+import { JourneyLinks } from '@/app/components/navigation/JourneyLinks';
 
 interface RelatedPage {
   href: string;
@@ -15,6 +17,14 @@ interface ContentPageLayoutProps {
   relatedPages: RelatedPage[];
   /** Optional full breadcrumb trail. If provided, overrides the 2-level default. */
   breadcrumbItems?: BreadcrumbItem[];
+  /**
+   * CONV-017 (#1332): Intent-progressive journey links.
+   * When provided, replaces the legacy `relatedPages` sidebar section with
+   * JourneyLinks structured as numbered steps. Up to 5 steps.
+   */
+  journeyLinks?: JourneyStep[];
+  /** Template identifier for analytics when journeyLinks is used. */
+  journeySourceTemplate?: string;
 }
 
 export default function ContentPageLayout({
@@ -22,6 +32,8 @@ export default function ContentPageLayout({
   breadcrumbLabel,
   relatedPages,
   breadcrumbItems,
+  journeyLinks,
+  journeySourceTemplate = 'entity',
 }: ContentPageLayoutProps) {
   const items: BreadcrumbItem[] =
     breadcrumbItems ?? [
@@ -68,25 +80,52 @@ export default function ContentPageLayout({
                   </Link>
                 </div>
 
-                {/* Related Pages */}
-                {relatedPages.length > 0 && (
+                {/* Journey Links (CONV-017) — replaces legacy relatedPages when provided */}
+                {journeyLinks && journeyLinks.length > 0 ? (
                   <div className="bg-surface-1 rounded-xl p-4 sm:p-6 border border-[var(--border)]">
                     <h3 className="font-semibold text-ink text-sm sm:text-base mb-3 sm:mb-4">
-                      Conteúdo relacionado
+                      Navegação recomendada
                     </h3>
-                    <ul className="space-y-2.5 sm:space-y-3">
-                      {relatedPages.map((page) => (
-                        <li key={page.href}>
+                    <ul className="space-y-3">
+                      {journeyLinks.map((step) => (
+                        <li key={step.position}>
                           <Link
-                            href={page.href}
-                            className="text-xs sm:text-sm text-brand-blue hover:underline transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 rounded px-1"
+                            href={step.href}
+                            className="group flex items-start gap-2 text-xs sm:text-sm text-brand-blue hover:underline transition-colors rounded px-1"
                           >
-                            {page.title}
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700 group-hover:bg-blue-200 transition-colors" aria-hidden="true">
+                              {step.position}
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block font-medium">{step.icon} {step.title}</span>
+                              <span className="block text-gray-500 text-xs mt-0.5 line-clamp-2">{step.description}</span>
+                            </span>
                           </Link>
                         </li>
                       ))}
                     </ul>
                   </div>
+                ) : (
+                  /* Legacy Related Pages (fallback) */
+                  relatedPages.length > 0 && (
+                    <div className="bg-surface-1 rounded-xl p-4 sm:p-6 border border-[var(--border)]">
+                      <h3 className="font-semibold text-ink text-sm sm:text-base mb-3 sm:mb-4">
+                        Conteúdo relacionado
+                      </h3>
+                      <ul className="space-y-2.5 sm:space-y-3">
+                        {relatedPages.map((page) => (
+                          <li key={page.href}>
+                            <Link
+                              href={page.href}
+                              className="text-xs sm:text-sm text-brand-blue hover:underline transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 rounded px-1"
+                            >
+                              {page.title}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
                 )}
 
                 {/* Features Link */}
@@ -104,6 +143,16 @@ export default function ContentPageLayout({
               </div>
             </aside>
           </div>
+
+          {/* Full-width JourneyLinks below the grid when not in sidebar */}
+          {journeyLinks && journeyLinks.length > 0 && (
+            <div className="mt-8 max-w-2xl">
+              <JourneyLinks
+                journey={journeyLinks}
+                sourceTemplate={journeySourceTemplate}
+              />
+            </div>
+          )}
         </div>
       </main>
 

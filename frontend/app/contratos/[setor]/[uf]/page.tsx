@@ -19,6 +19,8 @@ import AlertEntityCta from '@/components/seo/AlertEntityCta';
 import { PseoPageTracker } from '@/app/components/seo/PseoPageTracker';
 import { PseoLink } from '@/app/components/seo/PseoLink';
 import PreviewCTA from '@/app/components/programmatic/PreviewCTA';
+import { resolveJourney } from '@/lib/seo/relatedResolver';
+import { JourneyLinks } from '@/app/components/navigation/JourneyLinks';
 
 export const revalidate = 14400; // 4h ISR (reduzido de 24h para melhorar freshness dos dados)
 
@@ -130,6 +132,17 @@ export default async function ContratosSetorUfPage({ params }: Props) {
   const year = new Date().getFullYear();
   const totalContracts = data?.total_contracts ?? 0;
   const totalEditais = blogStats?.total_editais ?? 0;
+
+  // CONV-017 (#1332): Build intent-progressive journey for this contrato page.
+  const journey = resolveJourney({
+    type: 'contrato',
+    value: setor,
+    currentUrl: `/contratos/${setor}/${uf}`,
+    sectorSlug: setor,
+    sectorName: sector.name,
+    uf: ufUpper,
+    ufName,
+  });
 
   const breadcrumbs = [
     { name: 'SmartLic', url: '/' },
@@ -491,24 +504,8 @@ export default async function ContratosSetorUfPage({ params }: Props) {
             </div>
           </section>
 
-          {/* Internal Linking */}
-          <section className="border-t border-gray-200 pt-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Páginas Relacionadas</h2>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <Link href={`/fornecedores/${setor}/${uf}`} className="text-blue-600 hover:underline">
-                Fornecedores de {sector.name} {getUfPrep(ufUpper)} {ufName}
-              </Link>
-              <Link href={`/alertas-publicos/${setor}/${uf}`} className="text-blue-600 hover:underline">
-                Alertas de {sector.name} {getUfPrep(ufUpper)} {ufName}
-              </Link>
-              <Link href={`/blog/licitacoes/${setor}/${uf}`} className="text-blue-600 hover:underline">
-                Licitações de {sector.name} {getUfPrep(ufUpper)} {ufName}
-              </Link>
-              <Link href="/contratos" className="text-blue-600 hover:underline">
-                Todos os Setores
-              </Link>
-            </div>
-          </section>
+          {/* CONV-017 (#1332): JourneyLinks replaces flat "Páginas Relacionadas" */}
+          <JourneyLinks journey={journey} sourceTemplate="contrato" />
 
           {/* CONV-002b: Lead Capture — contextual CTA + "Só quero ver os dados" */}
           <section className="mt-12 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 dark:bg-brand-blue/10 p-6 sm:p-8">
