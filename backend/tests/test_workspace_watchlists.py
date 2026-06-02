@@ -611,12 +611,12 @@ class TestFeatureFlag:
         # We test the module variable directly
         from config.features import B2G_OPS_ENABLED  # noqa: F401
 
-    def test_b2g_ops_flag_default_false(self):
-        """B2G_OPS_ENABLED must default to False (not active in production yet)."""
+    def test_b2g_ops_flag_default_true(self):
+        """B2G_OPS_ENABLED must default to True (active in production)."""
         from config.features import B2G_OPS_ENABLED as flag
 
-        # When no env is set, default must be False
-        assert flag is False, "B2G_OPS_ENABLED must default to False"
+        # When no env is set, default must be True
+        assert flag is True, "B2G_OPS_ENABLED must default to True"
 
     def test_b2g_ops_flag_in_registry(self):
         """B2G_OPS_ENABLED must be in the runtime feature flag registry."""
@@ -627,12 +627,12 @@ class TestFeatureFlag:
         )
 
     def test_b2g_ops_flag_registry_value(self):
-        """Registry entry must have default false."""
+        """Registry entry must have default true."""
         from config.features import _FEATURE_FLAG_REGISTRY
 
         env_var, registry_default = _FEATURE_FLAG_REGISTRY["B2G_OPS_ENABLED"]
-        assert registry_default == "false", (
-            f"Registry default must be 'false', got '{registry_default}'"
+        assert registry_default == "true", (
+            f"Registry default must be 'true', got '{registry_default}'"
         )
 
     def test_b2g_ops_flag_env_override_true(self, monkeypatch):

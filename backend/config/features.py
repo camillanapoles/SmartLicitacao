@@ -194,25 +194,26 @@ EMBEDDING_ENABLED: bool = str_to_bool(os.getenv("EMBEDDING_ENABLED", "false"))
 EMBEDDING_THRESHOLD: float = float(os.getenv("EMBEDDING_THRESHOLD", "0.6"))
 
 # SUBINTEL-030 (EPIC-SUBINTEL #1224): global kill-switch for the Subcontracting
-# / Supply-Chain Intelligence vertical. Default OFF — the entire vertical
-# (RPCs, /v1/subcontract/* endpoints, frontend) stays inert until explicitly
-# enabled. Strictly additive: no existing feature changes while this is false.
-SUBCONTRACT_INTEL_ENABLED: bool = str_to_bool(os.getenv("SUBCONTRACT_INTEL_ENABLED", "false"))
+# / Supply-Chain Intelligence vertical. Default ON (true) — the vertical is
+# active by default. Set env var to "false" to disable. Strictly additive: no
+# existing feature changes while this is false.
+SUBCONTRACT_INTEL_ENABLED: bool = str_to_bool(os.getenv("SUBCONTRACT_INTEL_ENABLED", "true"))
 
 # PREDINT-000 (EPIC-PREDINT #1260): global kill-switch for the Predictive
-# Intelligence vertical. Default OFF — the entire feature set (RPCs, endpoints,
-# frontend) stays inert until explicitly enabled. Strictly additive: no existing
-# feature changes while this is false.
-PREDICTIVE_INTEL_ENABLED: bool = str_to_bool(os.getenv("PREDICTIVE_INTEL_ENABLED", "false"))
+# Intelligence vertical. Default ON (true) — the vertical is active by default.
+# Set env var to "false" to disable. Strictly additive: no existing feature
+# changes while this is false.
+PREDICTIVE_INTEL_ENABLED: bool = str_to_bool(os.getenv("PREDICTIVE_INTEL_ENABLED", "true"))
 # COMPINT-000 (EPIC-COMPINT #1261): global kill-switch for the Competitive
 # Intelligence vertical (analise-concorrencia/, /v1/competitive-intel/*
-# endpoints, frontend). Default OFF — the entire vertical stays inert until
-# explicitly enabled. Strictly additive: no existing feature changes while
-# this is false.
-COMPETITIVE_INTEL_ENABLED: bool = str_to_bool(os.getenv("COMPETITIVE_INTEL_ENABLED", "false"))
+# endpoints, frontend). Default ON (true) — the vertical is active by default.
+# Set env var to "false" to disable. Strictly additive: no existing feature
+# changes while this is false.
+COMPETITIVE_INTEL_ENABLED: bool = str_to_bool(os.getenv("COMPETITIVE_INTEL_ENABLED", "true"))
 # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations vertical gate
-# Default OFF — the entire B2GOPS vertical stays inert until explicitly enabled.
-B2G_OPS_ENABLED: bool = str_to_bool(os.getenv("B2G_OPS_ENABLED", "false"))
+# Default ON (true) — the vertical is active by default.
+# Set env var to "false" to disable.
+B2G_OPS_ENABLED: bool = str_to_bool(os.getenv("B2G_OPS_ENABLED", "true"))
 
 
 # ============================================
@@ -277,13 +278,13 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     "MESSAGES_ENABLED": ("MESSAGES_ENABLED", "true"),
     "PARTNERS_ENABLED": ("PARTNERS_ENABLED", "false"),
     # SUBINTEL-030 (EPIC-SUBINTEL #1224): subcontracting intelligence vertical
-    "SUBCONTRACT_INTEL_ENABLED": ("SUBCONTRACT_INTEL_ENABLED", "false"),
+    "SUBCONTRACT_INTEL_ENABLED": ("SUBCONTRACT_INTEL_ENABLED", "true"),
     # PREDINT-000 (EPIC-PREDINT #1260): predictive intelligence vertical
-    "PREDICTIVE_INTEL_ENABLED": ("PREDICTIVE_INTEL_ENABLED", "false"),
+    "PREDICTIVE_INTEL_ENABLED": ("PREDICTIVE_INTEL_ENABLED", "true"),
     # COMPINT-000 (EPIC-COMPINT #1261): competitive intelligence vertical
-    "COMPETITIVE_INTEL_ENABLED": ("COMPETITIVE_INTEL_ENABLED", "false"),
+    "COMPETITIVE_INTEL_ENABLED": ("COMPETITIVE_INTEL_ENABLED", "true"),
     # B2GOPS-000 (EPIC-B2GOPS #1262): B2G Operations workspace_basic gate
-    "B2G_OPS_ENABLED": ("B2G_OPS_ENABLED", "false"),
+    "B2G_OPS_ENABLED": ("B2G_OPS_ENABLED", "true"),
     # --- Infra ---
     "METRICS_ENABLED": ("METRICS_ENABLED", "true"),
     "RATE_LIMITING_ENABLED": ("RATE_LIMITING_ENABLED", "true"),
