@@ -23,8 +23,13 @@ export async function POST(request: NextRequest) {
       utm_term,
     } = body as Record<string, string | undefined>;
 
-    if (!email || !email.includes('@')) {
-      return NextResponse.json({ error: 'Email inválido' }, { status: 400 });
+    const hasPhone = typeof telefone === 'string' && telefone.trim().length >= 10;
+
+    if ((!email || !email.includes('@')) && !hasPhone) {
+      return NextResponse.json(
+        { error: 'Email ou telefone inválido' },
+        { status: 400 },
+      );
     }
 
     // Store in Supabase via backend proxy

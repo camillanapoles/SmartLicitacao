@@ -78,6 +78,15 @@ function validatePhone(value: string): boolean {
   return digits.length >= 10 && digits.length <= 13;
 }
 
+/** Obfuscate sensitive data for pre-unlock blurred cards (CR security gate). */
+function obfuscateCard(card: InsightCard): InsightCard {
+  return {
+    ...card,
+    value: '●●●●',
+    description: 'Insight exclusivo — desbloqueie para ver os dados reais.',
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -158,8 +167,8 @@ export default function AhaMomentPanel({
   const [unlocked, setUnlocked] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [contact, setContact] = useState('');
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(false);
+  const [persisting, setPersisting] = useState(false);
   const viewFiredRef = useRef(false);
 
   // Total cards = all insight cards
@@ -203,7 +212,7 @@ export default function AhaMomentPanel({
     });
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const isEmail = validateEmail(contact);
     const isPhone = validatePhone(contact);
@@ -214,11 +223,39 @@ export default function AhaMomentPanel({
     }
 
     setError(false);
-    setSubmitted(true);
+    setPersisting(true);
+
+    // Persist lead via /api/lead-capture (CONV-004 lead gate)
+    const contactType = isEmail ? 'email' : 'whatsapp';
+    const payload: Record<string, string> = {
+      source: 'seo_banner',
+      setor: setor || '',
+      uf: uf || '',
+    };
+
+    if (isEmail) {
+      payload.email = contact;
+    } else {
+      // Phone-only: send placeholder email + real phone in telefone field
+      const digits = contact.replace(/\D/g, '');
+      payload.email = `whatsapp-${digits.slice(-4)}@lead.smartlic.tech`;
+      payload.telefone = contact;
+    }
+
+    try {
+      await fetch('/api/lead-capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // Fail-open: unlock even if persistence fails
+      console.warn('AhaMomentPanel: lead-capture POST failed (fail-open)');
+    }
+
+    setPersisting(false);
     setUnlocked(true);
     setShowGate(false);
-
-    const contactType = isEmail ? 'email' : 'whatsapp';
 
     trackPseoEvent('aha_unlock_complete', {
       source_template: sourceTemplate,
@@ -262,14 +299,14 @@ export default function AhaMomentPanel({
           />
         ))}
 
-        {/* Blurred cards section */}
+        {/* Blurred cards section — obfuscated data (CR security: no real data in DOM) */}
         {hasBlurred && !unlocked && (
           <div className="relative col-span-1 sm:col-span-2 lg:col-span-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {blurredCards.map((card, idx) => (
                 <InsightCardView
                   key={card.id}
-                  card={card}
+                  card={obfuscateCard(card)}
                   index={blurThreshold + idx}
                   isBlurred={true}
                 />
@@ -326,7 +363,11 @@ export default function AhaMomentPanel({
                     onSubmit={handleSubmit}
                     className="w-full max-w-sm flex flex-col gap-3"
                   >
+                    <label htmlFor="aha-gate-contact" className="sr-only">
+                      Email ou WhatsApp
+                    </label>
                     <input
+                      id="aha-gate-contact"
                       type="text"
                       value={contact}
                       onChange={(e) => {
@@ -337,24 +378,26 @@ export default function AhaMomentPanel({
                       className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/40"
                       autoFocus
                       required
+                      aria-label="Email ou WhatsApp"
                     />
                     {error && (
-                      <p className="text-xs text-red-500">
+                      <p className="text-xs text-red-600" role="alert">
                         Informe um email ou telefone válido.
                       </p>
                     )}
                     <button
                       type="submit"
-                      className="w-full px-5 py-2.5 bg-brand-blue text-white font-semibold text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      disabled={persisting}
+                      className="w-full px-5 py-2.5 bg-brand-blue text-white font-semibold text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
                       data-testid="aha-gate-submit"
                     >
-                      Ver insights completos
+                      {persisting ? 'Enviando…' : 'Ver insights completos'}
                     </button>
                   </form>
                   <button
                     type="button"
                     onClick={() => setShowGate(false)}
-                    className="mt-3 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="mt-3 text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   >
                     Voltar
                   </button>
