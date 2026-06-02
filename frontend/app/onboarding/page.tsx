@@ -393,6 +393,22 @@ export default function OnboardingPage() {
             />
           )}
 
+          {/* CONV-018: Segmentation link — appears on the last step */}
+          {currentStep === 2 && !isAnalyzing && !analysisError && (
+            <div className="mt-4 p-3 rounded-lg bg-[var(--surface-1)]/50 border border-dashed border-[var(--border)]">
+              <p className="text-xs text-[var(--ink-secondary)]">
+                Quer personalizar ainda mais?{" "}
+                <a
+                  href="/segmentar"
+                  className="text-[var(--brand-blue)] hover:underline font-medium"
+                >
+                  Responda 3 perguntas rápidas sobre seu negócio
+                </a>
+                {" "}para recomendações sob medida.
+              </p>
+            </div>
+          )}
+
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8 pt-4 border-t border-[var(--border)]">
             <div>

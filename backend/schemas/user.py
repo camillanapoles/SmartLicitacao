@@ -23,6 +23,13 @@ class ExperienciaLicitacoes(str, Enum):
     EXPERIENTE = "EXPERIENTE"
 
 
+class ObjetivoTipo(str, Enum):
+    """User's primary objective for journey personalization (CONV-018)."""
+    VENCER_LICITACAO = "vencer_licitacao"
+    SUBCONTRATAR = "subcontratar"
+    MONITORAR = "monitorar"
+
+
 class PerfilContexto(BaseModel):
     """
     Business context profile collected during onboarding wizard.
@@ -74,6 +81,15 @@ class PerfilContexto(BaseModel):
         default=None,
         max_length=200,
         description="User's primary objective in free text",
+    )
+    # CONV-018: User segmentation for journey personalization
+    segmento_principal: Optional[int] = Field(
+        default=None,
+        description="Primary business sector ID for personalization (CONV-018)",
+    )
+    objetivo_tipo: Optional[ObjetivoTipo] = Field(
+        default=None,
+        description="User's primary objective for journey routing (CONV-018)",
     )
     ticket_medio_desejado: Optional[int] = Field(
         default=None,

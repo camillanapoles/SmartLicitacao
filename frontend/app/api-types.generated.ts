@@ -4995,6 +4995,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/segment/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Segment
+         * @description Save user segmentation data to profile context_data (CONV-018).
+         *
+         *     Merges the new fields into the existing ``context_data`` JSONB column
+         *     on the ``profiles`` table without overwriting other fields.
+         *
+         *     Returns the full updated context_data on success.
+         */
+        post: operations["save_segment_v1_segment_save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/seo/coverage-manifest": {
         parameters: {
             query?: never;
@@ -9835,6 +9860,12 @@ export interface components {
             last_search_at?: string | null;
         };
         /**
+         * ObjetivoTipo
+         * @description User's primary objective for journey personalization (CONV-018).
+         * @enum {string}
+         */
+        ObjetivoTipo: "vencer_licitacao" | "subcontratar" | "monitorar";
+        /**
          * OrganizationAcceptResponse
          * @description POST /organizations/{org_id}/accept response.
          */
@@ -10326,6 +10357,8 @@ export interface components {
              * @description User's primary objective in free text
              */
             objetivo_principal?: string | null;
+            /** @description User's primary objective for journey routing (CONV-018) */
+            objetivo_tipo?: components["schemas"]["ObjetivoTipo"] | null;
             /**
              * Palavras Chave
              * @description Business-specific keywords for relevance boosting
@@ -10333,6 +10366,11 @@ export interface components {
             palavras_chave?: string[] | null;
             /** @description Company size: ME, EPP, MEDIO, GRANDE */
             porte_empresa: components["schemas"]["PorteEmpresa"];
+            /**
+             * Segmento Principal
+             * @description Primary business sector ID for personalization (CONV-018)
+             */
+            segmento_principal?: number | null;
             /**
              * Ticket Medio Desejado
              * @description Desired average ticket in BRL cents
@@ -11388,6 +11426,37 @@ export interface components {
              * @description e.g. ['CEIS: Impedimento', 'CNEP: Multa']
              */
             sanction_types?: string[];
+        };
+        /**
+         * SaveSegmentRequest
+         * @description Request body for POST /v1/segment/save (CONV-018).
+         */
+        SaveSegmentRequest: {
+            /** @description User's primary objective: vencer_licitacao, subcontratar, monitorar */
+            objetivo_tipo?: components["schemas"]["ObjetivoTipo"] | null;
+            /**
+             * Segmento Principal
+             * @description Primary business sector ID from sectors list
+             */
+            segmento_principal?: number | null;
+        };
+        /**
+         * SaveSegmentResponse
+         * @description Response for POST /v1/segment/save (CONV-018).
+         */
+        SaveSegmentResponse: {
+            /**
+             * Context Data
+             * @description Full merged context_data after save
+             */
+            context_data: {
+                [key: string]: unknown;
+            };
+            /**
+             * Status
+             * @description Operation status, always 'ok' on success
+             */
+            status: string;
         };
         /**
          * SearchActionResponse
@@ -19485,6 +19554,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SectorStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_segment_v1_segment_save_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSegmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveSegmentResponse"];
                 };
             };
             /** @description Validation Error */
