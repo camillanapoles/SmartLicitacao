@@ -16,7 +16,7 @@ gunicorn==23.0.0
 pydantic[email]==2.13.4
 pydantic-settings==2.14.1
 starlette==0.52.1
-python-multipart>=0.0.29           # CVE-2026-24486: Path Traversal fix (STORY-279)
+python-multipart>=0.0.30           # CVE-2026-24486: Path Traversal fix (STORY-279)
 
 # HTTP client
 httpx==0.28.1
