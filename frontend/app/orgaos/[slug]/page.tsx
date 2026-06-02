@@ -11,6 +11,8 @@ import { getBackendUrl } from '@/lib/backend-url';
 import { AdvisoryDisclaimer } from '@/components/legal/AdvisoryDisclaimer';
 import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 import PreviewCTA from '@/app/components/programmatic/PreviewCTA';
+import AhaMomentPanel from '@/app/components/AhaMomentPanel';
+import type { InsightCard } from '@/app/components/AhaMomentPanel';
 
 const BACKEND_URL = getBackendUrl();
 
@@ -232,6 +234,67 @@ export default async function OrgaoPerfilPage({
 
       <OrgaoPerfilClient stats={stats} />
 
+      {/* CONV-004 (#1313): AhaMomentPanel — insights com blur progressivo */}
+      <AhaMomentPanel
+        sourceTemplate="orgao_page"
+        entityId={slug}
+        entityName={stats.nome}
+        uf={stats.uf}
+        insightCards={[
+          ...(stats.licitacoes_30d > 0
+            ? [{
+                id: 'licitacoes-30d',
+                icon: '📊',
+                title: 'Licitações Recentes',
+                value: `${stats.licitacoes_30d} em 30 dias`,
+                description: 'Editais publicados nos últimos 30 dias por este órgão.',
+              } as InsightCard]
+            : []),
+          ...(stats.total_licitacoes > 0
+            ? [{
+                id: 'total-licitacoes',
+                icon: '📋',
+                title: 'Total de Licitações',
+                value: stats.total_licitacoes.toLocaleString('pt-BR'),
+                description: 'Total histórico de licitações publicadas pelo órgão.',
+              } as InsightCard]
+            : []),
+          ...(stats.valor_medio_estimado > 0
+            ? [{
+                id: 'valor-medio',
+                icon: '💰',
+                title: 'Valor Médio',
+                value: formatOrgaoBRL(stats.valor_medio_estimado),
+                description: 'Valor médio estimado das licitações publicadas.',
+              } as InsightCard]
+            : []),
+          ...(stats.top_modalidades.length > 0
+            ? [{
+                id: 'modalidades',
+                icon: '🏛️',
+                title: 'Principais Modalidades',
+                value: stats.top_modalidades.slice(0, 3).map((m) => m.nome).join(', '),
+                description: stats.top_modalidades[0]
+                  ? `${stats.top_modalidades[0].nome} é a modalidade mais usada (${stats.top_modalidades[0].count} processos).`
+                  : 'Modalidades de licitação mais utilizadas.',
+              } as InsightCard]
+            : []),
+          ...(stats.licitacoes_365d > 0
+            ? [{
+                id: 'volume-anual',
+                icon: '📅',
+                title: 'Volume em 12 Meses',
+                value: `${stats.licitacoes_365d} licitações`,
+                description: `Média de ${Math.round(stats.licitacoes_365d / 12)} por mês no último ano.`,
+              } as InsightCard]
+            : []),
+        ]}
+        postUnlockCta={{
+          label: 'Buscar editais do meu setor',
+          href: `/signup?ref=orgao-aha-${slug}`,
+        }}
+      />
+
       {/* CONV-002b: PreviewCTA — 3 últimas licitações + 3 blurred (degustação) */}
       {stats.ultimas_licitacoes.length >= 3 && (
         <div className="mt-8">
@@ -325,4 +388,15 @@ export default async function OrgaoPerfilPage({
     </ContentPageLayout>
     </>
   );
+}
+
+/** Crude BRL formatter for insight card display. */
+function formatOrgaoBRL(value: number): string {
+  if (value >= 1_000_000) {
+    return `R$ ${(value / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`;
+  }
+  if (value >= 1_000) {
+    return `R$ ${(value / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} mil`;
+  }
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }

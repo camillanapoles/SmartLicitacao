@@ -12,6 +12,8 @@ import AlertEntityCta from '@/components/seo/AlertEntityCta';
 import WhatsAppCTA from '@/app/components/whatsapp/WhatsAppCTA';
 import { PseoPageTracker } from '@/app/components/seo/PseoPageTracker';
 import PreviewCTA from '@/app/components/programmatic/PreviewCTA';
+import AhaMomentPanel from '@/app/components/AhaMomentPanel';
+import type { InsightCard } from '@/app/components/AhaMomentPanel';
 
 // Sprint 3 Parte 13: paginas de perfil de fornecedor por CNPJ
 // ISR 24h — dados do PNCP atualizados diariamente
@@ -366,6 +368,65 @@ export default async function FornecedorCnpjPage({ params }: Props) {
               </div>
             </div>
           </div>
+
+          {/* CONV-004 (#1313): AhaMomentPanel — insights com blur progressivo */}
+          <AhaMomentPanel
+            sourceTemplate="fornecedor_page"
+            entityId={cnpj}
+            entityName={profile.razao_social}
+            uf={profile.uf_sede}
+            insightCards={[
+              ...(profile.total_contratos > 0
+                ? [{
+                    id: 'total-contratos',
+                    icon: '📋',
+                    title: 'Total de Contratos',
+                    value: profile.total_contratos.toLocaleString('pt-BR'),
+                    description: 'Contratos públicos firmados com o governo em fontes oficiais.',
+                  } as InsightCard]
+                : []),
+              ...(profile.valor_total > 0
+                ? [{
+                    id: 'valor-total',
+                    icon: '💰',
+                    title: 'Valor Total Contratado',
+                    value: formatBRL(profile.valor_total),
+                    description: 'Soma total de todos os contratos públicos deste fornecedor.',
+                  } as InsightCard]
+                : []),
+              ...(profile.ufs_atuantes.length > 0
+                ? [{
+                    id: 'estados-atuacao',
+                    icon: '🗺️',
+                    title: 'Estados de Atuação',
+                    value: `${profile.ufs_atuantes.length} ${profile.ufs_atuantes.length === 1 ? 'estado' : 'estados'}`,
+                    description: `Atua em ${profile.ufs_atuantes.slice(0, 5).join(', ')}${profile.ufs_atuantes.length > 5 ? '...' : ''}.`,
+                  } as InsightCard]
+                : []),
+              ...(profile.top_compradores.length > 0
+                ? [{
+                    id: 'principais-compradores',
+                    icon: '🏢',
+                    title: 'Principais Compradores',
+                    value: `${profile.top_compradores.length} ${profile.top_compradores.length === 1 ? 'órgão' : 'órgãos'}`,
+                    description: `${profile.top_compradores[0]?.nome || ''} é o principal comprador, com ${(profile.top_compradores[0]?.total_contratos || 0).toLocaleString('pt-BR')} contratos.`,
+                  } as InsightCard]
+                : []),
+              ...(profile.anos_atividade.length > 0
+                ? [{
+                    id: 'anos-atividade',
+                    icon: '📅',
+                    title: 'Anos de Atividade',
+                    value: `${profile.anos_atividade.length} ${profile.anos_atividade.length === 1 ? 'ano' : 'anos'}`,
+                    description: `Presente em licitações desde ${Math.min(...profile.anos_atividade)}.`,
+                  } as InsightCard]
+                : []),
+            ]}
+            postUnlockCta={{
+              label: 'Buscar licitações do meu setor',
+              href: `/buscar?ref=fornecedor-aha-${cnpj}`,
+            }}
+          />
 
           {/* Contratos Recentes */}
           <section className="mb-8">

@@ -35,7 +35,14 @@ export type PseoEventName =
   // CONV-014: Alert system tracking events
   | 'alert_created'
   | 'alert_matched'
-  | 'alert_upgrade_cta_click';
+  | 'alert_upgrade_cta_click'
+  // CONV-004 (#1313): Aha moment panel events
+  | 'aha_panel_view'
+  | 'aha_unlock_start'
+  | 'aha_unlock_complete'
+  // CONV-001/CONV-004 (#1310/#1313): Shared value prop events
+  | 'value_prop_view'
+  | 'value_cta_click';
 
 export type PseoSourceTemplate =
   | 'fornecedor_page'
