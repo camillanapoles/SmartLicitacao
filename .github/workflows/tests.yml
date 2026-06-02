@@ -195,7 +195,7 @@ jobs:
         continue-on-error: true  # DEBT-123 AC9: intentional — quarantined tests are known-flaky, tracked separately
 
       - name: Publish Frontend Test Results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Frontend Test Results
