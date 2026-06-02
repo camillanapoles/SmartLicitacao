@@ -40,6 +40,13 @@ export type LeadCapturedEvent = {
   form_name?: string;
 };
 
+/** CONV-017 (#1332): Event payload for journey_link_clicked tracking. */
+export type JourneyLinkClickedEvent = {
+  source_template: string;
+  destination_type: string;
+  position: number;
+};
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -99,4 +106,12 @@ export function trackFormSubmitted(event: FormSubmittedEvent): void {
  */
 export function trackLeadCaptured(event: LeadCapturedEvent): void {
   safeTrack('lead_captured', event as unknown as Record<string, unknown>);
+}
+
+/**
+ * CONV-017 (#1332): Track a journey link click on entity pages.
+ * Event name: 'journey_link_clicked'
+ */
+export function trackJourneyLinkClicked(event: JourneyLinkClickedEvent): void {
+  safeTrack('journey_link_clicked', event as unknown as Record<string, unknown>);
 }

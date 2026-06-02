@@ -11,6 +11,8 @@ import { AdvisoryDisclaimer } from '@/components/legal/AdvisoryDisclaimer';
 import { LeadCapture } from '@/components/LeadCapture';
 import AlertEntityCta from '@/components/seo/AlertEntityCta';
 import PreviewCTA from '@/app/components/programmatic/PreviewCTA';
+import { resolveJourney } from '@/lib/seo/relatedResolver';
+import { JourneyLinks } from '@/app/components/navigation/JourneyLinks';
 
 // Sprint 4 Parte 13: páginas de municípios com licitações abertas
 // ISR 24h — dados do PNCP atualizados diariamente
@@ -175,6 +177,15 @@ export default async function MunicipioSlugPage({ params }: Props) {
     data_publicacao: l.data_publicacao,
     link_interno: `/municipios/${slug}`,
   }));
+
+  // CONV-017 (#1332): Build intent-progressive journey for this municipio.
+  const journey = resolveJourney({
+    type: 'municipio',
+    value: slug,
+    currentUrl: `/municipios/${slug}`,
+    name: profile.nome,
+    uf: profile.uf,
+  });
 
   const jsonLd = [
     {
@@ -385,24 +396,8 @@ export default async function MunicipioSlugPage({ params }: Props) {
             </section>
           )}
 
-          {/* Links relacionados */}
-          <section className="border-t border-gray-200 pt-8 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Páginas Relacionadas</h2>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <Link href="/municipios" className="text-blue-600 hover:underline">
-                Todos os Municípios
-              </Link>
-              <Link
-                href={`/fornecedores`}
-                className="text-blue-600 hover:underline"
-              >
-                Fornecedores em {profile.uf}
-              </Link>
-              <Link href="/licitacoes" className="text-blue-600 hover:underline">
-                Licitações por Setor
-              </Link>
-            </div>
-          </section>
+          {/* CONV-017 (#1332): JourneyLinks replaces flat "Páginas Relacionadas" */}
+          <JourneyLinks journey={journey} sourceTemplate="municipio" />
 
           {/* CONV-002b: Contextual CTA — trial + "Só quero ver os dados" */}
           <section className="mt-4 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 dark:bg-brand-blue/10 p-6 sm:p-8">
