@@ -9088,6 +9088,16 @@
         "title": "NewOpportunitiesResponse",
         "type": "object"
       },
+      "ObjetivoTipo": {
+        "description": "User's primary objective for journey personalization (CONV-018).",
+        "enum": [
+          "vencer_licitacao",
+          "subcontratar",
+          "monitorar"
+        ],
+        "title": "ObjetivoTipo",
+        "type": "string"
+      },
       "OrganizationAcceptResponse": {
         "additionalProperties": true,
         "description": "POST /organizations/{org_id}/accept response.",
@@ -10449,6 +10459,17 @@
             "description": "User's primary objective in free text",
             "title": "Objetivo Principal"
           },
+          "objetivo_tipo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ObjetivoTipo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User's primary objective for journey routing (CONV-018)"
+          },
           "palavras_chave": {
             "anyOf": [
               {
@@ -10468,6 +10489,18 @@
           "porte_empresa": {
             "$ref": "#/components/schemas/PorteEmpresa",
             "description": "Company size: ME, EPP, MEDIO, GRANDE"
+          },
+          "segmento_principal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Primary business sector ID for personalization (CONV-018)",
+            "title": "Segmento Principal"
           },
           "ticket_medio_desejado": {
             "anyOf": [
@@ -12676,6 +12709,58 @@
           "is_clean"
         ],
         "title": "SanctionsSummarySchema",
+        "type": "object"
+      },
+      "SaveSegmentRequest": {
+        "description": "Request body for POST /v1/segment/save (CONV-018).",
+        "properties": {
+          "objetivo_tipo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ObjetivoTipo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User's primary objective: vencer_licitacao, subcontratar, monitorar"
+          },
+          "segmento_principal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Primary business sector ID from sectors list",
+            "title": "Segmento Principal"
+          }
+        },
+        "title": "SaveSegmentRequest",
+        "type": "object"
+      },
+      "SaveSegmentResponse": {
+        "description": "Response for POST /v1/segment/save (CONV-018).",
+        "properties": {
+          "context_data": {
+            "additionalProperties": true,
+            "description": "Full merged context_data after save",
+            "title": "Context Data",
+            "type": "object"
+          },
+          "status": {
+            "description": "Operation status, always 'ok' on success",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "context_data"
+        ],
+        "title": "SaveSegmentResponse",
         "type": "object"
       },
       "SearchActionResponse": {
@@ -26398,6 +26483,53 @@
         "summary": "Get Sector Stats",
         "tags": [
           "sectors-public"
+        ]
+      }
+    },
+    "/v1/segment/save": {
+      "post": {
+        "description": "Save user segmentation data to profile context_data (CONV-018).\n\nMerges the new fields into the existing ``context_data`` JSONB column\non the ``profiles`` table without overwriting other fields.\n\nReturns the full updated context_data on success.",
+        "operationId": "save_segment_v1_segment_save_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSegmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveSegmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Segment",
+        "tags": [
+          "segment"
         ]
       }
     },
