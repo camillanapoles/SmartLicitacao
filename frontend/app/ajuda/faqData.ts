@@ -49,7 +49,7 @@ export const FAQ_DATA: FAQCategoryData[] = [
       {
         question: 'Como faço download dos resultados em Excel?',
         answer:
-          'Após a análise ser concluída, clique no botão "Download Excel" que aparece junto aos resultados. O arquivo será gerado e baixado automaticamente com todas as oportunidades encontradas. Este recurso está disponível em planos pagos.',
+          'Após a análise ser concluída, clique no botão "Download Excel" que aparece junto aos resultados. O arquivo será gerado e baixado automaticamente com todas as oportunidades encontradas. Este recurso está disponível no SmartLic Pro.',
       },
       {
         question: 'Como funciona a avaliação por IA?',
@@ -59,16 +59,16 @@ export const FAQ_DATA: FAQCategoryData[] = [
     ],
   },
   {
-    id: 'planos',
-    title: 'Planos',
+    id: 'opcoes',
+    title: 'Opções de Acesso',
     items: [
       {
         question: 'Qual a diferença entre o período de avaliação e o SmartLic Pro?',
         answer:
-          'Durante os 14 dias de avaliação gratuita, você usa o produto completo sem restrições: Excel, Pipeline, IA completa e histórico. Após o período de avaliação, assine o SmartLic Pro para continuar com acesso completo.',
+          'Durante os 14 dias de avaliação gratuita, você usa o produto completo sem restrições: Excel, Pipeline, IA completa e histórico. Após o período de avaliação, escolha o SmartLic Pro para continuar com acesso completo.',
       },
       {
-        question: 'Posso testar antes de assinar?',
+        question: 'Posso testar antes de ativar?',
         answer:
           'Sim! Ao criar sua conta, você experimenta o produto completo por 14 dias gratuitamente, sem limites. Não é necessário informar dados de pagamento.',
       },
@@ -104,7 +104,7 @@ export const FAQ_DATA: FAQCategoryData[] = [
           'Sim. Todos os pagamentos são processados pelo Stripe, plataforma certificada PCI-DSS nível 1. Nós nunca armazenamos os dados do seu cartão em nossos servidores.',
       },
       {
-        question: 'Como cancelo minha assinatura?',
+        question: 'Como cancelo meu acesso?',
         answer:
           'Você pode cancelar a qualquer momento acessando Minha Conta. O acesso permanece ativo até o final do período já pago. Após essa data, o acesso ao sistema é encerrado.',
       },
@@ -179,7 +179,7 @@ export const FAQ_DATA: FAQCategoryData[] = [
       {
         question: 'Como excluo minha conta?',
         answer:
-          'Acesse Minha Conta, na seção "Dados e Privacidade", clique em "Excluir Minha Conta". Esta ação é irreversível e apaga permanentemente todos os seus dados, incluindo histórico de análises e assinaturas.',
+          'Acesse Minha Conta, na seção "Dados e Privacidade", clique em "Excluir Minha Conta". Esta ação é irreversível e apaga permanentemente todos os seus dados, incluindo histórico de análises e acessos.',
       },
       {
         question: 'Posso exportar meus dados?',

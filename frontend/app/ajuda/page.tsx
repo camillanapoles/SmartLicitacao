@@ -24,7 +24,7 @@ export default function AjudaPage() {
       <SchemaMarkup
         pageType="faq"
         title="Central de Ajuda — SmartLic"
-        description="Respostas para as dúvidas mais comuns sobre o SmartLic: busca de licitações, planos, pagamentos, fontes de dados e conta."
+        description="Respostas para as dúvidas mais comuns sobre o SmartLic: análises de licitações, opções de acesso, pagamentos, fontes de dados e conta."
         url={url}
         faqs={faqs}
         breadcrumbs={[
