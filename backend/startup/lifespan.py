@@ -13,6 +13,81 @@ import startup.state as _state
 
 logger = logging.getLogger(__name__)
 
+# COST-OPT 2026-06-03: Colocated ARQ worker subprocess reference.
+_colocated_worker_process: asyncio.subprocess.Process | None = None
+
+
+async def _start_colocated_worker() -> bool:
+    """COST-OPT 2026-06-03: Start ARQ worker as subprocess in same container.
+
+    Eliminates need for separate Railway bidiq-worker service (~$20/mo saving).
+    Worker subprocess inherits environment (REDIS_URL, SUPABASE_URL, etc.).
+    Logs captured via stderr pipe → Python logger.
+
+    Returns True if worker started, False if disabled or failed.
+    """
+    global _colocated_worker_process
+
+    if os.getenv("WORKER_COLOCATED", "false").lower() != "true":
+        logger.info("COST-OPT: WORKER_COLOCATED not set — skipping colocated worker")
+        return False
+
+    logger.info("COST-OPT: Starting colocated ARQ worker subprocess...")
+    try:
+        _colocated_worker_process = await asyncio.create_subprocess_exec(
+            "arq", "job_queue.WorkerSettings",
+            "--custom-log-dict", "job_queue.arq_log_config",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        logger.info(
+            "COST-OPT: ARQ worker started (PID=%d). Eliminates bidiq-worker Railway service.",
+            _colocated_worker_process.pid,
+        )
+
+        # Background task to stream worker logs to Python logger
+        async def _stream_worker_logs(stream, log_level):
+            while True:
+                line = await stream.readline()
+                if not line:
+                    break
+                text = line.decode("utf-8", errors="replace").rstrip()
+                if text:
+                    logger.log(log_level, "COST-OPT[worker]: %s", text)
+
+        asyncio.create_task(_stream_worker_logs(_colocated_worker_process.stdout, logging.INFO))
+        asyncio.create_task(_stream_worker_logs(_colocated_worker_process.stderr, logging.WARNING))
+
+        return True
+    except Exception as e:
+        logger.error("COST-OPT: Failed to start colocated worker: %s", e)
+        _colocated_worker_process = None
+        return False
+
+
+async def _stop_colocated_worker() -> None:
+    """COST-OPT: Gracefully stop the colocated ARQ worker subprocess."""
+    global _colocated_worker_process
+
+    if _colocated_worker_process is None:
+        return
+
+    logger.info("COST-OPT: Stopping colocated worker (PID=%d)...", _colocated_worker_process.pid)
+    try:
+        _colocated_worker_process.terminate()
+        try:
+            await asyncio.wait_for(_colocated_worker_process.wait(), timeout=30.0)
+            logger.info("COST-OPT: Worker stopped gracefully (exit=%d)", _colocated_worker_process.returncode)
+        except asyncio.TimeoutError:
+            logger.warning("COST-OPT: Worker didn't stop in 30s — killing")
+            _colocated_worker_process.kill()
+            await _colocated_worker_process.wait()
+            logger.info("COST-OPT: Worker killed")
+    except Exception as e:
+        logger.error("COST-OPT: Error stopping worker: %s", e)
+    finally:
+        _colocated_worker_process = None
+
 
 async def _check_cache_schema() -> None:
     """CRIT-001 AC4: Validate search_results_cache schema on startup."""
@@ -228,6 +303,11 @@ async def lifespan(app_instance: FastAPI):
     from job_queue import get_arq_pool
     await get_arq_pool()
 
+    # COST-OPT 2026-06-03: Start colocated ARQ worker subprocess
+    # when WORKER_COLOCATED=true. Eliminates need for separate
+    # bidiq-worker Railway service (~$20/mo saving).
+    await _start_colocated_worker()
+
     # DEBT-014 SYS-006: Register background tasks
     # NOTE: cache_refresh/warmup/coverage_check deprecated 2026-04-18
     # (STORY-CIG-BE-cache-warming-deprecate). DataLake is primary query path.
@@ -416,6 +496,9 @@ async def lifespan(app_instance: FastAPI):
     stop_results = await task_registry.stop_all(timeout=10.0)
     logger.info("DEBT-124: TaskRegistry stopped %d tasks: %s",
                 len(stop_results), {k: v for k, v in stop_results.items() if v != "cancelled"})
+
+    # COST-OPT: Stop colocated ARQ worker before closing the pool
+    await _stop_colocated_worker()
 
     from job_queue import close_arq_pool
     await close_arq_pool()
