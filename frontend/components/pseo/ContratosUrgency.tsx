@@ -2,7 +2,8 @@
 /// Displays contract/sector recency data with UrgencyBadge and contextual messages.
 
 import React from 'react';
-import { UrgencyBadge, daysSince } from './UrgencyBadge';
+import { UrgencyBadge } from './UrgencyBadge';
+import { daysSince } from '@/lib/urgency-utils';
 
 interface AtividadeRecente {
   contagem_30d: number;
