@@ -17,6 +17,10 @@
 
 set -e
 
+# ── Diagnostic: confirm start.sh is executing ───────────────────────────
+# Railway filters stdout from entrypoint; redirect to stderr for visibility.
+echo "[start.sh] DIAGNOSTIC: PID=$$ PROCESS_TYPE=${PROCESS_TYPE:-web} WORKER_COLOCATED=${WORKER_COLOCATED:-false} RUNNER=${RUNNER:-uvicorn} WORKERS=${WEB_CONCURRENCY:-2}" >&2
+
 # ── Signal propagation ──────────────────────────────────────────────────
 # When Railway sends SIGTERM (drainingSeconds=120), forward to both processes.
 _uvicorn_pid=""
@@ -106,7 +110,8 @@ case "$PROCESS_TYPE" in
     fi
 
     if [ "${WORKER_COLOCATED:-false}" = "true" ]; then
-      echo "=== COST-OPT: Colocated mode — web + worker in same container ==="
+      echo "=== COST-OPT: Colocated mode — web + worker in same container ===" >&2
+      echo "[start.sh] WORKER_COLOCATED=true, starting ARQ worker in background..." >&2
       # Reduce web concurrency when sharing memory with worker
       if [ -z "${WEB_CONCURRENCY}" ]; then
         export WEB_CONCURRENCY=1
