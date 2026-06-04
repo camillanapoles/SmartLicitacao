@@ -249,6 +249,8 @@ _FEATURE_FLAG_REGISTRY: dict[str, tuple[str, str]] = {
     "TERM_SEARCH_VIABILITY_GENERIC": ("TERM_SEARCH_VIABILITY_GENERIC", "false"),
     "TERM_SEARCH_FILTER_CONTEXT": ("TERM_SEARCH_FILTER_CONTEXT", "false"),
     # --- Data Sources ---
+    # VIAB-UX-005a: A/B test for default sort
+    "VIABILITY_DEFAULT_SORT": ("VIABILITY_DEFAULT_SORT", "false"),
     "COMPRASGOV_ENABLED": ("COMPRASGOV_ENABLED", "false"),
     "PCP_V2_ENABLED": ("PCP_ENABLED", "true"),
     "DATALAKE_ENABLED": ("DATALAKE_ENABLED", "true"),

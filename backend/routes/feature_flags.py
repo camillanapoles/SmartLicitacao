@@ -217,6 +217,7 @@ _FLAG_DESCRIPTIONS: dict[str, str] = {
     "COMPRASGOV_CB_ENABLED": "ComprasGov circuit breaker enabled",
     # A/B Testing
     "ab_experiments_enabled": "A/B experiments framework (STORY-A/B)",
+    "VIABILITY_DEFAULT_SORT": "A/B test: default sort order (VIAB-UX-005a)",
     # Schema Contract (STORY-414)
     "SCHEMA_CONTRACT_STRICT": "Strict schema contract validation for external responses (STORY-414)",
     # Datalake Search Improvements
@@ -281,6 +282,7 @@ _FLAG_LIFECYCLE: dict[str, dict] = {
     "COMPRASGOV_CB_ENABLED": {"owner": "infra", "category": "infra", "lifecycle": "permanent", "created": "2026-02"},
     # A/B Testing
     "ab_experiments_enabled": {"owner": "product", "category": "experimental", "lifecycle": "experimental", "created": "2026-03"},
+    "VIABILITY_DEFAULT_SORT": {"owner": "search", "category": "experimental", "lifecycle": "experimental", "created": "2026-06"},
     # STORY-414: Schema contract gate
     "SCHEMA_CONTRACT_STRICT": {"owner": "data", "category": "validation", "lifecycle": "experimental", "created": "2026-03"},
     # STORY-437: Datalake search improvements

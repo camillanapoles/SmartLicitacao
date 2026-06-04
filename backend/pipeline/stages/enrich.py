@@ -99,6 +99,31 @@ async def stage_enrich(pipeline, ctx: SearchContext) -> None:
             f"Low(<50): {sum(1 for bid in ctx.licitacoes_filtradas if bid.get('_confidence_score', 50) < 50)}"
         )
 
+    # VIAB-UX-005a: A/B test — override default sort when feature flag is active
+    try:
+        from config import get_feature_flag as _get_ff
+        from utils.viability_split import get_viability_sort_group as _get_group
+
+        if _get_ff("VIABILITY_DEFAULT_SORT"):
+            user_id = ctx.user.get("id") if ctx.user else None
+            if user_id:
+                sort_group = _get_group(user_id)
+                if sort_group == "B":
+                    ctx.request.ordenacao = "confianca"
+                    logger.info(
+                        "VIAB-UX-005a: Group B override — sorting by confianca "
+                        f"(user={user_id[:8]}...)"
+                    )
+                else:
+                    logger.debug(
+                        "VIAB-UX-005a: Group A — keeping default sort "
+                        f"(user={user_id[:8]}...)"
+                    )
+    except Exception as exc:
+        logger.warning(
+            f"VIAB-UX-005a: A/B sort override failed — falling through: {exc}"
+        )
+
     # User-requested sorting (applied AFTER confidence re-ranking for non-default)
     if ctx.licitacoes_filtradas and ctx.request.ordenacao != "data_desc":
         logger.debug(f"Applying user sorting: ordenacao='{ctx.request.ordenacao}'")

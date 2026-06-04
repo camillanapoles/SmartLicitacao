@@ -250,6 +250,19 @@ async def buscar_licitacoes(
     )
 
     # -----------------------------------------------------------------------
+    # VIAB-UX-005a: Set A/B sort group header when feature flag is active
+    try:
+        from config import get_feature_flag as _get_ff
+        from utils.viability_split import get_viability_sort_group as _get_group
+
+        if _get_ff("VIABILITY_DEFAULT_SORT"):
+            uid = user.get("id")
+            if uid:
+                group = _get_group(uid)
+                http_response.headers["X-Viability-Sort-Group"] = group
+    except Exception:
+        logger.debug("VIAB-UX-005a: Failed to set sort group header — skipping")
+    # -----------------------------------------------------------------------
     # CRIT-CORE-001: Cache-first check BEFORE async decision.
     # If cache has data (fresh or stale), return immediately — no 202, no SSE dependency.
     # This ensures users always get results when cached data exists.
