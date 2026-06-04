@@ -1696,6 +1696,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/api/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Api Keys
+         * @description List all API keys for the authenticated user.
+         */
+        get: operations["list_api_keys_v1_api_api_keys_get"];
+        put?: never;
+        /**
+         * Create Api Key
+         * @description Create a new API key. The plaintext key is returned once and not stored.
+         */
+        post: operations["create_api_key_v1_api_api_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/api/api-keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Api Key
+         * @description Revoke an API key (soft-delete).
+         */
+        delete: operations["revoke_api_key_v1_api_api_keys__key_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/api/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Api Search
+         * @description Search licitações via API key authentication.
+         *
+         *     Same data source as the internal /buscar endpoint, adapted for
+         *     programmatic access. Returns paginated results.
+         */
+        get: operations["api_search_v1_api_api_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/api/auth/google": {
         parameters: {
             query?: never;
@@ -6131,6 +6198,96 @@ export interface components {
             total: number;
             /** Uf */
             uf: string;
+        };
+        /**
+         * ApiKeyCreateRequest
+         * @description Request to create a new API key.
+         */
+        ApiKeyCreateRequest: {
+            /**
+             * Name
+             * @description Label for the API key
+             * @default
+             */
+            name: string;
+        };
+        /**
+         * ApiKeyCreateResponse
+         * @description Response after creating an API key. The plaintext key is returned ONCE.
+         */
+        ApiKeyCreateResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: string;
+            /**
+             * Key
+             * @description Plaintext API key — shown only once
+             */
+            key: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ApiKeyListItem
+         * @description Public representation of an API key (no plaintext).
+         */
+        ApiKeyListItem: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** Last Used At */
+            last_used_at?: string | null;
+            /** Name */
+            name: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+        };
+        /**
+         * ApiKeyListResponse
+         * @description List of user's API keys.
+         */
+        ApiKeyListResponse: {
+            /** Keys */
+            keys: components["schemas"]["ApiKeyListItem"][];
+        };
+        /**
+         * ApiKeyRevokeResponse
+         * @description Response after revoking an API key.
+         */
+        ApiKeyRevokeResponse: {
+            /** Id */
+            id: string;
+            /** Message */
+            message: string;
+            /** Revoked */
+            revoked: boolean;
+        };
+        /**
+         * ApiSearchResponse
+         * @description Paginated search response for the API search endpoint.
+         */
+        ApiSearchResponse: {
+            /** Pagina */
+            pagina: number;
+            /**
+             * Resultados
+             * @default []
+             */
+            resultados: {
+                [key: string]: unknown;
+            }[];
+            /** Tamanho */
+            tamanho: number;
+            /** Total */
+            total: number;
         };
         /**
          * AppConfigPatchRequest
@@ -15408,6 +15565,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrialValueResponse"];
+                };
+            };
+        };
+    };
+    list_api_keys_v1_api_api_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyListResponse"];
+                };
+            };
+        };
+    };
+    create_api_key_v1_api_api_keys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_api_key_v1_api_api_keys__key_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyRevokeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    api_search_v1_api_api_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                uf?: string | null;
+                data_inicial?: string | null;
+                data_final?: string | null;
+                modalidade?: string | null;
+                valor_min?: number | null;
+                valor_max?: number | null;
+                pagina?: number;
+                tamanho?: number;
+            };
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
