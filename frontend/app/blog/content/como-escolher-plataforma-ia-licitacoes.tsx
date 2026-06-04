@@ -606,7 +606,7 @@ export default function ComoEscolherPlataformaIaLicitacoes() {
           volume de publicações e modalidades, jan-mar 2026
         </li>
         <li>
-          SmartLic datalake — dados de cobertura e classificação, abril/2026
+          SmartLic base de dados — dados de cobertura e classificação, abril/2026
           (800K+ publicações processadas)
         </li>
         <li>

@@ -23,6 +23,11 @@ export default function FinalCTA({ className = '' }: FinalCTAProps) {
             <p className="text-lg sm:text-xl mb-6 text-white/80">
               Enquanto você decide, seus concorrentes já estão se preparando. Pare de perder oportunidades que pagam.
             </p>
+
+            {/* COPY-375: Social proof por setor — similaridade > volume */}
+            <p className="text-base mb-6 text-white/70" data-testid="social-proof-setorial">
+              Empresas de engenharia, TI, saúde, uniformes e facilities já analisam oportunidades com SmartLic.
+            </p>
           </AnimateOnScroll>
 
           {/* SAB-006: Absorbed beta counter */}

@@ -274,7 +274,7 @@ export default function IaNovaLeiLicitacoes14133Fornecedores() {
 
       <div className="not-prose my-6 sm:my-8 bg-surface-1 border border-[var(--border)] rounded-lg p-4 sm:p-6">
         <p className="text-sm font-semibold text-ink mb-3">
-          Impacto da Lei 14.133 no volume de dados — SmartLic datalake
+          Impacto da Lei 14.133 no volume de dados — SmartLic base de dados
         </p>
         <ul className="space-y-2 text-sm text-ink-secondary">
           <li>
@@ -483,7 +483,7 @@ export default function IaNovaLeiLicitacoes14133Fornecedores() {
           Lei 8.666/1993 — Lei de Licitações revogada (referência comparativa)
         </li>
         <li>
-          SmartLic datalake — volume de publicações PNCP, 2024-2026 (800K+ processadas Q1/2026)
+          SmartLic base de dados — volume de publicações PNCP, 2024-2026 (800K+ processadas Q1/2026)
         </li>
       </ul>
     </>

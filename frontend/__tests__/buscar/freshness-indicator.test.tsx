@@ -42,7 +42,7 @@ describe("FreshnessIndicator", () => {
     expect(screen.getByText(/Dados de há 3 horas/)).toBeInTheDocument();
   });
 
-  it('shows "Cache" when cacheBannerVisible and not live', () => {
+  it('shows "Salvos" when cacheBannerVisible and not live', () => {
     const oneHourAgo = new Date(Date.now() - 60 * 60000).toISOString();
     render(
       <FreshnessIndicator
@@ -51,7 +51,7 @@ describe("FreshnessIndicator", () => {
         cacheBannerVisible={true}
       />
     );
-    expect(screen.getByText("Cache")).toBeInTheDocument();
+    expect(screen.getByText("Salvos")).toBeInTheDocument();
     expect(screen.queryByText(/Dados de/)).not.toBeInTheDocument();
   });
 
