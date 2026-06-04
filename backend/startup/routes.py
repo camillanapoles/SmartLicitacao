@@ -86,6 +86,7 @@ from routes.intel_reports import router as intel_reports_router
 from routes.pseo_data import router as pseo_data_router
 from routes.seo_coverage_manifest import router as seo_coverage_manifest_router
 from routes.products import router as products_router
+from routes.datalake_api import router as datalake_api_router
 from routes.seasonal_calendar import router as seasonal_calendar_router
 from routes.network_events import router as network_events_router
 from routes.segment import router as segment_router
@@ -137,6 +138,7 @@ _v1_routers = [
     pseo_data_router,
     seo_coverage_manifest_router,
     products_router,
+    datalake_api_router,
     seasonal_calendar_router,
     network_events_router,
     segment_router,
