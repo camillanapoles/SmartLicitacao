@@ -12,12 +12,13 @@ import hashlib
 import hmac
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from auth import require_auth
 from log_sanitizer import mask_user_id
@@ -79,6 +80,28 @@ class AlertFilters(BaseModel):
 class CreateAlertRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120, description="Alert display name")
     filters: AlertFilters
+    tracked_orgaos: Optional[List[str]] = Field(
+        None, description="CNPJ list of public agencies to track. Each must be 14 digits."
+    )
+    tracked_fornecedores: Optional[List[str]] = Field(
+        None, description="CNPJ list of suppliers to track. Each must be 14 digits."
+    )
+
+    @field_validator("tracked_orgaos", "tracked_fornecedores")
+    @classmethod
+    def validate_cnpj_list(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate that each element in the list is a 14-digit CNPJ."""
+        if v is None:
+            return v
+        if not isinstance(v, list):
+            raise ValueError("Valor deve ser uma lista.")
+        for i, cnpj in enumerate(v):
+            if not isinstance(cnpj, str) or not re.fullmatch(r"\d{14}", cnpj):
+                raise ValueError(
+                    f"Cada CNPJ deve ter exatamente 14 digitos. "
+                    f"Valor invalido no indice {i}: {cnpj}."
+                )
+        return v
 
 
 class UpdateAlertRequest(BaseModel):
@@ -86,6 +109,28 @@ class UpdateAlertRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=120)
     filters: Optional[AlertFilters] = None
     active: Optional[bool] = None
+    tracked_orgaos: Optional[List[str]] = Field(
+        None, description="CNPJ list of public agencies (orgaos) to track. Each must be 14 digits."
+    )
+    tracked_fornecedores: Optional[List[str]] = Field(
+        None, description="CNPJ list of suppliers (fornecedores) to track. Each must be 14 digits."
+    )
+
+    @field_validator("tracked_orgaos", "tracked_fornecedores")
+    @classmethod
+    def validate_cnpj_list(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate that each element in the list is a 14-digit CNPJ."""
+        if v is None:
+            return v
+        if not isinstance(v, list):
+            raise ValueError("Valor deve ser uma lista.")
+        for i, cnpj in enumerate(v):
+            if not isinstance(cnpj, str) or not re.fullmatch(r"\d{14}", cnpj):
+                raise ValueError(
+                    f"Cada CNPJ deve ter exatamente 14 digitos. "
+                    f"Valor invalido no indice {i}: '{cnpj}'."
+                )
+        return v
 
 
 class AlertResponse(BaseModel):
@@ -95,6 +140,14 @@ class AlertResponse(BaseModel):
     filters: Dict[str, Any]
     active: bool
     sent_count: int = 0
+    tracked_orgaos: List[str] = Field(
+        default_factory=list,
+        description="ENTITY-001: CNPJ list of tracked public agencies (orgaos).",
+    )
+    tracked_fornecedores: List[str] = Field(
+        default_factory=list,
+        description="ENTITY-001: CNPJ list of tracked suppliers (fornecedores).",
+    )
     created_at: str
     updated_at: str
 
@@ -168,6 +221,8 @@ def _row_to_response(row: Dict[str, Any], sent_count: int = 0) -> AlertResponse:
         filters=row.get("filters") or {},
         active=row.get("active", True),
         sent_count=sent_count,
+        tracked_orgaos=row.get("tracked_orgaos") or [],
+        tracked_fornecedores=row.get("tracked_fornecedores") or [],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
@@ -223,17 +278,23 @@ async def create_alert(
 
     now = datetime.now(timezone.utc).isoformat()
 
+    insert_data = {
+        "user_id": user_id,
+        "name": body.name.strip(),
+        "filters": body.filters.model_dump(exclude_none=True),
+        "active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    if body.tracked_orgaos is not None:
+        insert_data["tracked_orgaos"] = body.tracked_orgaos
+    if body.tracked_fornecedores is not None:
+        insert_data["tracked_fornecedores"] = body.tracked_fornecedores
+
     try:
         result = await sb_execute(
             sb.table("alerts")
-            .insert({
-                "user_id": user_id,
-                "name": body.name.strip(),
-                "filters": body.filters.model_dump(exclude_none=True),
-                "active": True,
-                "created_at": now,
-                "updated_at": now,
-            })
+            .insert(insert_data)
         )
 
         if not result.data or len(result.data) == 0:
@@ -340,6 +401,10 @@ async def update_alert(
         payload["filters"] = body.filters.model_dump(exclude_none=True)
     if body.active is not None:
         payload["active"] = body.active
+    if body.tracked_orgaos is not None:
+        payload["tracked_orgaos"] = body.tracked_orgaos
+    if body.tracked_fornecedores is not None:
+        payload["tracked_fornecedores"] = body.tracked_fornecedores
 
     if not payload:
         raise HTTPException(status_code=422, detail="Nenhum campo para atualizar.")

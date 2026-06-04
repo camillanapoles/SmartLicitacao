@@ -18,6 +18,7 @@ Key mock patterns (from CLAUDE.md):
     (service does top-level `from supabase_client import sb_execute`)
 """
 
+import os
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone
@@ -34,6 +35,89 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from main import app  # noqa: E402
 from auth import require_auth  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+MIGRATIONS_DIR = os.path.join(REPO_ROOT, "supabase", "migrations")
+
+MIGRATION_FILE = "20260604120000_add_tracked_entities_to_alerts.sql"
+DOWN_FILE = "20260604120000_add_tracked_entities_to_alerts.down.sql"
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _read_sql(filename: str) -> str:
+    """Read a migration SQL file from supabase/migrations/."""
+    path = os.path.join(MIGRATIONS_DIR, filename)
+    with open(path) as f:
+        return f.read()
+
+
+# ---------------------------------------------------------------------------
+# Migration Contract Tests (ENTITY-001)
+# ---------------------------------------------------------------------------
+
+
+class TestMigrationContract:
+    """Validate the ENTITY-001 migration SQL files are well-formed."""
+
+    def test_migration_file_exists(self):
+        path = os.path.join(MIGRATIONS_DIR, MIGRATION_FILE)
+        assert os.path.exists(path), f"Migration file not found: {path}"
+
+    def test_down_file_exists(self):
+        path = os.path.join(MIGRATIONS_DIR, DOWN_FILE)
+        assert os.path.exists(path), f"Down migration not found: {path}"
+
+    def test_adds_tracked_orgaos_column(self):
+        sql = _read_sql(MIGRATION_FILE)
+        assert "ADD COLUMN IF NOT EXISTS tracked_orgaos TEXT[]" in sql
+
+    def test_adds_tracked_fornecedores_column(self):
+        sql = _read_sql(MIGRATION_FILE)
+        assert "ADD COLUMN IF NOT EXISTS tracked_fornecedores TEXT[]" in sql
+
+    def test_columns_have_default_empty_array(self):
+        sql = _read_sql(MIGRATION_FILE)
+        assert "DEFAULT '{}'::text[]" in sql
+
+    def test_columns_are_not_null(self):
+        sql = _read_sql(MIGRATION_FILE)
+        assert "NOT NULL DEFAULT '{}'::text[]" in sql
+
+    def test_tracked_orgaos_cnpj_check_constraint(self):
+        sql = _read_sql(MIGRATION_FILE)
+        assert "alerts_tracked_orgaos_cnpj_check" in sql
+
+    def test_tracked_fornecedores_cnpj_check_constraint(self):
+        sql = _read_sql(MIGRATION_FILE)
+        assert "alerts_tracked_fornecedores_cnpj_check" in sql
+
+    def test_down_drops_columns(self):
+        sql = _read_sql(DOWN_FILE)
+        assert "DROP COLUMN IF EXISTS tracked_orgaos" in sql
+        assert "DROP COLUMN IF EXISTS tracked_fornecedores" in sql
+
+    def test_down_drops_constraints(self):
+        sql = _read_sql(DOWN_FILE)
+        assert "DROP CONSTRAINT IF EXISTS alerts_tracked_orgaos_cnpj_check" in sql
+        assert "DROP CONSTRAINT IF EXISTS alerts_tracked_fornecedores_cnpj_check" in sql
+
+    def test_down_reverses_in_opposite_order(self):
+        """Down migration drops constraints before columns (reverse of up)."""
+        sql = _read_sql(DOWN_FILE)
+        constraint_idx = sql.index("alerts_tracked_orgaos_cnpj_check")
+        column_idx = sql.index("DROP COLUMN IF EXISTS tracked_orgaos")
+        assert constraint_idx < column_idx, (
+            "Constraints must be dropped before columns in down migration"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +169,8 @@ def _alert_row(
     name="Vestuario Alert",
     filters=None,
     active=True,
+    tracked_orgaos=None,
+    tracked_fornecedores=None,
 ):
     """Build a typical alerts table row dict."""
     return {
@@ -93,6 +179,8 @@ def _alert_row(
         "name": name,
         "filters": filters or {"setor": "vestuario", "ufs": ["SP"]},
         "active": active,
+        "tracked_orgaos": tracked_orgaos or [],
+        "tracked_fornecedores": tracked_fornecedores or [],
         "created_at": NOW_ISO,
         "updated_at": NOW_ISO,
     }
@@ -1475,6 +1563,217 @@ class TestPydanticValidation:
             json={"name": "Test"},
         )
         assert resp.status_code == 422
+
+
+# ============================================================================
+# ENTITY-001: Tracked entities fields
+# ============================================================================
+
+
+class TestTrackedEntities:
+    """Tracked orgaos/fornecedores fields -- ENTITY-001."""
+
+    def test_create_alert_with_tracked_orgaos(self, client):
+        """Creating alert with tracked_orgaos succeeds."""
+        row = _alert_row(tracked_orgaos=["12345678000195"])
+        sb = _mock_sb()
+
+        async def fake_sb_execute(query):
+            return MockResponse(data=[row], count=0)
+
+        with patch("supabase_client.get_supabase", return_value=sb),              patch("supabase_client.sb_execute", side_effect=fake_sb_execute):
+            resp = client.post(
+                "/v1/alerts",
+                json={
+                    "name": "Entity Alert",
+                    "filters": {"setor": "vestuario"},
+                    "tracked_orgaos": ["12345678000195"],
+                },
+            )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["tracked_orgaos"] == ["12345678000195"]
+        assert body["tracked_fornecedores"] == []
+
+    def test_create_alert_with_tracked_fornecedores(self, client):
+        """Creating alert with tracked_fornecedores succeeds."""
+        row = _alert_row(tracked_fornecedores=["98765432000110"])
+        sb = _mock_sb()
+
+        async def fake_sb_execute(query):
+            return MockResponse(data=[row], count=0)
+
+        with patch("supabase_client.get_supabase", return_value=sb),              patch("supabase_client.sb_execute", side_effect=fake_sb_execute):
+            resp = client.post(
+                "/v1/alerts",
+                json={
+                    "name": "Entity Alert",
+                    "filters": {"setor": "vestuario"},
+                    "tracked_fornecedores": ["98765432000110"],
+                },
+            )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["tracked_fornecedores"] == ["98765432000110"]
+        assert body["tracked_orgaos"] == []
+
+    def test_create_alert_with_both_entities(self, client):
+        """Creating alert with both entity fields succeeds."""
+        row = _alert_row(
+            tracked_orgaos=["12345678000195", "22345678000195"],
+            tracked_fornecedores=["98765432000110"],
+        )
+        sb = _mock_sb()
+
+        async def fake_sb_execute(query):
+            return MockResponse(data=[row], count=0)
+
+        with patch("supabase_client.get_supabase", return_value=sb),              patch("supabase_client.sb_execute", side_effect=fake_sb_execute):
+            resp = client.post(
+                "/v1/alerts",
+                json={
+                    "name": "Both Entities",
+                    "filters": {"setor": "vestuario"},
+                    "tracked_orgaos": ["12345678000195", "22345678000195"],
+                    "tracked_fornecedores": ["98765432000110"],
+                },
+            )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert len(body["tracked_orgaos"]) == 2
+        assert "12345678000195" in body["tracked_orgaos"]
+        assert body["tracked_fornecedores"] == ["98765432000110"]
+
+    def test_create_alert_invalid_cnpj_format_returns_422(self, client):
+        """Non-14-digit string in tracked_orgaos returns 422."""
+        resp = client.post(
+            "/v1/alerts",
+            json={
+                "name": "Invalid CNPJ",
+                "filters": {"setor": "vestuario"},
+                "tracked_orgaos": ["12345678"],
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_create_alert_invalid_cnpj_non_digits_returns_422(self, client):
+        """Non-numeric characters in CNPJ return 422."""
+        resp = client.post(
+            "/v1/alerts",
+            json={
+                "name": "Invalid CNPJ",
+                "filters": {"setor": "vestuario"},
+                "tracked_orgaos": ["12.345.678/0001-95"],
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_create_alert_empty_tracked_lists_are_valid(self, client):
+        """Empty arrays for tracked entities are valid."""
+        row = _alert_row()
+        sb = _mock_sb()
+
+        async def fake_sb_execute(query):
+            return MockResponse(data=[row], count=0)
+
+        with patch("supabase_client.get_supabase", return_value=sb),              patch("supabase_client.sb_execute", side_effect=fake_sb_execute):
+            resp = client.post(
+                "/v1/alerts",
+                json={
+                    "name": "Empty Entities",
+                    "filters": {"setor": "vestuario"},
+                    "tracked_orgaos": [],
+                    "tracked_fornecedores": [],
+                },
+            )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["tracked_orgaos"] == []
+        assert body["tracked_fornecedores"] == []
+
+    def test_update_alert_tracked_orgaos(self, client):
+        """Updating tracked_orgaos replaces the list."""
+        updated_row = _alert_row(tracked_orgaos=["33333333000111"])
+        sb = _mock_sb()
+
+        async def fake_sb_execute(query):
+            return MockResponse(data=[updated_row])
+
+        with patch("supabase_client.get_supabase", return_value=sb),              patch("supabase_client.sb_execute", side_effect=fake_sb_execute):
+            resp = client.patch(
+                f"/v1/alerts/{ALERT_ID}",
+                json={"tracked_orgaos": ["33333333000111"]},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["tracked_orgaos"] == ["33333333000111"]
+
+    def test_alert_response_includes_tracked_entities(self, client):
+        """AlertResponse model includes tracked_orgaos and tracked_fornecedores fields."""
+        from routes.alerts import AlertResponse
+
+        response = AlertResponse(
+            id="test-id",
+            user_id=MOCK_USER["id"],
+            name="Test",
+            filters={},
+            active=True,
+            sent_count=0,
+            tracked_orgaos=["12345678000195"],
+            tracked_fornecedores=[],
+            created_at=NOW_ISO,
+            updated_at=NOW_ISO,
+        )
+        assert response.tracked_orgaos == ["12345678000195"]
+        assert response.tracked_fornecedores == []
+
+    def test_alert_response_defaults_to_empty_lists(self, client):
+        """AlertResponse defaults tracked fields to empty lists."""
+        from routes.alerts import AlertResponse
+
+        response = AlertResponse(
+            id="test-id",
+            user_id=MOCK_USER["id"],
+            name="Test",
+            filters={},
+            active=True,
+            sent_count=0,
+            created_at=NOW_ISO,
+            updated_at=NOW_ISO,
+        )
+        assert response.tracked_orgaos == []
+        assert response.tracked_fornecedores == []
+
+    def test_list_alerts_includes_tracked_entities(self, client):
+        """Listing alerts returns tracked entities fields."""
+        row = _alert_row(
+            tracked_orgaos=["12345678000195"],
+            tracked_fornecedores=["98765432000110"],
+        )
+        sb = _mock_sb()
+
+        call_count = 0
+
+        async def fake_sb_execute(query):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return MockResponse(data=[row])
+            return MockResponse(data=[], count=0)
+
+        with patch("supabase_client.get_supabase", return_value=sb),              patch("supabase_client.sb_execute", side_effect=fake_sb_execute):
+            resp = client.get("/v1/alerts")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        alert = body["alerts"][0]
+        assert alert["tracked_orgaos"] == ["12345678000195"]
+        assert alert["tracked_fornecedores"] == ["98765432000110"]
 
 
 # ============================================================================

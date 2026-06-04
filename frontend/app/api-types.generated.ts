@@ -6172,6 +6172,16 @@ export interface components {
              * @default 0
              */
             sent_count: number;
+            /**
+             * Tracked Fornecedores
+             * @description ENTITY-001: CNPJ list of tracked suppliers (fornecedores).
+             */
+            tracked_fornecedores?: string[];
+            /**
+             * Tracked Orgaos
+             * @description ENTITY-001: CNPJ list of tracked public agencies (orgaos).
+             */
+            tracked_orgaos?: string[];
             /** Updated At */
             updated_at: string;
             /** User Id */
@@ -7802,6 +7812,16 @@ export interface components {
              * @description Alert display name
              */
             name: string;
+            /**
+             * Tracked Fornecedores
+             * @description CNPJ list of suppliers to track. Each must be 14 digits.
+             */
+            tracked_fornecedores?: string[] | null;
+            /**
+             * Tracked Orgaos
+             * @description CNPJ list of public agencies to track. Each must be 14 digits.
+             */
+            tracked_orgaos?: string[] | null;
         };
         /**
          * CreateConversationRequest
@@ -12845,6 +12865,16 @@ export interface components {
             filters?: components["schemas"]["AlertFilters"] | null;
             /** Name */
             name?: string | null;
+            /**
+             * Tracked Fornecedores
+             * @description CNPJ list of suppliers (fornecedores) to track. Each must be 14 digits.
+             */
+            tracked_fornecedores?: string[] | null;
+            /**
+             * Tracked Orgaos
+             * @description CNPJ list of public agencies (orgaos) to track. Each must be 14 digits.
+             */
+            tracked_orgaos?: string[] | null;
         };
         /**
          * UpdateBillingPeriodRequest

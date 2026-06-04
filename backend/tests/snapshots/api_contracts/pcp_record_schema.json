@@ -78,16 +78,16 @@
     ]
   },
   "sample_record": {
-    "codigoLicitacao": 469331,
+    "codigoLicitacao": 483796,
     "numeroLicitacao": null,
-    "identificacao": "16/2026",
-    "numero": "23.108/2026",
-    "resumo": "AQUISIÇÃO DE MÁQUINA PARA PERFURAÇÃO DE POÇO ARTESIANO, NO MUNICÍPIO DE BUJARU/PA, PARA ATENDER AS NECESSIDADES DA SECRETARIA MUNICIPAL DE INFRAESTRUTURA-SEINFRA.",
-    "razaoSocial": "Prefeitura Municipal de Bujaru",
-    "nomeUnidade": "Prefeitura Municipal de Bujaru",
+    "identificacao": "09",
+    "numero": "09/2026",
+    "resumo": "Contratação de empresa especializada na prestação de serviços de locação, montagem, operação técnica e desmontagem de estrutura de sonorização, iluminação e suporte cênico, destinados à realização de evento festivo escolar promovido pela Associação de...",
+    "razaoSocial": "Associação de Apoio da Escola Municipal de 1º Grau Pouso Alegre",
+    "nomeUnidade": "Associação de Apoio da Escola Municipal de 1º Grau Pouso Alegre",
     "status": {
-      "codigo": 22,
-      "descricao": "Aguardando Início da Sessão Presencial"
+      "codigo": 11,
+      "descricao": "Cancelado"
     },
     "situacao": {
       "codigo": 0,
@@ -95,39 +95,39 @@
     },
     "tipoLicitacao": {
       "codigoModalidadeLicitacao": 0,
-      "modalidadeLicitacao": "Dispensa",
-      "codigoTipoLicitacao": 34,
-      "siglaTipoLicitacao": null,
-      "tipoLicitacao": "Dispensa Presencial",
-      "tipoRealizacao": "Presencial",
+      "modalidadeLicitacao": "Pregão",
+      "codigoTipoLicitacao": 1,
+      "siglaTipoLicitacao": "PE",
+      "tipoLicitacao": "Pregão Eletrônico",
+      "tipoRealizacao": "Eletrônico",
       "tipoJulgamento": "Menor Preço"
     },
-    "codigoSituacaoEdital": 5,
+    "codigoSituacaoEdital": 3,
     "codigoTratamentoDiferenciado": 1,
     "codigoSituacaoCadastroLicitacao": 2,
-    "dataHoraInicioLances": "2026-04-15T21:00:00Z",
-    "dataHoraInicioPropostas": "2026-04-08T12:00:00Z",
-    "dataHoraFinalPropostas": "2026-04-15T21:00:00Z",
+    "dataHoraInicioLances": "2026-06-04T17:01:00Z",
+    "dataHoraInicioPropostas": "2026-05-28T17:00:00Z",
+    "dataHoraFinalPropostas": "2026-06-04T17:00:00Z",
     "dataHoraFinalLances": null,
-    "dataHoraPublicacao": "2026-04-01T12:44:00Z",
+    "dataHoraPublicacao": "2026-05-28T16:57:00Z",
     "isPublicado": false,
     "unidadeCompradora": {
-      "codigoUnidadeCompradora": 1061,
-      "nomeUnidadeCompradora": "Prefeitura Municipal de Bujaru",
-      "codigoComprador": 820,
+      "codigoUnidadeCompradora": 7352,
+      "nomeUnidadeCompradora": "Associação de Apoio da Escola Municipal de 1º Grau Pouso Alegre",
+      "codigoComprador": 4222,
       "nomeComprador": null,
-      "cidade": "Bujaru",
+      "cidade": "Paraíso do Tocantins",
       "codigoMunicipioIbge": null,
-      "uf": "PA"
+      "uf": "TO"
     },
     "comprador": null,
-    "urlReferencia": "/pa/prefeitura-municipal-de-bujaru-820/dp-23108-2026-2026-469331",
+    "urlReferencia": "/to/associacao-de-apoio-da-escola-municipal-de-1o-grau-pouso-alegre-4222/pe-09-2026-2026-483796",
     "statusProcessoPublico": {
-      "codigo": 22,
-      "descricao": "Aguardando Início da Sessão Presencial"
+      "codigo": 11,
+      "descricao": "Cancelado"
     },
     "isExclusivoME": false,
     "isBeneficoLocal": false
   },
-  "captured_at": "2026-04-15T23:31:04.225478+00:00"
+  "captured_at": "2026-06-04T17:43:10.797161+00:00"
 }

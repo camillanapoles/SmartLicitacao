@@ -950,6 +950,22 @@
             "title": "Sent Count",
             "type": "integer"
           },
+          "tracked_fornecedores": {
+            "description": "ENTITY-001: CNPJ list of tracked suppliers (fornecedores).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Tracked Fornecedores",
+            "type": "array"
+          },
+          "tracked_orgaos": {
+            "description": "ENTITY-001: CNPJ list of tracked public agencies (orgaos).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Tracked Orgaos",
+            "type": "array"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -4458,6 +4474,36 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "tracked_fornecedores": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CNPJ list of suppliers to track. Each must be 14 digits.",
+            "title": "Tracked Fornecedores"
+          },
+          "tracked_orgaos": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CNPJ list of public agencies to track. Each must be 14 digits.",
+            "title": "Tracked Orgaos"
           }
         },
         "required": [
@@ -15967,6 +16013,36 @@
               }
             ],
             "title": "Name"
+          },
+          "tracked_fornecedores": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CNPJ list of suppliers (fornecedores) to track. Each must be 14 digits.",
+            "title": "Tracked Fornecedores"
+          },
+          "tracked_orgaos": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CNPJ list of public agencies (orgaos) to track. Each must be 14 digits.",
+            "title": "Tracked Orgaos"
           }
         },
         "title": "UpdateAlertRequest",
