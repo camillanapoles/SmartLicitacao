@@ -24,6 +24,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/checkout/one-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create One Time Checkout
+         * @description Create a Stripe Checkout Session for a one-time digital product purchase.
+         *
+         *     Flow:
+         *         1. Validate SKU against digital_products table
+         *         2. Resolve or create Stripe Price
+         *         3. Create Stripe Checkout Session with card/boleto/PIX
+         *         4. Return checkout URL
+         *
+         *     Rate limited: 10 req/min per IP.
+         */
+        post: operations["create_one_time_checkout_api_checkout_one_time_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/founders/availability": {
         parameters: {
             query?: never;
@@ -6991,8 +7019,23 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * CheckoutRequest
+         * @description Request body for POST /api/checkout/one-time.
+         */
+        CheckoutRequest: {
+            /**
+             * Context
+             * @default {}
+             */
+            context: {
+                [key: string]: unknown;
+            };
+            /** Sku */
+            sku: string;
+        };
+        /**
          * CheckoutResponse
-         * @description Response for POST /checkout.
+         * @description Response for a successful checkout session creation.
          */
         CheckoutResponse: {
             /** Checkout Url */
@@ -13232,6 +13275,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RootResponse"];
+                };
+            };
+        };
+    };
+    create_one_time_checkout_api_checkout_one_time_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
