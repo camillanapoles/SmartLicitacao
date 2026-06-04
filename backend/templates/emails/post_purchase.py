@@ -14,6 +14,7 @@ Each step adapts per product_sku via delivery_config.type:
 from __future__ import annotations
 
 from html import escape
+from urllib.parse import quote_plus
 
 from templates.emails.base import FRONTEND_URL, SMARTLIC_DARK, SMARTLIC_GREEN, email_base
 
@@ -98,7 +99,7 @@ def _buscar_cta(setor: str | None = None) -> str:
     """Soft CTA to the search page."""
     url = f"{FRONTEND_URL}/buscar"
     if setor:
-        url += f"?setor={setor}"
+        url += f"?setor={quote_plus(setor)}"
     return f"""
     <p style="color: #888; font-size: 13px; text-align: center; margin: 24px 0 0;">
       Ou <a href="{url}" style="color: {SMARTLIC_GREEN};">veja as licitações abertas agora</a>.
@@ -224,7 +225,7 @@ def render_post_purchase_followup(
     subject = f"Como está seu {product_name}? 💡"
 
     if trial_url is None:
-        trial_url = f"{FRONTEND_URL}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=followup_48h&product_sku={product_sku}"
+        trial_url = f"{FRONTEND_URL}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=followup_48h&utm_content={quote_plus(product_sku)}&product_sku={quote_plus(product_sku)}"
 
     body = f"""
     <h1 style="color: #333; font-size: 24px; margin: 0 0 16px;">
@@ -269,7 +270,7 @@ def render_post_purchase_followup(
     </p>
     """
 
-    return subject, email_base(title=subject, body_html=body, is_transactional=True)
+    return subject, email_base(title=subject, body_html=body, is_transactional=False)
 
 
 # ---------------------------------------------------------------------------
@@ -309,7 +310,7 @@ def render_post_purchase_reengagement(
     subject = f"Seu {product_name} ainda está disponível 🔔"
 
     if trial_url is None:
-        trial_url = f"{FRONTEND_URL}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=reengagement_7d&product_sku={product_sku}"
+        trial_url = f"{FRONTEND_URL}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=reengagement_7d&utm_content={quote_plus(product_sku)}&product_sku={quote_plus(product_sku)}"
 
     # Download reminder (for PDF/CSV products) or login reminder (for email products)
     if download_url:
@@ -360,4 +361,4 @@ def render_post_purchase_reengagement(
     </p>
     """
 
-    return subject, email_base(title=subject, body_html=body, is_transactional=True)
+    return subject, email_base(title=subject, body_html=body, is_transactional=False)

@@ -169,7 +169,8 @@ class TestRenderFollowup:
         assert "Relatório de Oportunidade" in subject
         assert "João" in html
         assert "Testar SmartLic grátis" in html
-        # Transactional — no unsubscribe
+        # Followup is promotional (is_transactional=False) — unsubscribe_url
+        # not yet wired; unsubscribe section not rendered without the URL.
         assert "Cancelar inscrição" not in html
 
     def test_with_upsell(self):
@@ -200,6 +201,7 @@ class TestRenderFollowup:
         )
         assert "utm_source=post_purchase" in html
         assert "utm_campaign=followup_48h" in html
+        assert "utm_content=rel" in html
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from supabase_client import sb_execute
+from templates.emails.base import FRONTEND_URL
 
 logger = logging.getLogger(__name__)
 
@@ -953,8 +954,12 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
     """Execute one step of a post-purchase sequence.
 
     Called by ARQ worker at each offset (0h, 48h, 7d) to send the email
-    and advance the sequence. The actual email sending is a stub — part 2/3
-    of CONV-011b implements the Resend integration.
+    via Resend and advance the sequence. Uses product-aware templates from
+    ``templates.emails.post_purchase`` with delivery-type adaptation.
+
+    Note values:
+      - ``user_not_found``: profile lookup returned no rows.
+      - ``unknown_step``: step_name not in (delivery, followup, reengagement).
 
     Args:
         ctx: ARQ worker context.
@@ -962,7 +967,7 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
         step_index: 0-based index of the step to execute.
 
     Returns:
-        dict with status: "completed", "not_found", "already_sent", "step_mismatch".
+        dict with status: "completed", "not_found", "already_sent", "step_mismatch", "error".
     """
     from supabase_client import get_supabase
 
@@ -1019,9 +1024,12 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
             )
             now_iso = datetime.now(timezone.utc).isoformat()
             steps[step_index]["sent_at"] = now_iso
+            new_current_step = step_index + 1
+            new_status = "completed" if new_current_step >= len(steps) else sequence.get("status", "active")
             db.table("post_purchase_sequences").update({
                 "sequence_steps": steps,
-                "current_step": step_index + 1,
+                "current_step": new_current_step,
+                "status": new_status,
             }).eq("id", sequence_id).execute()
             return {
                 "status": "completed", "sequence_id": sequence_id,
@@ -1064,7 +1072,7 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
                 upsell_name = upsell_result.data[0].get("name")
                 upsell_price = upsell_result.data[0].get("price_brl")
                 upsell_sku = upsell_result.data[0].get("sku", "")
-                upsell_url = f"https://smartlic.tech/produtos?sku={upsell_sku}"
+                upsell_url = f"{FRONTEND_URL}/produtos?sku={upsell_sku}"
 
         # Build download URL for PDF/CSV products
         download_url = None
@@ -1087,7 +1095,6 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
 
         preview_config = (product_data or {}).get("preview_config") or {}
         setor = preview_config.get("default_setor") if isinstance(preview_config, dict) else None
-        frontend_url = "https://smartlic.tech"
 
         if step_name == "delivery":
             subject, html = render_post_purchase_delivery(
@@ -1096,7 +1103,7 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
                 download_url=download_url, setor=setor,
             )
         elif step_name == "followup":
-            trial_url = f"{frontend_url}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=followup_48h&product_sku={product_sku}"
+            trial_url = f"{FRONTEND_URL}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=followup_48h&utm_content={product_sku}&product_sku={product_sku}"
             subject, html = render_post_purchase_followup(
                 user_name=user_name, product_name=product_name,
                 product_sku=product_sku, upsell_product_name=upsell_name,
@@ -1104,7 +1111,7 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
                 trial_url=trial_url,
             )
         elif step_name == "reengagement":
-            trial_url = f"{frontend_url}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=reengagement_7d&product_sku={product_sku}"
+            trial_url = f"{FRONTEND_URL}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=reengagement_7d&utm_content={product_sku}&product_sku={product_sku}"
             subject, html = render_post_purchase_reengagement(
                 user_name=user_name, product_name=product_name,
                 product_sku=product_sku, download_url=download_url,
@@ -1118,9 +1125,12 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
             )
             now_iso = datetime.now(timezone.utc).isoformat()
             steps[step_index]["sent_at"] = now_iso
+            new_current_step = step_index + 1
+            new_status = "completed" if new_current_step >= len(steps) else sequence.get("status", "active")
             db.table("post_purchase_sequences").update({
                 "sequence_steps": steps,
-                "current_step": step_index + 1,
+                "current_step": new_current_step,
+                "status": new_status,
             }).eq("id", sequence_id).execute()
             return {
                 "status": "completed", "sequence_id": sequence_id,
@@ -1129,9 +1139,11 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
             }
 
         from email_service import send_email
+        from log_sanitizer import sanitize_string
 
         email_id = send_email(
             to=user_email, subject=subject, html=html,
+            idempotency_key=f"post_purchase:{sequence_id}:{step_index}",
             tags=[
                 {"name": "category", "value": "post_purchase"},
                 {"name": "step", "value": step_name},
@@ -1141,10 +1153,13 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
         )
 
         now_iso = datetime.now(timezone.utc).isoformat()
-        steps[step_index]["sent_at"] = now_iso
+        if email_id:
+            steps[step_index]["sent_at"] = now_iso
+        else:
+            steps[step_index]["error"] = "send_email returned no email_id"
         logger.info(
             f"Post-purchase email sent: sequence_id={sequence_id}, "
-            f"step={step_name}, to={user_email}, "
+            f"step={step_name}, to={sanitize_string(user_email)}, "
             f"product_sku={product_sku}, email_id={email_id}"
         )
 
@@ -1184,9 +1199,18 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
             f"send_post_purchase_step: failed to send email for "
             f"sequence_id={sequence_id}, step={step_name}: {email_err}"
         )
-        now_iso = datetime.now(timezone.utc).isoformat()
-        steps[step_index]["sent_at"] = now_iso
         steps[step_index]["error"] = str(email_err)[:500]
+        # Don't advance — step will be retried on next ARQ tick
+        db.table("post_purchase_sequences").update({
+            "sequence_steps": steps,
+        }).eq("id", sequence_id).execute()
+        return {
+            "status": "error",
+            "sequence_id": sequence_id,
+            "step_index": step_index,
+            "step_name": step_name,
+            "error": str(email_err)[:500],
+        }
 
     # Determine new current_step and status
     new_current_step = step_index + 1
