@@ -86,6 +86,7 @@ from routes.intel_reports import router as intel_reports_router
 from routes.pseo_data import router as pseo_data_router
 from routes.seo_coverage_manifest import router as seo_coverage_manifest_router
 from routes.products import router as products_router
+from routes.checkout import router as checkout_router
 from routes.seasonal_calendar import router as seasonal_calendar_router
 from routes.network_events import router as network_events_router
 from routes.segment import router as segment_router
@@ -170,6 +171,10 @@ def register_routes(app: FastAPI) -> None:
     # Self-prefixed at /api/founders/hall/* — public listing + authenticated
     # consent toggle. Mirrors PR #1014's /api/founders/availability prefix.
     app.include_router(founders_hall_router)
+
+    # CONV-005b-2: Checkout endpoint — self-prefixed at /api/checkout/*
+    # (NOT under /v1/ — generic path for frontend convenience).
+    app.include_router(checkout_router)
 
     # Stripe webhook at root — DEBT-324: single registration only.
     # Removed from _v1_routers above to prevent duplicate at /v1/webhooks/stripe.
