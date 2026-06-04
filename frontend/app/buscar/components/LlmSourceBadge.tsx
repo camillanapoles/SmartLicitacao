@@ -15,7 +15,7 @@ export function LlmSourceBadge({ llmSource }: LlmSourceBadgeProps) {
     return (
       <span
         className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 animate-pulse"
-        title="O resumo esta sendo gerado por inteligencia artificial"
+        title="O resumo está sendo gerado por classificação inteligente"
       >
         <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" aria-hidden="true">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -30,7 +30,7 @@ export function LlmSourceBadge({ llmSource }: LlmSourceBadgeProps) {
     return (
       <span
         className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-        title="Este resumo foi gerado por inteligencia artificial (GPT-4)"
+        title="Este resumo foi gerado por classificação inteligente"
       >
         <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -44,7 +44,7 @@ export function LlmSourceBadge({ llmSource }: LlmSourceBadgeProps) {
   return (
     <span
       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-      title="Este resumo foi gerado automaticamente sem inteligencia artificial"
+      title="Este resumo foi gerado automaticamente"
     >
       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />

@@ -461,6 +461,18 @@ export const BANNED_PHRASES = [
   "+98%",
   "+98% cobertura",
   "+98% das oportunidades",
+  // STORY-1407: Technical jargon banned from user-facing text
+  "datalake",
+  "data lake",
+  "GPT-4",
+  "GPT-3.5",
+  "LLM",
+  "large language model",
+  "machine learning",
+  "cache expirado",
+  "cache de ",
+  "em cache",
+  "quota",
 ];
 
 // ============================================================================

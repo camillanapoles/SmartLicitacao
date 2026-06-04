@@ -622,7 +622,7 @@ export default function SmartlicVsLicitanetComparacao() {
           Administrativos
         </li>
         <li>
-          SmartLic datalake — dados de classificação e triagem, jan-mar
+          SmartLic base de dados — dados de classificação e triagem, jan-mar
           2026 (800K+ publicações)
         </li>
         <li>

@@ -460,7 +460,7 @@ export default function IaLicitacoesLimitacoesOQueNaoFaz() {
           dados de publicações e contratos 2025-2026
         </li>
         <li>
-          SmartLic datalake — dados de classificação e zero-match, jan-mar 2026
+          SmartLic base de dados — dados de classificação e zero-match, jan-mar 2026
           (800K+ publicações processadas)
         </li>
         <li>

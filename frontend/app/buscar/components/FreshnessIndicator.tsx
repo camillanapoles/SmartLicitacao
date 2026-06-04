@@ -81,7 +81,7 @@ export function FreshnessIndicator({
         aria-label={`${displayLabel}`}
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${config.dotClass}`} aria-hidden="true" />
-        Cache
+        Salvos
       </span>
     );
   }

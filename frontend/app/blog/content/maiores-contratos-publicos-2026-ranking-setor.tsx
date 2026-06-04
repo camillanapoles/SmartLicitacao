@@ -73,7 +73,7 @@ export default function MaioresContratosPublicos2026RankingSetor() {
         qualquer empresa que atua — ou quer atuar — no mercado B2G
         (Business-to-Government). Este artigo analisa o panorama setorial com base
         nos dados publicados no PNCP, no Painel de Compras do Governo Federal e no
-        datalake do SmartLic, atualizado diariamente com informações de todas as
+        base de dados do SmartLic, atualizado diariamente com informações de todas as
         unidades da federação.
       </p>
 
@@ -358,7 +358,7 @@ export default function MaioresContratosPublicos2026RankingSetor() {
           </table>
         </div>
         <p className="text-xs text-ink-muted mt-3">
-          Fonte: PNCP + datalake SmartLic, 1T2026. Posições baseadas em valor financeiro agregado.
+          Fonte: PNCP + base de dados SmartLic, 1T2026. Posições baseadas em valor financeiro agregado.
         </p>
       </div>
 
@@ -680,7 +680,7 @@ export default function MaioresContratosPublicos2026RankingSetor() {
 
       <p>
         O SmartLic resolve esse problema por meio de três camadas de inteligência.
-        A primeira é a <strong>agregação multi-fonte</strong>: o datalake do
+        A primeira é a <strong>agregação multi-fonte</strong>: a base de dados do
         SmartLic indexa diariamente contratos do PNCP e de fontes complementares,
         cobrindo todas as 27 unidades da federação. A segunda é a{' '}
         <strong>classificação setorial por IA</strong>: cada contrato indexado
