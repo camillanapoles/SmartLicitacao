@@ -448,7 +448,7 @@ export default function RoiIaLicitacoesCalculadoraRetorno() {
           volume de publicações e valor médio de contratos 2025
         </li>
         <li>
-          SmartLic datalake — dados de triagem e classificação, jan-mar 2026
+          SmartLic base de dados — dados de triagem e classificação, jan-mar 2026
           (800K+ publicações processadas)
         </li>
         <li>

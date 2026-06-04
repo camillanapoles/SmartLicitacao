@@ -77,7 +77,7 @@ export function ExpiredCacheBanner({
         <div className="flex-1 min-w-0">
           {/* Primary message */}
           <p className="text-sm sm:text-base font-semibold text-amber-800 dark:text-amber-200">
-            Fontes indisponíveis — exibindo dados de cache expirado
+            Fontes indisponíveis — exibindo dados salvos anteriormente
           </p>
 
           {/* Secondary explanation */}

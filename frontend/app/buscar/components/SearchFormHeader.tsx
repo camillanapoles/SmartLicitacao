@@ -50,7 +50,7 @@ export default function SearchFormHeader({
           <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" strokeWidth={2} aria-hidden="true" />
           <div className="flex-1">
             <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              Usando setores em cache
+              Usando setores salvos
               {staleCacheAge != null && (
                 <span className="font-normal"> (atualizado há {Math.round(staleCacheAge / 60000)} min)</span>
               )}

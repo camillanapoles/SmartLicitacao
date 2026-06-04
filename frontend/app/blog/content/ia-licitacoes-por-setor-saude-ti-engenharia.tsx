@@ -465,7 +465,7 @@ export default function IaLicitacoesPorSetorSaudeTiEngenharia() {
         e qualidade da descrição nos editais originais.</em>
       </p>
 
-      <h2>Dados exclusivos do datalake SmartLic</h2>
+      <h2>Dados exclusivos da base de dados SmartLic</h2>
 
       <div className="not-prose my-6 sm:my-8 bg-surface-1 border border-[var(--border)] rounded-lg p-4 sm:p-6">
         <p className="text-sm font-semibold text-ink mb-3">

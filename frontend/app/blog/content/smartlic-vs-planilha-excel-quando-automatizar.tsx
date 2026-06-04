@@ -443,7 +443,7 @@ export default function SmartlicVsPlanilhaExcelQuandoAutomatizar() {
         resolve precificação, orçamento e controle interno.
       </p>
 
-      <h2>Dados exclusivos: o que o datalake SmartLic revela sobre eficiência</h2>
+      <h2>Dados exclusivos: o que a base de dados SmartLic revela sobre eficiência</h2>
 
       <p>
         Entre janeiro e março de 2026, o SmartLic processou dados de mais de
@@ -583,7 +583,7 @@ export default function SmartlicVsPlanilhaExcelQuandoAutomatizar() {
           Painel de Compras do Governo Federal — dados agregados de taxa de adjudicação 2023-2024
         </li>
         <li>
-          SmartLic datalake — dados de processamento e classificação, janeiro-março 2026 (800K+ publicações analisadas)
+          SmartLic base de dados — dados de processamento e classificação, janeiro-março 2026 (800K+ publicações analisadas)
         </li>
         <li>
           Programa beta SmartLic — entrevistas com 30+ empresas B2G, janeiro-março 2026
