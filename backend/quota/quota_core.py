@@ -113,6 +113,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 1000,  # STORY-264 AC1: Full access (same as smartlic_pro)
         "max_requests_per_min": 2,  # STORY-264 AC2: Anti-abuse rate limit kept
         "max_summary_tokens": 10000,  # GTM-003: Full AI analysis (same as smartlic_pro)
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.NORMAL.value,  # GTM-003: Normal speed (same as smartlic_pro)
     },
     "consultor_agil": {
@@ -126,6 +129,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 50,
         "max_requests_per_min": 10,
         "max_summary_tokens": 200,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.NORMAL.value,
     },
     "maquina": {
@@ -139,6 +145,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 300,
         "max_requests_per_min": 30,
         "max_summary_tokens": 500,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.HIGH.value,
     },
     "sala_guerra": {
@@ -152,6 +161,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.CRITICAL.value,
     },
     "smartlic_pro": {
@@ -165,6 +177,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.NORMAL.value,
     },
     # TIER-COMMAND-002: SmartLic Command — premium tier with predictive intel,
@@ -180,6 +195,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 5000,
         "max_requests_per_min": 120,
         "max_summary_tokens": 20000,
+        "allow_command_api_access": True,  # TIER-COMMAND-003
+        "allow_command_multi_user": True,  # TIER-COMMAND-003
+        "allow_command_executive_reports": True,  # TIER-COMMAND-003
         "priority": PlanPriority.HIGH.value,
     },
     # MAYDAY-A2: Founding Member — same capabilities as smartlic_pro, 50% off price
@@ -194,6 +212,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 1000,
         "max_requests_per_min": 60,
         "max_summary_tokens": 10000,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.NORMAL.value,
     },
     # STORY-322: Plano Consultoria — multi-user org plan
@@ -208,6 +229,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 5000,  # 1000 x 5 members
         "max_requests_per_min": 10,  # Rate limit per org
         "max_summary_tokens": 10000,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.HIGH.value,
     },
     # STORY-283 AC1: Map plan_ids found in production database
@@ -222,6 +246,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 10,
         "max_requests_per_min": 2,
         "max_summary_tokens": 200,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.LOW.value,
     },
     "master": {
@@ -235,6 +262,9 @@ PLAN_CAPABILITIES: dict[str, PlanCapabilities] = {
         "max_requests_per_month": 99999,
         "max_requests_per_min": 120,
         "max_summary_tokens": 10000,
+        "allow_command_api_access": False,  # TIER-COMMAND-003
+        "allow_command_multi_user": False,  # TIER-COMMAND-003
+        "allow_command_executive_reports": False,  # TIER-COMMAND-003
         "priority": PlanPriority.HIGH.value,
     },
 }
