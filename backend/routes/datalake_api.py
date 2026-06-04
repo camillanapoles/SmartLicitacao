@@ -30,6 +30,7 @@ from schemas.datalake_api import (
     ApiKeyListResponse,
     ApiKeyRevokeResponse,
     ApiSearchParams,
+    ApiSearchResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,10 +126,8 @@ async def _get_api_key_user(
 
     # Update last_used_at (best-effort, non-blocking)
     try:
-        from supabase_client import get_supabase as _gs, sb_execute as _se
-
-        await _se(
-            _gs().table("api_keys")
+        await sb_execute(
+            sb.table("api_keys")
             .update({"last_used_at": _now_iso()})
             .eq("id", row["id"]),
             category="write",
@@ -308,7 +307,7 @@ async def revoke_api_key(key_id: str, user: dict = Depends(require_auth)):
 # ---------------------------------------------------------------------------
 
 
-@router.get("/api/search")
+@router.get("/api/search", response_model=ApiSearchResponse)
 async def api_search(
     request: Request,
     params: ApiSearchParams = Depends(),

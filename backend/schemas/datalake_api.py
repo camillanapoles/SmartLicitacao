@@ -67,3 +67,11 @@ class ApiSearchParams(BaseModel):
     valor_max: Optional[float] = Field(default=None, ge=0, description="Maximum estimated value")
     pagina: int = Field(default=1, ge=1, le=100, description="Page number (1-based)")
     tamanho: int = Field(default=20, ge=1, le=100, description="Items per page (max 100)")
+
+
+class ApiSearchResponse(BaseModel):
+    """Paginated search response for the API search endpoint."""
+    pagina: int
+    tamanho: int
+    total: int
+    resultados: list[dict] = []
