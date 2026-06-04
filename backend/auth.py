@@ -335,6 +335,15 @@ async def get_current_user(
         logger.debug(f"Auth cache STORED (L1+L2) for user {user_data['id'][:8]}")
         logger.info(f"JWT validation SUCCESS for user {user_data['id'][:8]} ({email})")
 
+        # LIFECYCLE-002 (#1427): Fire-and-forget login tracking on session refresh.
+        # Recorded on cache miss (new/refreshed JWT), deduped per day via Redis.
+        # Never blocks the request path — exception-safe, graceful degradation.
+        try:
+            from login_tracker import record_login
+            await record_login(user_id)
+        except Exception:
+            pass
+
         return user_data
 
     except HTTPException:

@@ -345,6 +345,9 @@ async def lifespan(app_instance: FastAPI):
     task_registry.register("indice_municipal_quarterly", start_indice_municipal_task)
     task_registry.register("new_bids_notifier", start_new_bids_notifier_task)  # STORY-445
     task_registry.register("cron_monitor", start_cron_monitor_task)            # STORY-1.1
+    # LIFECYCLE-002 (#1427): Login activity flush (Redis write-behind -> PG every 5min)
+    from login_tracker import periodic_flush
+    task_registry.register("login_flush", periodic_flush, is_coroutine=True)
     task_registry.register("lead_magnet_batch", start_lead_magnet_batch_task)  # LEAD-MAGNET-001
 
     await task_registry.start_all()
@@ -491,6 +494,13 @@ async def lifespan(app_instance: FastAPI):
         logger.info("DEBT-124: No active background tasks to drain")
 
     await _mark_inflight_sessions_timed_out()
+
+    # LIFECYCLE-002 (#1427): Force-flush login activity before stopping tasks
+    try:
+        from login_tracker import flush_now
+        await flush_now()
+    except Exception:
+        pass
 
     from task_registry import task_registry
     stop_results = await task_registry.stop_all(timeout=10.0)
