@@ -77,7 +77,7 @@ export default function ContratosPublicosPorEstadoRankingGastos() {
         Este artigo apresenta um panorama detalhado dos contratos públicos por estado no
         Brasil, com base nos dados do{' '}
         <strong>Portal Nacional de Contratações Públicas (PNCP)</strong>, do Painel de
-        Compras do Governo Federal e do datalake do SmartLic. O objetivo é oferecer
+        Compras do Governo Federal e da base de dados do SmartLic. O objetivo é oferecer
         inteligência de mercado para fornecedores, consultores e assessores de licitação
         que precisam priorizar geografias e setores com maior potencial de retorno.
       </p>
@@ -104,7 +104,7 @@ export default function ContratosPublicosPorEstadoRankingGastos() {
         <h3 className="text-base font-semibold text-ink mb-3">Base de dados utilizada</h3>
         <p className="text-sm text-ink-secondary leading-relaxed">
           Os dados apresentados neste artigo consolidam publicações do PNCP (2023-2025),
-          relatórios do Painel de Compras do Governo Federal e análises do datalake do
+          relatórios do Painel de Compras do Governo Federal e análises da base de dados do
           SmartLic, que processa diariamente contratos de órgãos federais, estaduais e
           municipais de todos os 27 estados. Os valores são aproximados e refletem tendências
           estruturais, não devendo ser utilizados como base para tomadas de decisão
@@ -550,7 +550,7 @@ export default function ContratosPublicosPorEstadoRankingGastos() {
         <Link href="/contratos" className="text-brand-blue hover:underline">
           contratos públicos por estado e setor
         </Link>{' '}
-        para explorar o mapa de oportunidades atualizado automaticamente pelo datalake do
+        para explorar o mapa de oportunidades atualizado automaticamente pela base de dados do
         SmartLic.
       </p>
 

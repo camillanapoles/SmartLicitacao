@@ -236,7 +236,7 @@ export function DataQualityBanner(props: DataQualityBannerProps) {
   // Cache: relative time or live
   if (isCached && cachedAt) {
     const relTime = formatRelativeTime(cachedAt);
-    segments.push(relTime === "agora" ? "Dados em tempo real" : `Cache de ${relTime}`);
+    segments.push(relTime === "agora" ? "Dados em tempo real" : `Dados de ${relTime}`);
   }
 
   // Timeouts: only if > 0
@@ -277,9 +277,9 @@ export function DataQualityBanner(props: DataQualityBannerProps) {
   // STORY-306 AC6: Cache fallback from a different date range
   if (cacheFallback) {
     if (cacheDateRange) {
-      segments.push(`Dados de cache de ${cacheDateRange}`);
+      segments.push(`Dados de ${cacheDateRange}`);
     } else {
-      segments.push("Resultados de cache (período diferente do solicitado). Dados podem estar desatualizados.");
+      segments.push("Resultados salvos (período diferente do solicitado). Dados podem estar desatualizados.");
     }
   }
 

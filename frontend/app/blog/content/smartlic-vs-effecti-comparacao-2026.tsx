@@ -533,7 +533,7 @@ export default function SmartlicVsEffectiComparacao2026() {
           Lei 14.133/2021 — Nova Lei de Licitações e Contratos Administrativos
         </li>
         <li>
-          SmartLic datalake — dados de classificação e triagem, jan-mar 2026 (800K+ publicações)
+          SmartLic base de dados — dados de classificação e triagem, jan-mar 2026 (800K+ publicações)
         </li>
         <li>
           Effecti — funcionalidades e preços conforme site oficial, abril/2026

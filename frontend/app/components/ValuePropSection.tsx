@@ -55,7 +55,7 @@ export default function ValuePropSection() {
             O que muda no seu resultado
           </h2>
           <p className="text-lg text-ink-secondary max-w-3xl mx-auto">
-            N&uacute;meros reais do nosso datalake de contratos p&uacute;blicos.
+            N&uacute;meros reais da nossa base de dados de contratos p&uacute;blicos.
           </p>
         </motion.div>
 

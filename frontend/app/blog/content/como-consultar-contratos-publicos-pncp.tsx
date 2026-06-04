@@ -83,7 +83,7 @@ export default function ComoConsultarContratosPublicosPncp() {
                 name: 'Como o SmartLic facilita a consulta de contratos públicos?',
                 acceptedAnswer: {
                   '@type': 'Answer',
-                  text: 'O SmartLic acessa o datalake do PNCP e consolida contratos públicos por setor, UF e órgão, eliminando a necessidade de buscas manuais repetitivas. A plataforma permite visualizar o histórico de contratos de um fornecedor ou órgão, identificar padrões de contratação por segmento, e monitorar aditivos e renovações em tempo real. Empresas B2G utilizam esses dados para qualificar leads, precificar propostas e identificar oportunidades de substituição de concorrentes.',
+                  text: 'O SmartLic acessa a base de dados do PNCP e consolida contratos públicos por setor, UF e órgão, eliminando a necessidade de buscas manuais repetitivas. A plataforma permite visualizar o histórico de contratos de um fornecedor ou órgão, identificar padrões de contratação por segmento, e monitorar aditivos e renovações em tempo real. Empresas B2G utilizam esses dados para qualificar leads, precificar propostas e identificar oportunidades de substituição de concorrentes.',
                 },
               },
             ],
@@ -493,7 +493,7 @@ export default function ComoConsultarContratosPublicosPncp() {
       <h3>Datalake de contratos públicos</h3>
 
       <p>
-        O SmartLic mantém um datalake atualizado diariamente com dados do PNCP, integrando
+        O SmartLic mantém uma base de dados atualizada diariamente com dados do PNCP, integrando
         contratos, contratações (editais) e atas de registro de preços em uma base única e
         consultável por setor, UF, órgão, CNPJ de fornecedor e faixa de valor. O processo de
         ingestão roda automaticamente às 2h BRT (horário de Brasília), com atualizações
@@ -752,7 +752,7 @@ export default function ComoConsultarContratosPublicosPncp() {
 
       <h3>Como o SmartLic facilita a consulta de contratos públicos?</h3>
       <p>
-        O SmartLic acessa o datalake do PNCP e consolida contratos públicos por setor, UF e
+        O SmartLic acessa a base de dados do PNCP e consolida contratos públicos por setor, UF e
         órgão, eliminando a necessidade de buscas manuais repetitivas. A plataforma permite
         visualizar o histórico de contratos de um fornecedor ou órgão, identificar padrões de
         contratação por segmento, e monitorar aditivos e renovações em tempo real. Empresas B2G

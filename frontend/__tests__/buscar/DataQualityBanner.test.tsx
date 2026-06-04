@@ -72,7 +72,7 @@ describe("DataQualityBanner -- GTM-UX-001 Story Tests", () => {
     render(<DataQualityBanner {...props} />);
 
     const banner = screen.getByTestId("data-quality-banner");
-    expect(banner).toHaveTextContent(/Cache de 2h/);
+    expect(banner).toHaveTextContent(/Dados de 2h/);
     expect(screen.getByText("Atualizar")).toBeInTheDocument();
   });
 
@@ -672,9 +672,9 @@ describe("DataQualityBanner -- Message Format (AC2)", () => {
     render(<DataQualityBanner {...props} />);
 
     const banner = screen.getByTestId("data-quality-banner");
-    // Segments: "Resultados de 5/7 estados | Cache de 2h atras | 2 timeouts | Resultados truncados"
+    // Segments: "Resultados de 5/7 estados | Dados de 2h atrás | 2 timeouts | Resultados truncados"
     expect(banner).toHaveTextContent(/Resultados de 5\/7 estados/);
-    expect(banner).toHaveTextContent(/Cache de 2h/);
+    expect(banner).toHaveTextContent(/Dados de 2h/);
     expect(banner).toHaveTextContent(/2 timeouts/);
     expect(banner).toHaveTextContent(/Resultados truncados/);
   });
@@ -785,7 +785,7 @@ describe("DataQualityBanner -- Message Format (AC2)", () => {
     render(<DataQualityBanner {...props} />);
 
     expect(screen.getByTestId("data-quality-banner")).toHaveTextContent(
-      /Cache de 30min/
+      /Dados de 30min/
     );
   });
 
@@ -799,7 +799,7 @@ describe("DataQualityBanner -- Message Format (AC2)", () => {
     render(<DataQualityBanner {...props} />);
 
     expect(screen.getByTestId("data-quality-banner")).toHaveTextContent(
-      /Cache de 2d/
+      /Dados de 2d/
     );
   });
 

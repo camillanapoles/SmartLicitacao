@@ -581,7 +581,7 @@ export default function MelhoresPlataformasLicitacao2026Ranking() {
           Sites oficiais das plataformas citadas — preços e funcionalidades verificados em abril/2026
         </li>
         <li>
-          SmartLic datalake — dados de processamento e classificação, 800K+ publicações analisadas
+          SmartLic base de dados — dados de processamento e classificação, 800K+ publicações analisadas
         </li>
         <li>
           Painel de Compras do Governo Federal — distribuição por modalidade 2024-2025
