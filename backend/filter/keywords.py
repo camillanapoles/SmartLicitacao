@@ -7,10 +7,25 @@ and the core match_keywords() function.
 import logging
 import re
 import unicodedata
+from functools import lru_cache
 from typing import Set, Tuple, List, Dict, Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=2048)
+def _compile_pattern(word: str, suffix: str = "") -> "re.Pattern":
+    """Compile a word-boundary regex pattern with optional plural suffix.
+
+    Cached to avoid recompilation across thousands of match_keywords() calls
+    on the same sector keywords/exclusions.  Python's re module cache (512
+    entries, cleared on overflow in CPython 3.11) is not large enough for the
+    cross-product of records × sectors × keywords, causing repeated
+    recompilation and CI timeouts on integration tests like
+    test_no_excessive_overlap.
+    """
+    return re.compile(rf"\b{re.escape(word)}{suffix}\b")
 
 # STORY-248 AC9: Lazy import to avoid circular dependency at module load time.
 # The tracker is imported inside functions that need it.
@@ -1028,13 +1043,15 @@ def match_keywords(
         for exc in exclusions:
             exc_norm = normalize_text(exc)
             # Use strict word boundary for exclusions (exact match required)
-            pattern = rf"\b{re.escape(exc_norm)}\b"
-            matched_exc = bool(re.search(pattern, objeto_norm))
+            # Pre-compiled + cached via _compile_pattern to avoid recompilation
+            # across thousands of match_keywords() calls (Python's re cache is
+            # too small for the cross-product of records × sectors × exclusions).
+            matched_exc = bool(_compile_pattern(exc_norm).search(objeto_norm))
             # ISSUE-063/064 session-033: plural expansion for exclusions (symmetric with keywords)
             if not matched_exc and not exc_norm.endswith('s'):
-                if re.search(rf"\b{re.escape(exc_norm)}s\b", objeto_norm):
+                if _compile_pattern(exc_norm, "s").search(objeto_norm):
                     matched_exc = True
-                elif re.search(rf"\b{re.escape(exc_norm)}es\b", objeto_norm):
+                elif _compile_pattern(exc_norm, "es").search(objeto_norm):
                     matched_exc = True
             if matched_exc:
                 # STORY-248 AC9: Record exclusion hit
@@ -1060,29 +1077,24 @@ def match_keywords(
                 continue
             # Also try plural forms with pre-compiled pattern
             if not kw_norm.endswith('s'):
-                pattern_plural_s = rf"\b{re.escape(kw_norm)}s\b"
-                if re.search(pattern_plural_s, objeto_norm):
+                if _compile_pattern(kw_norm, "s").search(objeto_norm):
                     matched.append(kw)
                     continue
-                pattern_plural_es = rf"\b{re.escape(kw_norm)}es\b"
-                if re.search(pattern_plural_es, objeto_norm):
+                if _compile_pattern(kw_norm, "es").search(objeto_norm):
                     matched.append(kw)
                     continue
         else:
             # Fallback: compile on the fly (backward compatible)
-            pattern_exact = rf"\b{re.escape(kw_norm)}\b"
-            if re.search(pattern_exact, objeto_norm):
+            if _compile_pattern(kw_norm).search(objeto_norm):
                 matched.append(kw)
                 continue
 
             # Try plural forms if exact match failed
             if not kw_norm.endswith('s'):
-                pattern_plural_s = rf"\b{re.escape(kw_norm)}s\b"
-                if re.search(pattern_plural_s, objeto_norm):
+                if _compile_pattern(kw_norm, "s").search(objeto_norm):
                     matched.append(kw)
                     continue
-                pattern_plural_es = rf"\b{re.escape(kw_norm)}es\b"
-                if re.search(pattern_plural_es, objeto_norm):
+                if _compile_pattern(kw_norm, "es").search(objeto_norm):
                     matched.append(kw)
                     continue
 

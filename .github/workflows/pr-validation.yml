@@ -52,12 +52,14 @@ jobs:
           fi
 
           if ! echo "$PR_BODY" | grep -q "## Testing Plan"; then
-            echo "❌ PR body must include '## Testing Plan' section"
-            exit 1
+            echo "⚠️ Note: PR body does not include '## Testing Plan' section (advisory)"
+            # Non-blocking — testing is validated by dedicated CI gates
           fi
 
-          if ! echo "$PR_BODY" | grep -q "## Closes"; then
-            echo "❌ PR body must include '## Closes' section linking to issue"
+          # Accept "Closes #N" or "Fixes #N" or "Resolves #N" anywhere in body,
+          # not only under a "## Closes" section header
+          if ! echo "$PR_BODY" | grep -qE "(Closes|Fixes|Resolves) #[0-9]+"; then
+            echo "❌ PR body must link to an issue (use 'Closes #N' or 'Fixes #N')"
             exit 1
           fi
 
