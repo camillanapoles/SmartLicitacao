@@ -976,14 +976,158 @@ async def send_post_purchase_step(ctx: dict, sequence_id: str, step_index: int) 
         f"step={step_name} (index={step_index}), product_sku={product_sku}"
     )
 
-    # TODO (CONV-011b-2): Send actual email via Resend SDK
-    #   template_id = step.get("template_id", f"{product_sku}_{step_name}")
-    #   user = db.table("profiles").select("email, full_name").eq("id", sequence["user_id"]).single().execute()
-    #   send_email_async(to=user["email"], template=template_id, ...)
-    #
-    # For now, mark the step as sent so the skeleton is testable.
-    now_iso = datetime.now(timezone.utc).isoformat()
-    steps[step_index]["sent_at"] = now_iso
+    # CONV-011b-2: Send actual email via Resend with product-aware templates
+    try:
+        # Fetch user profile for email + display name
+        user_result = (
+            db.table("profiles")
+            .select("email, full_name")
+            .eq("id", sequence["user_id"])
+            .limit(1)
+            .execute()
+        )
+        if not user_result.data:
+            logger.warning(
+                f"send_post_purchase_step: user not found for user_id={sequence['user_id']}"
+            )
+            now_iso = datetime.now(timezone.utc).isoformat()
+            steps[step_index]["sent_at"] = now_iso
+            db.table("post_purchase_sequences").update({
+                "sequence_steps": steps,
+                "current_step": step_index + 1,
+            }).eq("id", sequence_id).execute()
+            return {
+                "status": "completed", "sequence_id": sequence_id,
+                "step_index": step_index, "step_name": step_name,
+                "note": "user_not_found",
+            }
+
+        user_email = user_result.data[0].get("email", "")
+        user_name = user_result.data[0].get("full_name") or user_email.split("@")[0]
+
+        # Fetch product info for template personalization
+        product_result = (
+            db.table("digital_products")
+            .select("name, description, price_brl, delivery_config, upsell_product_id, preview_config")
+            .eq("sku", product_sku)
+            .eq("active", True)
+            .limit(1)
+            .execute()
+        )
+        product_data = product_result.data[0] if product_result.data else None
+        product_name = (product_data or {}).get("name", product_sku.replace("-", " ").title())
+        delivery_config = (product_data or {}).get("delivery_config") or {}
+        delivery_type = delivery_config.get("type", "pdf")
+
+        # Lookup upsell product name if configured
+        upsell_id = (product_data or {}).get("upsell_product_id")
+        upsell_name = None
+        upsell_price = None
+        upsell_url = None
+        if upsell_id:
+            upsell_result = (
+                db.table("digital_products")
+                .select("name, price_brl, sku")
+                .eq("id", upsell_id)
+                .eq("active", True)
+                .limit(1)
+                .execute()
+            )
+            if upsell_result.data:
+                upsell_name = upsell_result.data[0].get("name")
+                upsell_price = upsell_result.data[0].get("price_brl")
+                upsell_sku = upsell_result.data[0].get("sku", "")
+                upsell_url = f"https://smartlic.tech/produtos?sku={upsell_sku}"
+
+        # Build download URL for PDF/CSV products
+        download_url = None
+        if delivery_type in ("pdf", "csv"):
+            purchase_result = (
+                db.table("intel_report_purchases")
+                .select("pdf_url")
+                .eq("id", sequence["purchase_id"])
+                .limit(1)
+                .execute()
+            )
+            if purchase_result.data:
+                download_url = purchase_result.data[0].get("pdf_url")
+
+        from templates.emails.post_purchase import (
+            render_post_purchase_delivery,
+            render_post_purchase_followup,
+            render_post_purchase_reengagement,
+        )
+
+        preview_config = (product_data or {}).get("preview_config") or {}
+        setor = preview_config.get("default_setor") if isinstance(preview_config, dict) else None
+        frontend_url = "https://smartlic.tech"
+
+        if step_name == "delivery":
+            subject, html = render_post_purchase_delivery(
+                user_name=user_name, product_name=product_name,
+                product_sku=product_sku, delivery_type=delivery_type,
+                download_url=download_url, setor=setor,
+            )
+        elif step_name == "followup":
+            trial_url = f"{frontend_url}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=followup_48h&product_sku={product_sku}"
+            subject, html = render_post_purchase_followup(
+                user_name=user_name, product_name=product_name,
+                product_sku=product_sku, upsell_product_name=upsell_name,
+                upsell_product_price=upsell_price, upsell_product_url=upsell_url,
+                trial_url=trial_url,
+            )
+        elif step_name == "reengagement":
+            trial_url = f"{frontend_url}/cadastro?utm_source=post_purchase&utm_medium=email&utm_campaign=reengagement_7d&product_sku={product_sku}"
+            subject, html = render_post_purchase_reengagement(
+                user_name=user_name, product_name=product_name,
+                product_sku=product_sku, download_url=download_url,
+                upsell_product_name=upsell_name, upsell_product_price=upsell_price,
+                upsell_product_url=upsell_url, trial_url=trial_url,
+            )
+        else:
+            logger.warning(
+                f"send_post_purchase_step: unknown step_name={step_name} for "
+                f"sequence_id={sequence_id}, marking as sent"
+            )
+            now_iso = datetime.now(timezone.utc).isoformat()
+            steps[step_index]["sent_at"] = now_iso
+            db.table("post_purchase_sequences").update({
+                "sequence_steps": steps,
+                "current_step": step_index + 1,
+            }).eq("id", sequence_id).execute()
+            return {
+                "status": "completed", "sequence_id": sequence_id,
+                "step_index": step_index, "step_name": step_name,
+                "note": "unknown_step",
+            }
+
+        from email_service import send_email
+
+        email_id = send_email(
+            to=user_email, subject=subject, html=html,
+            tags=[
+                {"name": "category", "value": "post_purchase"},
+                {"name": "step", "value": step_name},
+                {"name": "product_sku", "value": product_sku},
+                {"name": "sequence_id", "value": sequence_id[:32]},
+            ],
+        )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        steps[step_index]["sent_at"] = now_iso
+        logger.info(
+            f"Post-purchase email sent: sequence_id={sequence_id}, "
+            f"step={step_name}, to={user_email}, "
+            f"product_sku={product_sku}, email_id={email_id}"
+        )
+    except Exception as email_err:
+        logger.error(
+            f"send_post_purchase_step: failed to send email for "
+            f"sequence_id={sequence_id}, step={step_name}: {email_err}"
+        )
+        now_iso = datetime.now(timezone.utc).isoformat()
+        steps[step_index]["sent_at"] = now_iso
+        steps[step_index]["error"] = str(email_err)[:500]
 
     # Determine new current_step and status
     new_current_step = step_index + 1
