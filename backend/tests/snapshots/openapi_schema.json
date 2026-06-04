@@ -2801,8 +2801,28 @@
         "title": "CheckPhoneResponse",
         "type": "object"
       },
+      "CheckoutRequest": {
+        "description": "Request body for POST /api/checkout/one-time.",
+        "properties": {
+          "context": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Context",
+            "type": "object"
+          },
+          "sku": {
+            "title": "Sku",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku"
+        ],
+        "title": "CheckoutRequest",
+        "type": "object"
+      },
       "CheckoutResponse": {
-        "description": "Response for POST /checkout.",
+        "description": "Response for a successful checkout session creation.",
         "properties": {
           "checkout_url": {
             "title": "Checkout Url",
@@ -17031,6 +17051,53 @@
           }
         },
         "summary": "Root"
+      }
+    },
+    "/api/checkout/one-time": {
+      "post": {
+        "description": "Create a Stripe Checkout Session for a one-time digital product purchase.\n\nFlow:\n    1. Validate SKU against digital_products table\n    2. Resolve or create Stripe Price\n    3. Create Stripe Checkout Session with card/boleto/PIX\n    4. Return checkout URL\n\nRate limited: 10 req/min per IP.",
+        "operationId": "create_one_time_checkout_api_checkout_one_time_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create One Time Checkout",
+        "tags": [
+          "checkout"
+        ]
       }
     },
     "/api/founders/availability": {
