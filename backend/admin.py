@@ -34,6 +34,7 @@ from schemas import (
     AdminUsersListResponse, AdminCreateUserResponse, AdminDeleteUserResponse,
     AdminUpdateUserResponse, AdminResetPasswordResponse, AdminAssignPlanResponse,
     AdminUpdateCreditsResponse, MemorySnapshot, TraceMallocEntry,
+    UserSegmentsResponse,
 )
 from log_sanitizer import sanitize_dict, log_admin_action
 from filter.stats import filter_stats_tracker
@@ -1238,3 +1239,187 @@ def _assign_plan(sb, user_id: str, plan_id: str):
         "expires_at": expires_at,
         "is_active": True,
     }).execute()
+
+
+# ============================================================================
+# LIFECYCLE-003 (#1428): User Segments Dashboard
+# ============================================================================
+
+
+_CACHE_PREFIX = "smartlic:segments:"
+_CACHE_TTL = 300  # 5 minutes
+
+
+async def _get_segments_cache() -> Optional[dict]:
+    """Get segments data from Redis cache."""
+    try:
+        from cache_module import redis_cache
+        import json
+        raw = await redis_cache.get(f"{_CACHE_PREFIX}dashboard")
+        if raw:
+            return json.loads(raw)
+    except Exception:
+        pass
+    return None
+
+
+async def _set_segments_cache(data: dict) -> None:
+    """Set segments data in Redis cache."""
+    try:
+        from cache_module import redis_cache
+        import json
+        await redis_cache.setex(
+            f"{_CACHE_PREFIX}dashboard", _CACHE_TTL,
+            json.dumps(data, default=str),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to cache segments data: {e}")
+
+
+@router.get("/users/segments", response_model=UserSegmentsResponse)
+async def get_user_segments(
+    admin: dict = Depends(require_admin),
+) -> UserSegmentsResponse:
+    """LIFECYCLE-003: Return user lifecycle segment counts, transitions,
+    and power user details.
+
+    Classifies every user into one of 10 lifecycle states:
+    anonymous, lead, trial_active, trial_limited, trial_expired,
+    paid_active, paid_past_due, canceled, churned, power_user.
+
+    Results are cached in Redis for 5 minutes.
+    """
+    from datetime import datetime, timedelta, timezone
+    from supabase_client import get_supabase, sb_execute
+
+    # Check cache first
+    cached = await _get_segments_cache()
+    if cached is not None:
+        return UserSegmentsResponse(**cached)
+
+    sb = get_supabase()
+    now = datetime.now(timezone.utc)
+
+    try:
+        # 1. Compute all user lifecycles via batch function
+        result = await sb_execute(
+            sb.rpc("compute_all_user_lifecycles"),
+            category="read",
+        )
+        all_lifecycles = result.data or []
+
+        # 2. Aggregate counts by state
+        count_by_state: dict[str, int] = {}
+        power_user_ids: list[str] = []
+        for row in all_lifecycles:
+            state = row.get("lifecycle", "anonymous")
+            count_by_state[state] = count_by_state.get(state, 0) + 1
+            if state == "power_user":
+                power_user_ids.append(row["user_id"])
+
+        total_users = len(all_lifecycles)
+
+        # 3. Get transitions in the last week
+        transitions_result = await sb_execute(
+            sb.table("user_lifecycle_events")
+            .select("user_id, previous_lifecycle, new_lifecycle, changed_at")
+            .gte("changed_at", (now - timedelta(days=7)).isoformat())
+            .order("changed_at", desc=True)
+            .limit(100),
+            category="read",
+        )
+
+        transitions = [
+            {
+                "user_id": t["user_id"],
+                "previous_lifecycle": t.get("previous_lifecycle"),
+                "new_lifecycle": t["new_lifecycle"],
+                "changed_at": t["changed_at"],
+            }
+            for t in (transitions_result.data or [])
+        ]
+
+        # 4. Get power user details
+        power_users: list[dict] = []
+        if power_user_ids:
+            for puid in power_user_ids:
+                try:
+                    profile = await sb_execute(
+                        sb.table("profiles")
+                        .select("id, email, full_name, company")
+                        .eq("id", puid)
+                        .single(),
+                        category="read",
+                    )
+                    p = profile.data or {}
+
+                    la = await sb_execute(
+                        sb.table("login_activity")
+                        .select("id", count="exact")
+                        .eq("user_id", puid)
+                        .gte("login_date",
+                              (now - timedelta(days=14)).date().isoformat()),
+                        category="read",
+                    )
+                    pi = await sb_execute(
+                        sb.table("pipeline_items")
+                        .select("id", count="exact")
+                        .eq("user_id", puid),
+                        category="read",
+                    )
+                    al = await sb_execute(
+                        sb.table("alerts")
+                        .select("id", count="exact")
+                        .eq("user_id", puid)
+                        .eq("active", True),
+                        category="read",
+                    )
+
+                    lc = await sb_execute(
+                        sb.table("user_lifecycle")
+                        .select("lifecycle")
+                        .eq("user_id", puid)
+                        .single(),
+                        category="read",
+                    )
+
+                    power_users.append({
+                        "user_id": puid,
+                        "email": p.get("email", ""),
+                        "full_name": p.get("full_name", ""),
+                        "company": p.get("company", ""),
+                        "logins_14d": la.count or 0,
+                        "pipeline_count": pi.count or 0,
+                        "alert_count": al.count or 0,
+                        "lifecycle": (
+                            lc.data.get("lifecycle", "power_user")
+                            if lc.data else "power_user"
+                        ),
+                    })
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get power user details for %s: %s",
+                        puid[:8], e,
+                    )
+                    continue
+
+        # 5. Build response
+        response_data = {
+            "count_by_state": count_by_state,
+            "total_users": total_users,
+            "transitions_last_week": transitions,
+            "power_users": power_users,
+            "queried_at": now.isoformat(),
+        }
+
+        # Cache the result (fire-and-forget)
+        await _set_segments_cache(response_data)
+
+        return UserSegmentsResponse(**response_data)
+
+    except Exception as e:
+        logger.error(f"Failed to compute user segments: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Erro ao calcular segmentos de usuarios",
+        )

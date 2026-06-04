@@ -204,3 +204,35 @@ class AdminLlmCostResponse(BaseModel):
     projected_end_of_month_usd: float = 0.0
     month: str
     exceeded: bool = False
+
+
+# --- LIFECYCLE-003 (#1428): User Segments ------------------------------------
+
+
+class UserLifecycleTransition(BaseModel):
+    """A single lifecycle transition event."""
+    user_id: str
+    previous_lifecycle: Optional[str] = None
+    new_lifecycle: str
+    changed_at: str
+
+
+class PowerUserDetail(BaseModel):
+    """Power user detail row for the segments dashboard."""
+    user_id: str
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    company: Optional[str] = None
+    logins_14d: int = 0
+    pipeline_count: int = 0
+    alert_count: int = 0
+    lifecycle: str
+
+
+class UserSegmentsResponse(BaseModel):
+    """Response for GET /admin/users/segments (LIFECYCLE-003)."""
+    count_by_state: dict
+    total_users: int
+    transitions_last_week: list
+    power_users: list
+    queried_at: str
