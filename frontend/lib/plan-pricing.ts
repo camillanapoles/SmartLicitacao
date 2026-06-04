@@ -35,6 +35,12 @@ export const CONSULTORIA_PRICING: PricingTable = {
   annual: { monthly: 797, total: 9564, period: "ano", discount: 20 },
 };
 
+export const COMMAND_PRICING: PricingTable = {
+  monthly: { monthly: 970, total: 970, period: "mês" },
+  semiannual: { monthly: 873, total: 5238, period: "semestre", discount: 10 },
+  annual: { monthly: 808, total: 9700, period: "ano", discount: 17 },
+};
+
 /** Stable min/max across both tiers, for AggregateOffer schema. */
 export const AGGREGATE_OFFER_BOUNDS = {
   lowPrice: Math.min(PRO_PRICING.annual.monthly, CONSULTORIA_PRICING.annual.monthly),
