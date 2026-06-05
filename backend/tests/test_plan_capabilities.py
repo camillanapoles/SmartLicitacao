@@ -534,6 +534,7 @@ class TestPlanPricing:
             "maquina",
             "sala_guerra",
             "smartlic_pro",
+            "smartlic_command",  # TIER-COMMAND-002
             "founding_member",  # STORY-BIZ-001
             "consultoria",  # STORY-BIZ-002
         }
