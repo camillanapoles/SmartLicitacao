@@ -26,7 +26,19 @@ from quota.quota_core import (
 # ---------------------------------------------------------------------------
 @pytest.fixture(autouse=True)
 def _mock_alerts_deps():
-    """Mock dependencies of routes.alerts module before any test imports from it."""
+    """Mock dependencies of routes.alerts module before any test imports from it.
+
+    IMPORTANT: Save original modules BEFORE mocking and restore them in cleanup.
+    Removing real modules from sys.modules corrupts imports for the entire test suite
+    (CRIT-091: caused 191 cascading 401 failures across unrelated test files).
+    """
+    _MOCK_MODULES = ["auth", "log_sanitizer", "schemas.common", "supabase_client"]
+
+    # Save original modules so we can restore them without corrupting the suite
+    _saved: dict[str, object] = {}
+    for mod_name in _MOCK_MODULES:
+        _saved[mod_name] = sys.modules.get(mod_name)
+
     mock_auth = MagicMock()
     mock_auth.require_auth = MagicMock()
     sys.modules["auth"] = mock_auth
@@ -51,9 +63,13 @@ def _mock_alerts_deps():
 
     yield
 
-    # Cleanup so other tests aren't affected
-    for mod in ["auth", "log_sanitizer", "schemas.common", "supabase_client"]:
-        sys.modules.pop(mod, None)
+    # Restore original modules — never leave holes in sys.modules
+    for mod_name in _MOCK_MODULES:
+        original = _saved.get(mod_name)
+        if original is None:
+            sys.modules.pop(mod_name, None)
+        else:
+            sys.modules[mod_name] = original
 
 
 # ===========================================================================
