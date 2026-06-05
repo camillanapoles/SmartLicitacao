@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
+import FollowButton from '@/components/FollowButton';
 import { trackPseoEvent } from '@/lib/analytics/pseo';
 
 interface LicitacaoRecente {
@@ -46,7 +47,8 @@ interface OrgaoStats {
   aviso_legal: string;
 }
 
-function formatBRL(value: number): string {
+function formatBRL(value: number | null): string {
+  if (value === null) return "—";
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -146,7 +148,7 @@ export default function OrgaoPerfilClient({ stats }: { stats: OrgaoStats }) {
       </div>
 
       {/* Badges row */}
-      <div className="flex flex-wrap gap-3 mb-8">
+      <div className="flex flex-wrap items-center gap-3 mb-8">
         <span
           className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold border ${activityConfig.color} ring-2 ${activityConfig.ringColor}`}
         >
@@ -162,6 +164,14 @@ export default function OrgaoPerfilClient({ stats }: { stats: OrgaoStats }) {
             {uf}
           </span>
         )}
+        <span className="ml-auto">
+          <FollowButton
+            entityType="orgao"
+            entityId={cnpj}
+            entityName={nome}
+            entityCnpj={cnpj}
+          />
+        </span>
       </div>
 
       {/* Stats cards */}

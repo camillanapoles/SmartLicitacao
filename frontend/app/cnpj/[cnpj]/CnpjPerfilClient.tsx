@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import StickyTrialCTA from '@/app/components/StickyTrialCTA';
+import FollowButton from '@/components/FollowButton';
 import { ViabilityVerdict } from '@/components/ViabilityVerdict';
 import { AdvisoryDisclaimer } from '@/components/legal/AdvisoryDisclaimer';
 
@@ -137,7 +138,7 @@ export default function CnpjPerfilClient({ perfil }: { perfil: PerfilB2G }) {
       </div>
 
       {/* Score Badge */}
-      <div className="flex flex-wrap gap-3 mb-8">
+      <div className="flex flex-wrap items-center gap-3 mb-8">
         <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold border ${scoreConfig.color} ring-2 ${scoreConfig.ringColor}`}>
           Score B2G: {scoreConfig.label}
         </span>
@@ -149,6 +150,14 @@ export default function CnpjPerfilClient({ perfil }: { perfil: PerfilB2G }) {
             {empresa.uf}
           </span>
         )}
+        <span className="ml-auto">
+          <FollowButton
+            entityType="fornecedor"
+            entityId={empresa.cnpj}
+            entityName={empresa.razao_social}
+            entityCnpj={empresa.cnpj}
+          />
+        </span>
       </div>
 
       {/* Company info */}

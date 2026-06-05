@@ -23,6 +23,12 @@ jest.mock('next/link', () => {
   };
 });
 
+jest.mock('@/components/FollowButton', () => {
+  return function MockFollowButton() {
+    return <button data-testid="follow-button">Seguir</button>;
+  };
+});
+
 import CnpjPerfilClient from '@/app/cnpj/[cnpj]/CnpjPerfilClient';
 
 const BASE_EMPRESA = {
