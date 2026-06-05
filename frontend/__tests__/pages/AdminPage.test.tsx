@@ -49,6 +49,9 @@ const DEFAULT_RESPONSES: Record<string, unknown> = {
   '/api/status': { sources: {}, uptime_pct_30d: 99.5 },
   '/api/admin/reconciliation/history': { runs: [] },
   '/api/admin/support-sla': { avg_response_hours: 0, pending_count: 0, breached_count: 0 },
+  '/api/admin/users/segments': { count_by_state: {}, total_users: 0, transitions_last_week: [], power_users: [] },
+  '/api/admin/trial-metrics': { active_trials: 0, conversion_rate: 0 },
+  '/api/admin/at-risk-trials': { users: [] },
 };
 
 function setupDefaultFetch(overrides: Record<string, unknown> = {}) {
