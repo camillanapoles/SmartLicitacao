@@ -33,6 +33,15 @@ jest.mock('next/link', () => {
   };
 });
 
+// Mock child components with side effects (SWR, Mixpanel, etc.)
+jest.mock('@/app/admin/components/LifecycleWidget', () => ({
+  LifecycleWidget: () => <div data-testid="lifecycle-widget" />,
+}));
+
+jest.mock('@/app/admin/components/ABTestWidget', () => ({
+  ABTestWidget: () => <div data-testid="ab-test-widget" />,
+}));
+
 // Mock fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
