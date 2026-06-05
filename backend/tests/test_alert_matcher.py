@@ -811,3 +811,459 @@ def _make_table_chain(name: str):
         setattr(chain, m, MagicMock(side_effect=chain_method))
 
     return chain
+
+
+# ============================================================================
+# ENTITY-002: Tests for entity tracking matching
+# ============================================================================
+
+
+class TestApplyEntityFilters:
+    """ENTITY-002 AC1+AC2: Entity tracking matching tests."""
+
+    def test_matches_by_tracked_orgao(self):
+        from services.alert_matcher import _apply_entity_filters
+
+        items = [
+            {"id": "1", "orgao_cnpj": "12345678000195", "fornecedor_cnpj": ""},
+            {"id": "2", "orgao_cnpj": "98765432000110", "fornecedor_cnpj": ""},
+            {"id": "3", "orgao_cnpj": "", "fornecedor_cnpj": ""},
+        ]
+        result = _apply_entity_filters(items, ["12345678000195"], [])
+        assert len(result) == 1
+        assert result[0]["id"] == "1"
+
+    def test_matches_by_tracked_fornecedor(self):
+        from services.alert_matcher import _apply_entity_filters
+
+        items = [
+            {"id": "1", "orgao_cnpj": "", "fornecedor_cnpj": "12345678000195"},
+            {"id": "2", "orgao_cnpj": "", "fornecedor_cnpj": "98765432000110"},
+        ]
+        result = _apply_entity_filters(items, [], ["12345678000195"])
+        assert len(result) == 1
+        assert result[0]["id"] == "1"
+
+    def test_matches_either_list(self):
+        from services.alert_matcher import _apply_entity_filters
+
+        items = [
+            {"id": "1", "orgao_cnpj": "11111111000111", "fornecedor_cnpj": ""},
+            {"id": "2", "orgao_cnpj": "", "fornecedor_cnpj": "22222222000122"},
+            {"id": "3", "orgao_cnpj": "33333333000133", "fornecedor_cnpj": ""},
+        ]
+        result = _apply_entity_filters(
+            items, ["11111111000111"], ["22222222000122"],
+        )
+        assert len(result) == 2
+        ids = {r["id"] for r in result}
+        assert ids == {"1", "2"}
+
+    def test_no_match_returns_empty(self):
+        from services.alert_matcher import _apply_entity_filters
+
+        items = [
+            {"id": "1", "orgao_cnpj": "99999999000199", "fornecedor_cnpj": ""},
+        ]
+        result = _apply_entity_filters(items, ["12345678000195"], [])
+        assert result == []
+
+    def test_empty_lists_returns_empty(self):
+        from services.alert_matcher import _apply_entity_filters
+
+        items = [{"id": "1", "orgao_cnpj": "12345678000195", "fornecedor_cnpj": ""}]
+        result = _apply_entity_filters(items, [], [])
+        assert result == []
+
+    def test_sorts_by_viability(self):
+        from services.alert_matcher import _apply_entity_filters
+
+        items = [
+            {"id": "1", "orgao_cnpj": "12345678000195", "viability_score": 0.5},
+            {"id": "2", "orgao_cnpj": "12345678000195", "viability_score": 0.9},
+        ]
+        result = _apply_entity_filters(items, ["12345678000195"], [])
+        assert len(result) == 2
+        assert result[0]["id"] == "2"  # Higher viability first
+
+
+class TestMergeEntityAndRegularMatches:
+    """ENTITY-002 AC4: OR logic merge tests."""
+
+    def test_entity_matches_only(self):
+        from services.alert_matcher import _merge_entity_and_regular_matches
+
+        entity = [{"id": "1", "orgao_cnpj": "12345678000195"}]
+        regular = []
+        result = _merge_entity_and_regular_matches(entity, regular)
+        assert len(result) == 1
+        assert result[0]["id"] == "1"
+
+    def test_regular_matches_only(self):
+        from services.alert_matcher import _merge_entity_and_regular_matches
+
+        entity = []
+        regular = [{"id": "1", "titulo": "Computador"}]
+        result = _merge_entity_and_regular_matches(entity, regular)
+        assert len(result) == 1
+        assert result[0]["id"] == "1"
+
+    def test_merge_both_lists_dedup(self):
+        from services.alert_matcher import _merge_entity_and_regular_matches
+
+        entity = [{"id": "1"}, {"id": "2"}]
+        regular = [{"id": "2"}, {"id": "3"}]
+        result = _merge_entity_and_regular_matches(entity, regular)
+        assert len(result) == 3
+        # Entity items come first
+        assert result[0]["id"] == "1"
+        assert result[1]["id"] == "2"
+        assert result[2]["id"] == "3"
+
+    def test_entity_first_then_regular(self):
+        from services.alert_matcher import _merge_entity_and_regular_matches
+
+        entity = [{"id": "1"}]
+        regular = [{"id": "2"}, {"id": "3"}]
+        result = _merge_entity_and_regular_matches(entity, regular)
+        assert len(result) == 3
+        assert result[0]["id"] == "1"  # Entity first
+        assert result[1]["id"] == "2"
+        assert result[2]["id"] == "3"
+
+
+class TestEntityMatchMetadata:
+    """ENTITY-002 AC3+AC5: Entity match metadata extraction tests."""
+
+    def test_extract_entity_counts(self):
+        from services.alert_matcher import _extract_entity_match_metadata
+
+        items = [
+            {"id": "1", "orgao_cnpj": "11111111000111", "fornecedor_cnpj": ""},
+            {"id": "2", "orgao_cnpj": "11111111000111", "fornecedor_cnpj": ""},
+            {"id": "3", "orgao_cnpj": "22222222000122", "fornecedor_cnpj": ""},
+        ]
+        result = _extract_entity_match_metadata(items, ["11111111000111", "22222222000122"], [])
+        assert len(result) == 2
+        counts = {e["entity_cnpj"]: e["bid_count"] for e in result}
+        assert counts["11111111000111"] == 2
+        assert counts["22222222000122"] == 1
+
+    def test_extract_sorted_by_count_desc(self):
+        from services.alert_matcher import _extract_entity_match_metadata
+
+        items = [
+            {"id": "1", "orgao_cnpj": "11111111000111", "fornecedor_cnpj": ""},
+            {"id": "2", "orgao_cnpj": "22222222000122", "fornecedor_cnpj": ""},
+            {"id": "3", "orgao_cnpj": "22222222000122", "fornecedor_cnpj": ""},
+        ]
+        result = _extract_entity_match_metadata(items, ["11111111000111", "22222222000122"], [])
+        assert len(result) == 2
+        assert result[0]["entity_cnpj"] == "22222222000122"  # Higher count first
+        assert result[1]["entity_cnpj"] == "11111111000111"
+
+    def test_extract_entity_type(self):
+        from services.alert_matcher import _extract_entity_match_metadata
+
+        items = [
+            {"id": "1", "orgao_cnpj": "11111111000111", "fornecedor_cnpj": ""},
+            {"id": "2", "orgao_cnpj": "", "fornecedor_cnpj": "33333333000133"},
+        ]
+        result = _extract_entity_match_metadata(
+            items, ["11111111000111"], ["33333333000133"],
+        )
+        types = {e["entity_cnpj"]: e["entity_type"] for e in result}
+        assert types["11111111000111"] == "orgao"
+        assert types["33333333000133"] == "fornecedor"
+
+    def test_check_digest_needed_under_threshold(self):
+        from services.alert_matcher import _check_entity_digest_needed
+
+        matches = [{"entity_cnpj": "x", "bid_count": 3}]
+        assert not _check_entity_digest_needed(matches)
+
+    def test_check_digest_needed_over_threshold(self):
+        from services.alert_matcher import _check_entity_digest_needed
+
+        matches = [{"entity_cnpj": "x", "bid_count": 10}]
+        assert _check_entity_digest_needed(matches)
+
+    def test_check_digest_empty_returns_false(self):
+        from services.alert_matcher import _check_entity_digest_needed
+
+        assert not _check_entity_digest_needed([])
+
+
+class TestProcessAlertWithEntityTracking:
+    """ENTITY-002: Integration of entity tracking into _process_alert."""
+
+    @pytest.mark.asyncio
+    async def test_entity_match_returns_payload(self):
+        """Alert with tracked_orgaos matches items by orgao_cnpj."""
+        from services.alert_matcher import _process_alert
+
+        alert = {
+            "id": "alert-entity-001",
+            "user_id": "user-001",
+            "name": "Entity Alert",
+            "email": "test@example.com",
+            "full_name": "Test User",
+            "filters": {},
+            "tracked_orgaos": ["12345678000195"],
+            "tracked_fornecedores": [],
+        }
+
+        # Items: one matching entity, one not
+        cache_item_1 = {
+            "id": "item-entity-1",
+            "objetoCompra": "Computador",
+            "nomeOrgao": "Orgao tracked",
+            "cnpjOrgao": "12345678000195",
+            "valorTotalEstimado": 50000,
+            "uf": "SP",
+            "viability_score": 0.8,
+            "status": "",
+        }
+        cache_item_2 = {
+            "id": "item-entity-2",
+            "objetoCompra": "Servico",
+            "nomeOrgao": "Outro orgao",
+            "cnpjOrgao": "99999999000199",
+            "valorTotalEstimado": 30000,
+            "uf": "RJ",
+            "viability_score": 0.5,
+            "status": "",
+        }
+
+        mock_cache_row = {
+            "results": [cache_item_1, cache_item_2],
+            "search_params": {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        mock_db = MagicMock()
+        mock_db.table = MagicMock(side_effect=lambda name: _make_table_chain(name))
+
+        async def mock_sb_execute(query):
+            table = getattr(query, "_table_name", "")
+            result = MagicMock()
+            if table == "search_results_cache":
+                result.data = [mock_cache_row]
+            elif table == "alert_sent_items":
+                result.data = []
+                result.count = 0
+            elif table == "alert_runs":
+                result.data = [{"id": "run-1"}]
+            else:
+                result.data = []
+            return result
+
+        with patch("services.alert_matcher.sb_execute", new_callable=AsyncMock, side_effect=mock_sb_execute), \
+             patch("services.alert_service.sb_execute", new_callable=AsyncMock, side_effect=mock_sb_execute):
+            payload = await _process_alert(alert, {}, mock_db)
+
+        assert not payload.get("skipped"), f"Skipped: {payload.get('skip_reason')}"
+        assert payload["total_found"] > 0
+        item_ids = [i["id"] for i in payload["new_items"]]
+        assert "item-entity-1" in item_ids
+        # item-entity-2 should not match — no regular filters, not tracked
+        assert "item-entity-2" not in item_ids
+
+    @pytest.mark.asyncio
+    async def test_entity_and_regular_or_merging(self):
+        """ENTITY-002 AC4: Entity + regular filters use OR logic."""
+        from services.alert_matcher import _process_alert
+
+        alert = {
+            "id": "alert-or-001",
+            "user_id": "user-001",
+            "name": "OR Test",
+            "email": "test@example.com",
+            "full_name": "Test",
+            "filters": {"keywords": ["computador"]},
+            "tracked_orgaos": ["98765432000110"],
+            "tracked_fornecedores": [],
+        }
+
+        # item-1: matches keyword "computador" (regular path)
+        # item-2: matches tracked_orgao (entity path)
+        # item-3: matches neither
+        cache_item_1 = {
+            "id": "item-or-1", "objetoCompra": "Aquisicao de computador",
+            "nomeOrgao": "Orgao A", "cnpjOrgao": "11111111000111",
+            "valorTotalEstimado": 10000, "uf": "SP",
+            "viability_score": 0.5, "status": "",
+        }
+        cache_item_2 = {
+            "id": "item-or-2", "objetoCompra": "Servico de limpeza",
+            "nomeOrgao": "Orgao B", "cnpjOrgao": "98765432000110",
+            "valorTotalEstimado": 20000, "uf": "RJ",
+            "viability_score": 0.7, "status": "",
+        }
+        cache_item_3 = {
+            "id": "item-or-3", "objetoCompra": "Material escolar",
+            "nomeOrgao": "Orgao C", "cnpjOrgao": "55555555000155",
+            "valorTotalEstimado": 5000, "uf": "MG",
+            "viability_score": 0.3, "status": "",
+        }
+
+        mock_cache_row = {
+            "results": [cache_item_1, cache_item_2, cache_item_3],
+            "search_params": {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        mock_db = MagicMock()
+        mock_db.table = MagicMock(side_effect=lambda name: _make_table_chain(name))
+
+        async def mock_sb_execute(query):
+            table = getattr(query, "_table_name", "")
+            result = MagicMock()
+            if table == "search_results_cache":
+                result.data = [mock_cache_row]
+            elif table == "alert_sent_items":
+                result.data = []
+                result.count = 0
+            elif table == "alert_runs":
+                result.data = [{"id": "run-1"}]
+            else:
+                result.data = []
+            return result
+
+        with patch("services.alert_matcher.sb_execute", new_callable=AsyncMock, side_effect=mock_sb_execute), \
+             patch("services.alert_service.sb_execute", new_callable=AsyncMock, side_effect=mock_sb_execute):
+            payload = await _process_alert(alert, {}, mock_db)
+
+        assert not payload.get("skipped"), f"Skipped: {payload.get('skip_reason')}"
+        item_ids = [i["id"] for i in payload["new_items"]]
+        # item-or-1 matches keyword "computador"
+        assert "item-or-1" in item_ids, "Item matching keyword should be included"
+        # item-or-2 matches tracked_orgao
+        assert "item-or-2" in item_ids, "Item matching entity should be included"
+        # item-or-3 matches neither
+        assert "item-or-3" not in item_ids, "Item matching neither should be excluded"
+
+    @pytest.mark.asyncio
+    async def test_entity_match_empty_tracked_falls_back_to_regular(self):
+        """Alert with empty entity lists falls back to regular matching."""
+        from services.alert_matcher import _process_alert
+
+        alert = {
+            "id": "alert-fallback-001",
+            "user_id": "user-001",
+            "name": "Fallback",
+            "email": "test@example.com",
+            "full_name": "Test",
+            "filters": {"ufs": ["SP"]},
+            "tracked_orgaos": [],
+            "tracked_fornecedores": [],
+        }
+
+        cache_item_1 = {
+            "id": "item-fb-1", "objetoCompra": "Computador",
+            "nomeOrgao": "Orgao SP", "cnpjOrgao": "11111111000111",
+            "valorTotalEstimado": 10000, "uf": "SP",
+            "viability_score": 0.5, "status": "",
+        }
+        cache_item_2 = {
+            "id": "item-fb-2", "objetoCompra": "Servico",
+            "nomeOrgao": "Orgao RJ", "cnpjOrgao": "22222222000122",
+            "valorTotalEstimado": 20000, "uf": "RJ",
+            "viability_score": 0.5, "status": "",
+        }
+
+        mock_cache_row = {
+            "results": [cache_item_1, cache_item_2],
+            "search_params": {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        mock_db = MagicMock()
+        mock_db.table = MagicMock(side_effect=lambda name: _make_table_chain(name))
+
+        async def mock_sb_execute(query):
+            table = getattr(query, "_table_name", "")
+            result = MagicMock()
+            if table == "search_results_cache":
+                result.data = [mock_cache_row]
+            elif table == "alert_sent_items":
+                result.data = []
+                result.count = 0
+            elif table == "alert_runs":
+                result.data = [{"id": "run-1"}]
+            else:
+                result.data = []
+            return result
+
+        with patch("services.alert_matcher.sb_execute", new_callable=AsyncMock, side_effect=mock_sb_execute), \
+             patch("services.alert_service.sb_execute", new_callable=AsyncMock, side_effect=mock_sb_execute):
+            payload = await _process_alert(alert, {}, mock_db)
+
+        assert not payload.get("skipped"), f"Skipped: {payload.get('skip_reason')}"
+        item_ids = [i["id"] for i in payload["new_items"]]
+        assert "item-fb-1" in item_ids  # SP matches
+        assert "item-fb-2" not in item_ids  # RJ does not match
+
+    def test_normalize_item_has_entity_fields(self):
+        """ENTITY-002: Normalized item includes orgao_cnpj and fornecedor_cnpj."""
+        from services.alert_matcher import _normalize_item
+
+        item = _normalize_item(
+            {"cnpjOrgao": "12345678000195", "fornecedor_cnpj": "98765432000110"},
+            "test-id",
+        )
+        assert item["orgao_cnpj"] == "12345678000195"
+        assert item["fornecedor_cnpj"] == "98765432000110"
+
+    def test_normalize_item_fallback_orgao_cnpj(self):
+        """ENTITY-002: Falls back to orgaoCnpj when cnpjOrgao is missing."""
+        from services.alert_matcher import _normalize_item
+
+        item = _normalize_item({"orgaoCnpj": "12345678000195"}, "test-id")
+        assert item["orgao_cnpj"] == "12345678000195"
+
+    def test_normalize_item_fallback_fornecedor(self):
+        """ENTITY-002: Fornecedor CNPJ with empty value defaults to empty."""
+        from services.alert_matcher import _normalize_item
+
+        item = _normalize_item({}, "test-id")
+        assert item["fornecedor_cnpj"] == ""
+
+    def test_track_entity_alert_event_called(self):
+        """ENTITY-002 AC5: track_event is called for entity matches."""
+        from services.alert_matcher import _track_entity_alert_event
+
+        entity_matches = [
+            {"entity_cnpj": "12345678000195", "entity_type": "orgao", "bid_count": 3},
+        ]
+
+        with patch("analytics_events.track_event") as mock_track:
+            _track_entity_alert_event("alert-001", entity_matches)
+
+        mock_track.assert_called_once_with("entity_alert_matched", {
+            "alert_id": "alert-001",
+            "entity_cnpj": "12345678000195",
+            "entity_type": "orgao",
+            "bid_count": 3,
+        })
+
+    def test_track_entity_empty_does_not_call(self):
+        """ENTITY-002 AC5: Empty entity_matches does not trigger tracking."""
+        from services.alert_matcher import _track_entity_alert_event
+
+        with patch("analytics_events.track_event") as mock_track:
+            _track_entity_alert_event("alert-001", [])
+
+        mock_track.assert_not_called()
+
+    def test_track_entity_failure_does_not_raise(self):
+        """ENTITY-002 AC5: Analytics failure should not raise."""
+        from services.alert_matcher import _track_entity_alert_event
+
+        entity_matches = [
+            {"entity_cnpj": "12345678000195", "entity_type": "orgao", "bid_count": 3},
+        ]
+
+        with patch("analytics_events.track_event", side_effect=Exception("Analytics down")):
+            # Should not raise
+            _track_entity_alert_event("alert-001", entity_matches)

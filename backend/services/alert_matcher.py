@@ -1,8 +1,13 @@
-"""STORY-315 AC1-AC4: Alert matching engine.
+"""STORY-315 AC1-AC4 + ENTITY-002: Alert matching engine.
 
 Queries active alerts for users with active plans, executes cached-result
 search per alert using filter.py–compatible logic, cross-deduplicates within
 the same user, and records runs in ``alert_runs`` for auditability.
+
+ENTITY-002: Also matches against tracked_orgaos (public-agency CNPJ) and
+tracked_fornecedores (supplier CNPJ). Entity matches are OR'd with regular
+filters (setor/UF/keywords). Volume mitigation groups high-cardinality
+entities into a single digest per alert run.
 
 Usage (from cron_jobs.py):
     from services.alert_matcher import match_alerts
@@ -16,6 +21,12 @@ from typing import Optional
 from supabase_client import get_supabase, sb_execute
 
 logger = logging.getLogger(__name__)
+
+# ENTITY-002: Volume mitigation — if a single entity CNPJ accounts for more
+# than this many matches, the matched set is flagged as a digest rather than
+# individual notifications. This prevents flooding when tracking large
+# agencies (e.g. "Governo de Sao Paulo").
+_ENTITY_DIGEST_THRESHOLD = 5
 
 # Active plan types that should receive alert emails
 _ACTIVE_PLAN_TYPES = frozenset({
@@ -126,10 +137,10 @@ async def _get_eligible_alerts(db, limit: int = 100) -> list[dict]:
         List of dicts: id, user_id, name, filters, email, full_name.
     """
     try:
-        # Fetch all active alerts
+        # ENTITY-002: Also select tracked_orgaos and tracked_fornecedores
         result = await sb_execute(
             db.table("alerts")
-            .select("id, user_id, name, filters, active, created_at")
+            .select("id, user_id, name, filters, active, created_at, tracked_orgaos, tracked_fornecedores")
             .eq("active", True)
             .limit(limit)
         )
@@ -170,6 +181,9 @@ async def _get_eligible_alerts(db, limit: int = 100) -> list[dict]:
                     profile.get("full_name")
                     or profile["email"].split("@")[0]
                 ),
+                # ENTITY-002: entity tracking CNPJ lists
+                "tracked_orgaos": alert.get("tracked_orgaos") or [],
+                "tracked_fornecedores": alert.get("tracked_fornecedores") or [],
             })
 
         logger.info(
@@ -221,6 +235,10 @@ async def _process_alert(
 
     AC4: Searches last 24h of cached results.
 
+    ENTITY-002: Also matches against tracked_orgaos / tracked_fornecedores
+    (OR logic with regular filters). Volume mitigation limits entity cards
+    to avoid overwhelming the digest.
+
     Returns:
         Dict: alert_id, user_id, email, full_name, alert_name,
               new_items, total_found, skipped, skip_reason.
@@ -229,6 +247,11 @@ async def _process_alert(
 
     alert_id = alert["id"]
     user_id = alert["user_id"]
+
+    # ENTITY-002: Extract tracked entity CNPJ lists
+    tracked_orgaos: list[str] = alert.get("tracked_orgaos") or []
+    tracked_fornecedores: list[str] = alert.get("tracked_fornecedores") or []
+    has_entity_tracking = bool(tracked_orgaos or tracked_fornecedores)
 
     result = {
         "alert_id": alert_id,
@@ -240,6 +263,9 @@ async def _process_alert(
         "total_found": 0,
         "skipped": False,
         "skip_reason": None,
+        # ENTITY-002: metadata for analytics
+        "entity_matches": [],
+        "is_entity_digest": False,
     }
 
     # Rate limit check (max 1/day per alert)
@@ -258,8 +284,33 @@ async def _process_alert(
         await _record_alert_run(alert_id, 0, 0, "no_results", db)
         return result
 
-    # AC2: Apply filter.py–compatible matching
-    filtered = _apply_alert_filters(raw_results, alert.get("filters", {}))
+    # ENTITY-002: Entity tracking matching (independent path)
+    entity_matches: list[dict] = []
+    if has_entity_tracking:
+        entity_matches = _apply_entity_filters(
+            raw_results, tracked_orgaos, tracked_fornecedores,
+        )
+
+    # AC2: Apply filter.py–compatible matching (independent path).
+    # ENTITY-002: Only apply regular matching when there are actual filter
+    # criteria (ufs, keywords, valor_min, valor_max) — otherwise every item
+    # would pass and entity-matched items would be drowned in noise.
+    alert_filters = alert.get("filters", {})
+    _has_regular_criteria = bool(
+        alert_filters.get("ufs")
+        or alert_filters.get("keywords")
+        or alert_filters.get("valor_min")
+        or alert_filters.get("valor_max")
+    )
+    regular_matches = []
+    if _has_regular_criteria:
+        regular_matches = _apply_alert_filters(raw_results, alert_filters)
+
+    # ENTITY-002 AC4: Merge with OR logic — match if entity OR regular filters
+    if has_entity_tracking:
+        filtered = _merge_entity_and_regular_matches(entity_matches, regular_matches)
+    else:
+        filtered = regular_matches if _has_regular_criteria else raw_results
 
     if not filtered:
         result["skipped"] = True
@@ -293,12 +344,131 @@ async def _process_alert(
     result["new_items"] = new_items
     result["total_found"] = len(new_items)
 
+    # ENTITY-002: Volume mitigation — detect high-cardinality entities
+    if has_entity_tracking:
+        result["entity_matches"] = _extract_entity_match_metadata(
+            new_items, tracked_orgaos, tracked_fornecedores,
+        )
+        result["is_entity_digest"] = _check_entity_digest_needed(
+            result["entity_matches"],
+        )
+        # ENTITY-002 AC5: Track analytics event
+        _track_entity_alert_event(alert_id, result["entity_matches"])
+
     # AC10: Record successful run
     await _record_alert_run(
         alert_id, len(raw_results), len(new_items), "matched", db,
     )
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# ENTITY-002: Volume mitigation + analytics helpers
+# ---------------------------------------------------------------------------
+
+
+def _extract_entity_match_metadata(
+    items: list[dict],
+    tracked_orgaos: list[str],
+    tracked_fornecedores: list[str],
+) -> list[dict]:
+    """Extract metadata about which entities matched in the result set.
+
+    ENTITY-002 AC3: Counts how many items matched each tracked entity,
+    for volume mitigation decisions.
+
+    Args:
+        items: Matched items (already filtered and deduplicated).
+        tracked_orgaos: CNPJ list of tracked agencies.
+        tracked_fornecedores: CNPJ list of tracked suppliers.
+
+    Returns:
+        List of dicts: {entity_cnpj, entity_type, bid_count, items}.
+    """
+    orgao_set = {c.strip() for c in tracked_orgaos if c.strip()}
+    fornecedor_set = {c.strip() for c in tracked_fornecedores if c.strip()}
+
+    entity_counts: dict[str, dict] = {}
+
+    for item in items:
+        orgao_cnpj = (item.get("orgao_cnpj") or "").strip()
+        fornecedor_cnpj = (item.get("fornecedor_cnpj") or "").strip()
+
+        if orgao_set and orgao_cnpj in orgao_set:
+            if orgao_cnpj not in entity_counts:
+                entity_counts[orgao_cnpj] = {
+                    "entity_cnpj": orgao_cnpj,
+                    "entity_type": "orgao",
+                    "bid_count": 0,
+                }
+            entity_counts[orgao_cnpj]["bid_count"] += 1
+
+        if fornecedor_set and fornecedor_cnpj in fornecedor_set:
+            if fornecedor_cnpj not in entity_counts:
+                entity_counts[fornecedor_cnpj] = {
+                    "entity_cnpj": fornecedor_cnpj,
+                    "entity_type": "fornecedor",
+                    "bid_count": 0,
+                }
+            entity_counts[fornecedor_cnpj]["bid_count"] += 1
+
+    return sorted(
+        list(entity_counts.values()),
+        key=lambda x: x["bid_count"],
+        reverse=True,
+    )
+
+
+def _check_entity_digest_needed(entity_matches: list[dict]) -> bool:
+    """Check if volume mitigation (digest) is needed.
+
+    ENTITY-002 AC3: If any single entity has more than
+    ``_ENTITY_DIGEST_THRESHOLD`` matched bids, the result should be
+    grouped as a digest notification.
+
+    Args:
+        entity_matches: Metadata from _extract_entity_match_metadata().
+
+    Returns:
+        True if any entity exceeds the threshold.
+    """
+    for entry in entity_matches:
+        if entry.get("bid_count", 0) > _ENTITY_DIGEST_THRESHOLD:
+            return True
+    return False
+
+
+def _track_entity_alert_event(
+    alert_id: str,
+    entity_matches: list[dict],
+) -> None:
+    """Track entity_alert_matched analytics event.
+
+    ENTITY-002 AC5: Fire-and-forget event with alert_id, entity_cnpj,
+    bid_count for each matched entity.
+
+    Uses ``analytics_events.track_event`` which degrades gracefully
+    (Mixpanel or debug log).
+    """
+    if not entity_matches:
+        return
+
+    try:
+        from analytics_events import track_event
+
+        for entry in entity_matches:
+            track_event("entity_alert_matched", {
+                "alert_id": alert_id,
+                "entity_cnpj": entry["entity_cnpj"],
+                "entity_type": entry["entity_type"],
+                "bid_count": entry["bid_count"],
+            })
+    except Exception:
+        logger.debug(
+            "ENTITY-002: Failed to track entity_alert_matched for %s",
+            alert_id[:8],
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +538,11 @@ async def _search_cached_results(
 
 
 def _normalize_item(item: dict, item_id: str) -> dict:
-    """Normalize a raw cached item into a standard format."""
+    """Normalize a raw cached item into a standard format.
+
+    ENTITY-002: Also extracts orgao_cnpj and fornecedor_cnpj for entity
+    tracking matching against tracked_orgaos / tracked_fornecedores.
+    """
     return {
         "id": item_id,
         "titulo": (
@@ -395,6 +569,18 @@ def _normalize_item(item: dict, item_id: str) -> dict:
         "viability_score": item.get("viability_score"),
         "status": item.get("status", ""),
         "data_publicacao": item.get("dataPublicacao", ""),
+        # ENTITY-002: CNPJ fields for entity tracking
+        "orgao_cnpj": (
+            item.get("cnpjOrgao")
+            or item.get("orgaoCnpj")
+            or ""
+        ),
+        "fornecedor_cnpj": (
+            item.get("fornecedor_cnpj")
+            or item.get("cnpjFornecedor")
+            or item.get("ni_fornecedor")
+            or ""
+        ),
     }
 
 
@@ -482,6 +668,98 @@ def _apply_alert_filters(
     )
 
     return matched
+
+
+# ---------------------------------------------------------------------------
+# ENTITY-002: Entity tracking matching (tracked_orgaos / tracked_fornecedores)
+# ---------------------------------------------------------------------------
+
+
+def _apply_entity_filters(
+    items: list[dict],
+    tracked_orgaos: list[str],
+    tracked_fornecedores: list[str],
+) -> list[dict]:
+    """Filter items by tracked entity CNPJ lists.
+
+    ENTITY-002 AC1+AC2: For each item, checks if ``orgao_cnpj`` is in
+    ``tracked_orgaos`` or ``fornecedor_cnpj`` is in ``tracked_fornecedores``.
+
+    Args:
+        items: Normalized opportunity dicts (must include ``orgao_cnpj``
+               and ``fornecedor_cnpj`` keys).
+        tracked_orgaos: CNPJ list of public agencies to track.
+        tracked_fornecedores: CNPJ list of suppliers to track.
+
+    Returns:
+        Subset of items that match any tracked entity, sorted by
+        viability_score DESC. Empty list if neither list is provided.
+    """
+    if not tracked_orgaos and not tracked_fornecedores:
+        return []
+
+    orgao_set = {c.strip() for c in tracked_orgaos if c.strip()}
+    fornecedor_set = {c.strip() for c in tracked_fornecedores if c.strip()}
+
+    matched: list[dict] = []
+
+    for item in items:
+        orgao_cnpj = (item.get("orgao_cnpj") or "").strip()
+        fornecedor_cnpj = (item.get("fornecedor_cnpj") or "").strip()
+
+        if orgao_set and orgao_cnpj in orgao_set:
+            matched.append(item)
+            continue
+
+        if fornecedor_set and fornecedor_cnpj in fornecedor_set:
+            matched.append(item)
+            continue
+
+    # Sort by viability_score DESC
+    matched.sort(
+        key=lambda x: x.get("viability_score") or 0.0,
+        reverse=True,
+    )
+
+    return matched
+
+
+def _merge_entity_and_regular_matches(
+    entity_matches: list[dict],
+    regular_matches: list[dict],
+) -> list[dict]:
+    """Merge entity-matched and regular-matched items with OR logic.
+
+    ENTITY-002 AC4: If both entity and regular filters are active, an item
+    matches if EITHER the entity criteria OR the regular filters match.
+
+    Dedup by item ``id`` — items that match both paths appear only once.
+    Order: entity-matched items first (preserving their sort), then
+    regular-matched items that weren't already included.
+
+    Args:
+        entity_matches: Items that matched tracked entities.
+        regular_matches: Items that matched regular filter criteria.
+
+    Returns:
+        Merged, deduplicated list of matching items.
+    """
+    seen: set[str] = set()
+    merged: list[dict] = []
+
+    for item in entity_matches:
+        item_id = item.get("id", "")
+        if item_id and item_id not in seen:
+            seen.add(item_id)
+            merged.append(item)
+
+    for item in regular_matches:
+        item_id = item.get("id", "")
+        if item_id and item_id not in seen:
+            seen.add(item_id)
+            merged.append(item)
+
+    return merged
 
 
 # ---------------------------------------------------------------------------
