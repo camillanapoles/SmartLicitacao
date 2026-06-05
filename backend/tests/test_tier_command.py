@@ -209,7 +209,7 @@ class TestExistingTiersNotModified:
 
     def test_no_extra_plans_added(self):
         """No new plans should be added to PLAN_CAPABILITIES."""
-        original_plans = {
+        expected_plans = {
             "free_trial",
             "consultor_agil",
             "maquina",
@@ -217,7 +217,8 @@ class TestExistingTiersNotModified:
             "smartlic_pro",
             "founding_member",
             "consultoria",
+            "smartlic_command",
             "free",
             "master",
         }
-        assert set(PLAN_CAPABILITIES.keys()) == original_plans
+        assert set(PLAN_CAPABILITIES.keys()) == expected_plans

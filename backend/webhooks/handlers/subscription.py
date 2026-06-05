@@ -84,6 +84,14 @@ async def handle_subscription_updated(sb, event: stripe.Event) -> None:
     # Check if plan changed (Stripe metadata should contain plan_id)
     new_plan_id = (subscription_data.get("metadata") or {}).get("plan_id")
 
+    # TIER-COMMAND-002: Explicit recognition of SmartLic Command tier.
+    current_plan = new_plan_id if new_plan_id else local_sub.get("plan_id")
+    if current_plan == "smartlic_command":
+        logger.info(
+            f"TIER-COMMAND-002: Command tier subscription updated — "
+            f"subscription_id={stripe_sub_id}, billing_period={billing_period}"
+        )
+
     update_data = {
         "billing_period": billing_period,
         "is_active": True,
@@ -394,6 +402,13 @@ async def handle_subscription_deleted(sb, event: stripe.Event) -> None:
     local_sub = sub_result.data[0]
     user_id = local_sub["user_id"]
     _sub_id = local_sub["id"]
+
+    # TIER-COMMAND-002: Explicit recognition of SmartLic Command tier.
+    if local_sub.get("plan_id") == "smartlic_command":
+        logger.info(
+            f"TIER-COMMAND-002: Command tier subscription deleted — "
+            f"subscription_id={stripe_sub_id}, user_id={user_id}"
+        )
 
     # Deactivate subscription
     await _run_with_budget(

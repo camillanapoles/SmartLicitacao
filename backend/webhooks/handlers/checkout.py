@@ -240,6 +240,17 @@ async def handle_checkout_session_completed(sb, event: stripe.Event) -> None:
         )
         return
 
+    # TIER-COMMAND-002: Explicit recognition of SmartLic Command tier.
+    # The generic subscription activation logic below handles any plan_id,
+    # including smartlic_command — this branch makes the tier handling
+    # visible in logs and explicit in the codebase.
+    if plan_id == "smartlic_command":
+        logger.info(
+            f"TIER-COMMAND-002: Command tier checkout completed — "
+            f"user_id={user_id}, billing_period={billing_period}"
+        )
+        # Falls through to generic subscription activation (same as other tiers)
+
     # STORY-280 AC2: Boleto/PIX -> payment_status="unpaid" at checkout.session.completed
     if payment_status == "unpaid":
         logger.info(
@@ -382,6 +393,13 @@ async def handle_async_payment_succeeded(sb, event: stripe.Event) -> None:
             f"user_id={user_id}, metadata={metadata}"
         )
         return
+
+    # TIER-COMMAND-002: Explicit recognition of SmartLic Command tier.
+    if plan_id == "smartlic_command":
+        logger.info(
+            f"TIER-COMMAND-002: Command tier async payment succeeded — "
+            f"user_id={user_id}, billing_period={billing_period}"
+        )
 
     logger.info(
         f"Async payment succeeded (Boleto/PIX): user_id={user_id}, plan_id={plan_id}, "

@@ -29,6 +29,9 @@ class TestPlanCapabilities:
             "allow_predictive_intel",  # PREDINT-000 (EPIC-PREDINT #1260)
             "allow_competitive_intel",  # COMPINT-000 (EPIC-COMPINT #1261)
             "allow_workspace_basic",  # B2GOPS-000 (EPIC-B2GOPS #1262)
+            "allow_command_api_access",  # TIER-COMMAND-003
+            "allow_command_multi_user",  # TIER-COMMAND-003
+            "allow_command_executive_reports",  # TIER-COMMAND-003
             "max_requests_per_month",
             "max_requests_per_min",
             "max_summary_tokens",
@@ -104,6 +107,7 @@ class TestPlanCapabilities:
             "maquina",
             "sala_guerra",
             "smartlic_pro",
+            "smartlic_command",  # TIER-COMMAND-002
             "founding_member",  # STORY-BIZ-001
             "consultoria",  # STORY-BIZ-002
         }
@@ -530,6 +534,7 @@ class TestPlanPricing:
             "maquina",
             "sala_guerra",
             "smartlic_pro",
+            "smartlic_command",  # TIER-COMMAND-002
             "founding_member",  # STORY-BIZ-001
             "consultoria",  # STORY-BIZ-002
         }
